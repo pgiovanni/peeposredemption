@@ -1,12 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace peeposredemption.API.Pages;
-
-public class PrivacyModel : PageModel
+namespace SingalRChat.Pages
 {
-    public void OnGet()
+    public class PrivacyModel : PageModel
     {
+        public void OnGet()
+        {
+        }
     }
-}
 
+}

@@ -1,31 +1,129 @@
 html {
-  font-size: 14px;
+    font-size: 14px;
+    background: #1a1822;
+    color:white;
 }
 
 @media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+    html {
+        font-size: 16px;
+        color: white;
+        background: #1a1822;
+    }
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    background: #1a1822;
 }
 
 html {
-  position: relative;
-  min-height: 100%;
+    position: relative;
+    min-height: 100%;
+    background: #1a1822;
 }
 
 body {
-  margin-bottom: 60px;
+    margin-bottom: 60px;
+    background: #1a1822;
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
+    color: var(--bs-secondary-color);
+    text-align: end;
+    background: #1a1822;
 }
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+#message-box {
+    bottom: 10%;  
+    width: 100vw;
+    position: fixed;
+    background: #1a1822;
+    display: flex;
+    flex-direction:row;
+    gap:20px;    
+}
+
+#messages-user-submit {
+    overflow: auto;
+    overflow-wrap: break-word;
+    max-height: 80vh;
+    min-height: 80vh;
+    width: 85vw;
+    max-width:85vw;
+    left: 0;
+    background: #1a1822;
+    color:white;
+    border-bottom-color: white;
+    
+}
+
+#container {
+    display: flex;
+    flex-direction: column;
+    width: 85vw;
+    background: #1a1822;
+    color:white;
+}
+
+#list-of-messages {
+    width: 85vw;
+    background: #1a1822;
+    overflow: scroll;
+}
+.container {
+    margin-left: 0px;
+}
+
+#message-content {
+    width: 65vw;
+    background-image: url("~/assets/mesage bx picture.png");
+}
+#horiztonal-flex {
+    display: flex;
+    flex-direction: row;
+
+}
+
+#image-box {
+    height:100vh;
+    width:15vw;
+}
+
+#messageInput {
+    background-image: url('../assets/mesage bx picture.png');
+    background-size: cover;
+    color: white;
+    width: 65vw;
+}
+
+#navbar {
+    background-image: url('../assets/mesage bx picture.png');
+    background-size: cover;
+    color: white;
+    width: 85vw;
+    display: flex;
+    flex-direction: row;
+    height: max-content;
+}
+
+#username {
+    display:flex;
+    flex-direction: row;    
+}
+
+#userInput {
+    background-image: url('../assets/username box.png');
+    background-size: cover;
+    width: 50vw;
+    color: white;
+}
+
+.navbar-item {
+    padding: 1vw;
+    font-size: 20px;
 }

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\peeposredemption.Application\peeposredemption.Application.csproj" />
@@ -9,6 +9,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>e4ffac32-3995-4c92-92fe-94f1cc047416</UserSecretsId>
   </PropertyGroup>
 
 </Project>

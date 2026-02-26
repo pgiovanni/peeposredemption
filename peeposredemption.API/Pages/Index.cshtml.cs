@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace peeposredemption.API.Pages;
-
-public class IndexModel : PageModel
+namespace peeposredemption.Pages
 {
-    public void OnGet()
+    public class IndexModel : PageModel
     {
+        public void OnGet()
+        {
 
+        }
     }
 }

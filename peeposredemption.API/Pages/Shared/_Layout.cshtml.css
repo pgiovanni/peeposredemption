@@ -2,13 +2,19 @@
 for details on configuring this project to bundle and minify static web assets. */
 
 a.navbar-brand {
-  white-space: normal;
-  text-align: center;
-  word-break: break-all;
+    white-space: normal;
+    text-align: center;
+    word-break: break-all;    
+    color: white;
+}
+
+.navbar-brand {
+    color:white;
 }
 
 a {
-  color: #0077cc;
+    color: white;
+    background: #1a1822;
 }
 
 .btn-primary {
@@ -45,4 +51,11 @@ button.accept-policy {
   width: 100%;
   white-space: nowrap;
   line-height: 60px;
+}
+
+#header {
+    background: #1a1822;
+    color: white;
+    display: flex;
+    flex-direction: row;
 }
