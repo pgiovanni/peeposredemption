@@ -11,6 +11,7 @@ namespace peeposredemption.Domain.Interfaces
         IServerRepository Servers { get; }
         IMessageRepository Messages { get; }
         IDirectMessageRepository DirectMessages { get; }
+        IChannelRepository Channels { get; }
         Task<int> SaveChangesAsync();
     }
 

@@ -8,6 +8,7 @@ namespace peeposredemption.Domain.Interfaces.Repositories
         Task<Server?> GetByIdAsync(Guid id);
         Task<List<Server>> GetUserServersAsync(Guid userId);
         Task<bool> IsMemberAsync(Guid serverId, Guid userId);
+        Task AddMemberAsync(ServerMember member);
         Task AddAsync(Server server);
     }
 

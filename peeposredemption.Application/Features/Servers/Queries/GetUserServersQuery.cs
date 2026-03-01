@@ -4,7 +4,7 @@ using System.Text;
 
 namespace peeposredemption.Application.Features.Servers.Queries
 {
-    internal class GetUserServers
+    internal class GetUserServersQuery
     {
     }
 }
