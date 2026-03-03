@@ -35,4 +35,5 @@ namespace peeposredemption.Application.Features.Messages.Commands
             return new DirectMessageDto(dm.Id, dm.SenderId, dm.RecipientId, dm.Content, dm.SentAt);
         }
     }
+}
 

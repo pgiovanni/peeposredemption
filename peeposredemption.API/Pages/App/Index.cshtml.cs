@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace peeposredemption.Pages
+namespace peeposredemption.API.Pages.App
 {
     public class IndexModel : PageModel
     {
