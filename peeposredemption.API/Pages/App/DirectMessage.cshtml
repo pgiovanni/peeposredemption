@@ -1,0 +1,21 @@
+﻿@page "{recipientId:guid}"
+@model peeposredemption.API.Pages.App.DirectMessageModel
+<h3>Chat with @Model.RecipientName</h3>
+<div id="messages">
+    @foreach (var msg in Model.Messages)
+    {
+        <div class="message @(msg.IsMine ? "mine" : "theirs")">
+            <span>@msg.Content</span>
+            <small>@msg.SentAt.ToString("HH:mm")</small>
+        </div>
+    }
+</div>
+<div id="typing-indicator"></div>
+<form id="dm-form">
+    <input id="dm-input" type="text" placeholder="Message..." />
+    <button type="submit">Send</button>
+</form>
+@section Scripts {
+    <script>const recipientId = '@Model.RecipientId';</script>
+    <script src="~/js/chat.js"></script>
+}

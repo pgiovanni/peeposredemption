@@ -1,14 +1,16 @@
-using peeposredemption.Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using peeposredemption.Application.Features.Auth.Commands;
-using peeposredemption.Application.Validators;
-using peeposredemption.API.Hubs;
-using Microsoft.IdentityModel.Tokens;
-using peeposredemption.Application.Services;
-using System.Text;
 using FluentValidation;
-using peeposredemption.API.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.IdentityModel.Tokens;
+using peeposredemption.API.Hubs;
+using peeposredemption.API.Infrastructure;
+using peeposredemption.Application.Features.Auth.Commands;
+using peeposredemption.Application.Services;
+using peeposredemption.Application.Validators;
+using peeposredemption.Domain.Interfaces.Repositories;
+using peeposredemption.Infrastructure;
+using peeposredemption.Infrastructure.Repositories;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +26,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterValidator>();
 
 // Application services
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IChannelRepository, ChannelRepository>();
 builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
 
 // JWT Authentication
@@ -60,11 +63,20 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
+app.Use(async (context, next) =>
+{
+    var token = context.Request.Cookies["jwt"];
+    if (!string.IsNullOrEmpty(token))
+        context.Request.Headers["Authorization"] = $"Bearer {token}";
+    await next();
+});
+
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapRazorPages();
 app.MapHub<ChatHub>("/hubs/chat");
+app.MapGet("/", () => Results.Redirect("/Auth/Login"));
 
 app.Run();

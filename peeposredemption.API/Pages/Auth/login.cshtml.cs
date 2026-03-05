@@ -1,0 +1,33 @@
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using peeposredemption.Application.Features.Auth.Commands;
+
+namespace peeposredemption.API.Pages.Auth
+{
+    public class LoginModel : PageModel
+    {
+        private readonly IMediator _mediator;
+        public LoginModel(IMediator mediator) => _mediator = mediator;
+
+        [BindProperty] public LoginCommand Input { get; set; }
+
+        public async Task<IActionResult> OnPostAsync()
+        {
+            if (!ModelState.IsValid) return Page();
+            try
+            {
+                var result = await _mediator.Send(Input);
+                Response.Cookies.Append("jwt", result.Token, new CookieOptions
+                { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
+                return RedirectToPage("/App/Index");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                ModelState.AddModelError(string.Empty, "Invalid credentials.");
+                return Page();
+            }
+        }
+    }
+
+}

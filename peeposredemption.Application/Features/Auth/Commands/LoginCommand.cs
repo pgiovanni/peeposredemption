@@ -24,10 +24,10 @@ namespace peeposredemption.Application.Features.Auth.Commands
         public async Task<TokenResponseDto> Handle(LoginCommand cmd, CancellationToken ct)
         {
             var user = await _uow.Users.GetByEmailAsync(cmd.Email)
-                ?? throw new Exception("Invalid credentials.");
+                ?? throw new UnauthorizedAccessException("Invalid credentials.");
 
             if (!BCrypt.Net.BCrypt.Verify(cmd.Password, user.PasswordHash))
-                throw new Exception("Invalid credentials.");
+                throw new UnauthorizedAccessException ("Invalid credentials.");
 
             return new TokenResponseDto(_tokenService.GenerateToken(user));
         }

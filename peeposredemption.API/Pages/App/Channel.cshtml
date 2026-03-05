@@ -1,0 +1,21 @@
+﻿@page
+@model peeposredemption.API.Pages.App.ChannelModel
+<div id="messages">
+    @foreach (var msg in Model.Messages)
+    {
+        <div class="message">
+            <strong>@msg.AuthorId</strong>
+            <span>@msg.Content</span>
+            <small>@msg.SentAt.ToString("HH:mm")</small>
+        </div>
+    }
+</div>
+<div id="typing-indicator"></div>
+<form id="message-form">
+    <input id="message-input" type="text" placeholder="Message..." />
+    <button type="submit">Send</button>
+</form>
+@section Scripts {
+    <script>const channelId = '@Model.ChannelId';</script>
+    <script src="~/js/chat.js"></script>
+}

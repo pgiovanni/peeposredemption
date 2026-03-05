@@ -1,38 +1,21 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - SingalRChat</title>
-    <script type="importmap"></script>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/SingalRChat.styles.css" asp-append-version="true" />
+    <title>@ViewData["Title"] - peeposredemption</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+    <meta name="jwt" content="@Context.Request.Cookies["jwt"]" />
 </head>
 <body>
-    <header id="header">
-        <nav id="navbar">            
-            <a class="navbar-item" asp-area="" asp-page="/Index">Discord's Redemption</a>                                           
-            <a class="navbar-item" asp-area="" asp-page="/Index">Home</a>
-            <a class="navbar-item" asp-area="" asp-page="/Privacy">Privacy</a>
+    <div class="app-shell">
+        <nav class="server-sidebar">
+            @foreach (var server in ViewBag.Servers ?? new List<dynamic>())
+            {
+                <a href="/App/Index?serverId=@server.Id">@server.Name</a>
+            }
         </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+        <main>@RenderBody()</main>
     </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - SingalRChat - <a asp-area="" asp-page="/Privacy">Privacy</a>
-        </div>
-    </footer>
-
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-
+    <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

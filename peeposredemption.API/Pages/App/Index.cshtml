@@ -1,32 +1,42 @@
 ﻿@page
-<div id="horiztonal-flex">
-    <div id="container">
-        <div id="messages-user-submit">
-            <div class="row p-1" id="username">
-                <div class="col-1">Username</div>
-                <div class="col-5"><input type="text" id="userInput" /></div>
-            </div>
-            <div class="row p-1">
-                <div class="col-6">
-                    <hr />
-                </div>
-            </div>
-            <div class="row p-1" id="list-of-messages">
-                <div class="col-6">
-                    <ul id="messagesList"></ul>
-                </div>
-            </div>
-        </div>
-        <form id="message-box">        
-            <div id="label">Message</div>
-            <div id="message-content"><input type="text" id="messageInput" /></div>        
-            <input type="submit" id="sendButton" value="Send Message" />                 
-        </form>
+@model peeposredemption.API.Pages.App.IndexModel
+
+<div id="app-shell">
+
+    <div id="server-list">
+        @foreach (var server in Model.Servers)
+        {
+            var channelId = Model.ServerDefaultChannels.GetValueOrDefault(server.Id);
+            <a href="/App/Channel?channelId=@channelId" class="server-icon" title="@server.Name">
+                @if (server.IconUrl != null)
+                {
+                    <img src="@server.IconUrl" alt="@server.Name" />
+                }
+                else
+                {
+                    <div class="server-icon-placeholder">
+                        @server.Name.Substring(0, 1).ToUpper()
+                    </div>
+                }
+            </a>
+        }
+        <div class="server-icon add-server" title="Add Server">+</div>
     </div>
-    <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" id="image-box" target="_blank"><img src="~/assets/peepo pirate(1).png" alt="skull and crossbones to make people think hacker" id="skull-crossbones" /></a>
+
+    <div id="channel-list">
+        <div id="channel-list-header">Direct Messages</div>
+        <div id="dm-list"></div>
+    </div>
+
+    <div id="chat-area">
+        <div id="messages-list"></div>
+        <div id="message-input-area">
+            <input type="text" id="messageInput" placeholder="Message..." />
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
 </div>
-
-
 
 <script src="~/lib/microsoft/signalr/dist/browser/signalr.js"></script>
 <script src="~/js/chat.js"></script>

@@ -22,8 +22,10 @@ namespace peeposredemption.Infrastructure
             IMessageRepository messages, IDirectMessageRepository directMessages, IChannelRepository channels)
         {
             _db = db;
-            Users = users; Servers = servers;
-            Messages = messages; DirectMessages = directMessages;
+            Users = users;
+            Servers = servers;
+            Messages = messages;
+            DirectMessages = directMessages;
             Channels = channels;
         }
 
