@@ -32,6 +32,11 @@ namespace peeposredemption.Infrastructure.Persistence
                     fk.SetConstraintName(ToSnakeCase(fk.GetConstraintName()!));
             }
 
+            // Unique constraints
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
+
             // Composite key for join table
             modelBuilder.Entity<ServerMember>()
                 .HasKey(sm => new { sm.UserId, sm.ServerId });
