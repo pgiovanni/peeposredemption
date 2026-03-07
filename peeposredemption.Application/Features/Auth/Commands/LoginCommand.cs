@@ -27,7 +27,10 @@ namespace peeposredemption.Application.Features.Auth.Commands
                 ?? throw new UnauthorizedAccessException("Invalid credentials.");
 
             if (!BCrypt.Net.BCrypt.Verify(cmd.Password, user.PasswordHash))
-                throw new UnauthorizedAccessException ("Invalid credentials.");
+                throw new UnauthorizedAccessException("Invalid credentials.");
+
+            if (!user.EmailConfirmed)
+                throw new UnauthorizedAccessException("Please confirm your email before logging in.");
 
             return new TokenResponseDto(_tokenService.GenerateToken(user));
         }

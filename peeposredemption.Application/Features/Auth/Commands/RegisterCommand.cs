@@ -10,31 +10,38 @@ using System.Text;
 namespace peeposredemption.Application.Features.Auth.Commands
 {
     public record RegisterCommand(string Username, string Email, string Password)
-     : IRequest<TokenResponseDto>;
+     : IRequest<Unit>;
 
-    public class RegisterCommandHandler : IRequestHandler<RegisterCommand, TokenResponseDto>
+    public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Unit>
     {
         private readonly IUnitOfWork _uow;
-        private readonly TokenService _tokenService;
+        private readonly EmailService _emailService;
 
-        public RegisterCommandHandler(IUnitOfWork uow, TokenService tokenService)
-        { _uow = uow; _tokenService = tokenService; }
+        public RegisterCommandHandler(IUnitOfWork uow, EmailService emailService)
+        { _uow = uow; _emailService = emailService; }
 
-        public async Task<TokenResponseDto> Handle(RegisterCommand cmd, CancellationToken ct)
+        public async Task<Unit> Handle(RegisterCommand cmd, CancellationToken ct)
         {
             if (await _uow.Users.EmailExistsAsync(cmd.Email))
                 throw new InvalidOperationException("Email already in use.");
+
+            var confirmationToken = Guid.NewGuid().ToString();
 
             var user = new User
             {
                 Username = cmd.Username,
                 Email = cmd.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(cmd.Password)
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(cmd.Password),
+                EmailConfirmationtoken = confirmationToken
             };
 
             await _uow.Users.AddAsync(user);
             await _uow.SaveChangesAsync();
-            return new TokenResponseDto(_tokenService.GenerateToken(user));
+
+            var confirmationLink = $"https://localhost:443/Auth/Confirm?token={confirmationToken}";
+            await _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink);
+
+            return Unit.Value;
         }
     }
 

@@ -22,9 +22,9 @@ namespace peeposredemption.API.Pages.Auth
                 { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
                 return RedirectToPage("/App/Index");
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                ModelState.AddModelError(string.Empty, "Invalid credentials.");
+                ModelState.AddModelError(string.Empty, ex.Message);
                 return Page();
             }
         }

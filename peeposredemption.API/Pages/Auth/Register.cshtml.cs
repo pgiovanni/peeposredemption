@@ -17,10 +17,8 @@ namespace peeposredemption.API.Pages.Auth
             if (!ModelState.IsValid) return Page();
             try
             {
-                var result = await _mediator.Send(Input);
-                Response.Cookies.Append("jwt", result.Token, new CookieOptions
-                { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
-                return RedirectToPage("/App/Index");
+                await _mediator.Send(Input);
+                return RedirectToPage("/Auth/CheckEmail");
             }
             catch (InvalidOperationException ex)
             {
