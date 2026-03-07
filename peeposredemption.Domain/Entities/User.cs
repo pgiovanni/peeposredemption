@@ -8,6 +8,8 @@ public class User
     public string PasswordHash { get; set; }
     public string? AvatarUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public bool EmailConfirmed {  get; set; }
+    public string? EmailConfirmationtoken { get; set; }
  
     public ICollection<ServerMember> ServerMemberships { get; set; }
     public ICollection<Message> Messages { get; set; }

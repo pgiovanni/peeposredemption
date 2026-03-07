@@ -7,9 +7,7 @@ using peeposredemption.API.Infrastructure;
 using peeposredemption.Application.Features.Auth.Commands;
 using peeposredemption.Application.Services;
 using peeposredemption.Application.Validators;
-using peeposredemption.Domain.Interfaces.Repositories;
 using peeposredemption.Infrastructure;
-using peeposredemption.Infrastructure.Repositories;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,7 +24,6 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterValidator>();
 
 // Application services
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddScoped<IChannelRepository, ChannelRepository>();
 builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
 
 // JWT Authentication

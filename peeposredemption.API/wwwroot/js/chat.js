@@ -6,7 +6,7 @@ const connection = new signalR.HubConnectionBuilder()
 
 connection.on("ReceiveChannelMessage", (msg) => {
     const div = document.createElement("div");
-    div.innerHTML = `<strong>${msg.authorId}</strong> ${msg.content}`;
+    div.innerHTML = `<strong>${msg.authorUsername}</strong> ${msg.content}`;
     document.getElementById("messages")?.appendChild(div);
 });
 
@@ -22,10 +22,12 @@ connection.on("UserTyping", (userId) => {
     setTimeout(() => { if (el) el.textContent = ''; }, 2000);
 });
 
-await connection.start();
+(async () => {
+    await connection.start();
 
-if (typeof channelId !== 'undefined')
-    await connection.invoke('JoinChannel', serverId, channelId);
+    if (typeof channelId !== 'undefined')
+        await connection.invoke('JoinChannel', serverId, channelId);
+})();
 
 document.getElementById("message-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();

@@ -15,6 +15,7 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<Channel> Channels { get; set; }
         public DbSet<Message> Messages { get; set; }
         public DbSet<DirectMessage> DirectMessages { get; set; }
+        public DbSet<ServerInvite> ServerInvites { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -33,6 +34,12 @@ namespace peeposredemption.Infrastructure.Persistence
             // Composite key for join table
             modelBuilder.Entity<ServerMember>()
                 .HasKey(sm => new { sm.UserId, sm.ServerId });
+
+            // Map ServerInvite.CreatedByUserId as the FK for the CreatedBy nav property
+            modelBuilder.Entity<ServerInvite>()
+                .HasOne(si => si.CreatedBy)
+                .WithMany()
+                .HasForeignKey(si => si.CreatedByUserId);
 
             // Prevent cascade delete conflict on DirectMessages
             modelBuilder.Entity<DirectMessage>()

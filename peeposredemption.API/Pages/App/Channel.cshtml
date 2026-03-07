@@ -4,18 +4,24 @@
     @foreach (var msg in Model.Messages)
     {
         <div class="message">
-            <strong>@msg.AuthorId</strong>
+            <strong>@msg.AuthorUsername</strong>
             <span>@msg.Content</span>
             <small>@msg.SentAt.ToString("HH:mm")</small>
         </div>
     }
 </div>
 <div id="typing-indicator"></div>
+<div id="invite-link">
+    Invite link: <a href="@Model.InviteLink">@Model.InviteLink</a>
+</div>
 <form id="message-form">
     <input id="message-input" type="text" placeholder="Message..." />
     <button type="submit">Send</button>
 </form>
 @section Scripts {
-    <script>const channelId = '@Model.ChannelId';</script>
+    <script>
+        const channelId = '@Model.ChannelId';
+        const serverId = '@Model.ServerId'    
+    </script>
     <script src="~/js/chat.js"></script>
 }

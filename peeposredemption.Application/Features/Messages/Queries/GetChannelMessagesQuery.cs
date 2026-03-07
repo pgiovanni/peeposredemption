@@ -22,7 +22,7 @@ namespace peeposredemption.Application.Features.Messages.Queries
             var messages = await _uow.Messages
                 .GetChannelMessagesAsync(q.ChannelId, q.Page, q.PageSize);
             return messages
-                .Select(m => new MessageDto(m.Id, m.AuthorId, m.Content, m.SentAt))
+                .Select(m => new MessageDto(m.Id, m.AuthorId, m.Author.Username, m.Content, m.SentAt))
                 .ToList();
         }
     }
