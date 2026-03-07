@@ -1,4 +1,5 @@
 using FluentValidation;
+using Resend;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
@@ -24,6 +25,12 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterValidator>();
 
 // Application services
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddOptions();
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.Configure<ResendClientOptions>(o => 
+o.ApiToken = builder.Configuration["Resend:ApiKey"]);
+builder.Services.AddTransient<IResend, ResendClient>();
+builder.Services.AddScoped<EmailService>();
 builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
 
 // JWT Authentication

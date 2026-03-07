@@ -6,6 +6,7 @@
     <span asp-validation-for="Input.Email"></span>
     <input asp-for="Input.Password" type="password" placeholder="Password" />
     <span asp-validation-for="Input.Password"></span>
+    <div asp-validation-summary="All"></div>
     <button type="submit">Login</button>
     <a href="/Auth/Register">Register</a>
 </form>
