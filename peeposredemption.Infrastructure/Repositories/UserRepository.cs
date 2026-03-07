@@ -23,6 +23,9 @@ namespace peeposredemption.Infrastructure.Repositories
 
         public Task<User?> GetByConfirmationTokenAsync(string token) =>
             _db.Users.FirstOrDefaultAsync(u => u.EmailConfirmationtoken == token);
+
+        public Task<User?> GetByUsernameAsync(string username) =>
+            _db.Users.FirstOrDefaultAsync(u => u.Username == username);
     }
 
 }

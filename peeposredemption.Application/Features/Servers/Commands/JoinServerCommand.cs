@@ -13,12 +13,8 @@ public class JoinServerCommandHandler : IRequestHandler<JoinServerCommand, Guid>
 
     public async Task<Guid> Handle(JoinServerCommand cmd, CancellationToken ct)
     {
-        System.Diagnostics.Debugger.Break(); // BP3: JoinServerCommand received, looking up invite code
-
         var invite = await _uow.ServerInvites.GetByCodeAsync(cmd.Code)
             ?? throw new Exception("Invite not found.");
-
-        System.Diagnostics.Debugger.Break(); // BP4: invite resolved to ServerId
 
         var alreadyMember = await _uow.Servers.IsMemberAsync(invite.ServerId, cmd.UserId);
         if (!alreadyMember)
@@ -30,7 +26,6 @@ public class JoinServerCommandHandler : IRequestHandler<JoinServerCommand, Guid>
             });
             await _uow.SaveChangesAsync();
 
-            System.Diagnostics.Debugger.Break(); // BP5: ServerMember row inserted
         }
 
         return invite.ServerId;

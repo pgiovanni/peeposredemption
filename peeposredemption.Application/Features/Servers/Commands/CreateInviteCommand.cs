@@ -13,8 +13,6 @@ public class CreateInviteCommandHandler : IRequestHandler<CreateInviteCommand, s
 
     public async Task<string> Handle(CreateInviteCommand cmd, CancellationToken ct)
     {
-        System.Diagnostics.Debugger.Break(); // BP1: invite being created for ServerId
-
         var invite = new ServerInvite
         {
             ServerId = cmd.ServerId,
@@ -23,8 +21,6 @@ public class CreateInviteCommandHandler : IRequestHandler<CreateInviteCommand, s
 
         await _uow.ServerInvites.AddAsync(invite);
         await _uow.SaveChangesAsync();
-
-        System.Diagnostics.Debugger.Break(); // BP2: invite saved, Code ready to return
 
         return invite.Code;
     }

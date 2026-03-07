@@ -32,7 +32,9 @@ namespace peeposredemption.API.Hubs
 
         public async Task SendDirectMessage(Guid recipientId, string content)
         {
-            var payload = new { SenderId = CurrentUserId, Content = content, SentAt = DateTime.UtcNow };
+            var dto = await _mediator.Send(
+                new SendDirectMessageCommand(CurrentUserId, recipientId, content));
+            var payload = new { dto.SenderId, dto.Content, dto.SentAt };
             await Clients.User(recipientId.ToString()).SendAsync("ReceiveDirectMessage", payload);
             await Clients.Caller.SendAsync("ReceiveDirectMessage", payload);
         }

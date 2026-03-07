@@ -1,42 +1,130 @@
-﻿@page
+@page
 @model peeposredemption.API.Pages.App.IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
 
-<div id="app-shell">
+<div class="app-shell">
 
-    <div id="server-list">
-        @foreach (var server in Model.Servers)
+    <!-- Col 1: Server icon strip -->
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <!-- Col 2: DM sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>Direct Messages</span>
+            <button class="icon-btn" id="add-friend-toggle" title="Add Friend">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Add friend form -->
+        <div id="add-friend-section" class="@(Model.FriendRequestSuccess || Model.FriendRequestError != null ? "" : "hidden")">
+            <form method="post" asp-page-handler="SendFriendRequest" class="add-friend-form">
+                <input type="text" name="RecipientUsername" placeholder="Enter a username" autocomplete="off" />
+                <button type="submit" class="btn-primary btn-sm">Send Request</button>
+            </form>
+            @if (Model.FriendRequestError != null)
+            {
+                <div class="form-error">@Model.FriendRequestError</div>
+            }
+            @if (Model.FriendRequestSuccess)
+            {
+                <div class="form-success">Friend request sent!</div>
+            }
+        </div>
+
+        <!-- Pending friend requests -->
+        @if (Model.PendingRequests.Any())
         {
-            var channelId = Model.ServerDefaultChannels.GetValueOrDefault(server.Id);
-            <a href="/App/Channel?channelId=@channelId&serverId=@server.Id" class="server-icon" title="@server.Name">
-                @if (server.IconUrl != null)
+            <div class="sidebar-section-header">FRIEND REQUESTS — @Model.PendingRequests.Count</div>
+            @foreach (var req in Model.PendingRequests)
+            {
+                <div class="friend-request-item">
+                    <div class="friend-avatar">@req.SenderUsername.Substring(0, 1).ToUpper()</div>
+                    <span class="friend-name">@req.SenderUsername</span>
+                    <form method="post" asp-page-handler="RespondRequest" style="display:contents">
+                        <input type="hidden" name="RequestId" value="@req.Id" />
+                        <button name="Accept" value="true" type="submit" class="icon-btn accept-btn" title="Accept">✓</button>
+                        <button name="Accept" value="false" type="submit" class="icon-btn reject-btn" title="Reject">✗</button>
+                    </form>
+                </div>
+            }
+        }
+
+        <!-- Friends / DM list -->
+        @if (Model.Friends.Any())
+        {
+            <div class="sidebar-section-header">FRIENDS</div>
+            @foreach (var friend in Model.Friends)
+            {
+                <a href="/App/Index?friendId=@friend.Id"
+                   class="dm-item @(Model.ActiveFriendId == friend.Id ? "active" : "")">
+                    <div class="friend-avatar">@friend.Username.Substring(0, 1).ToUpper()</div>
+                    <span>@friend.Username</span>
+                </a>
+            }
+        }
+
+        @if (!Model.Friends.Any() && !Model.PendingRequests.Any())
+        {
+            <div class="sidebar-empty">Add friends to start chatting!</div>
+        }
+    </div>
+
+    <!-- Col 3: DM conversation or welcome -->
+    <div class="content-area">
+        @if (Model.ActiveFriend != null)
+        {
+            <div class="content-header">
+                <div class="friend-avatar">@Model.ActiveFriend.Username.Substring(0, 1).ToUpper()</div>
+                <span>@Model.ActiveFriend.Username</span>
+            </div>
+            <div id="messages" class="messages-container">
+                @foreach (var msg in Model.DmMessages)
                 {
-                    <img src="@server.IconUrl" alt="@server.Name" />
-                }
-                else
-                {
-                    <div class="server-icon-placeholder">
-                        @server.Name.Substring(0, 1).ToUpper()
+                    <div class="message @(msg.IsMine ? "mine" : "theirs")">
+                        <div class="message-author">@(msg.IsMine ? "You" : Model.ActiveFriend.Username)</div>
+                        <div class="message-content">@msg.Content</div>
+                        <div class="message-time">@msg.SentAt.ToString("HH:mm")</div>
                     </div>
                 }
-            </a>
+            </div>
+            <div id="typing-indicator" class="typing-indicator"></div>
+            <div class="message-input-area">
+                <form id="dm-form">
+                    <input id="dm-input" type="text" placeholder="Message @Model.ActiveFriend.Username..." autocomplete="off" />
+                    <button type="submit">Send</button>
+                </form>
+            </div>
         }
-        <div class="server-icon add-server" title="Add Server">+</div>
-    </div>
-
-    <div id="channel-list">
-        <div id="channel-list-header">Direct Messages</div>
-        <div id="dm-list"></div>
-    </div>
-
-    <div id="chat-area">
-        <div id="messages-list"></div>
-        <div id="message-input-area">
-            <input type="text" id="messageInput" placeholder="Message..." />
-            <button id="sendButton">Send</button>
-        </div>
+        else
+        {
+            <div class="welcome-screen">
+                <div class="welcome-icon">👋</div>
+                <h2>Welcome to PeePo's Redemption</h2>
+                <p>Add friends and start chatting, or join a server on the left.</p>
+            </div>
+        }
     </div>
 
 </div>
 
-<script src="~/lib/microsoft/signalr/dist/browser/signalr.js"></script>
-<script src="~/js/chat.js"></script>
+@section Scripts {
+    @if (Model.ActiveFriend != null)
+    {
+        <script>
+            const recipientId = '@Model.ActiveFriend.Id';
+            const recipientName = '@Model.ActiveFriend.Username';
+            const currentUserId = '@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value';
+        </script>
+        <script src="~/js/chat.js"></script>
+    }
+    <script>
+        const toggle = document.getElementById('add-friend-toggle');
+        const section = document.getElementById('add-friend-section');
+        toggle.addEventListener('click', () => section.classList.toggle('hidden'));
+    </script>
+}

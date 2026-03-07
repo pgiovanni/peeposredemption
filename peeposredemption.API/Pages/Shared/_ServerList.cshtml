@@ -1,0 +1,62 @@
+@using peeposredemption.Application.DTOs.Servers
+@model peeposredemption.API.Pages.App.ServerListViewModel
+
+<div id="server-list">
+    <a href="/App/Index" class="server-icon home-icon" title="Direct Messages">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
+        </svg>
+    </a>
+    <div class="server-separator"></div>
+
+    @foreach (var server in Model.Servers)
+    {
+        var channelId = Model.ServerDefaultChannels.GetValueOrDefault(server.Id);
+        <a href="/App/Channel?channelId=@channelId&serverId=@server.Id"
+           class="server-icon @(Model.ActiveServerId == server.Id ? "active" : "")"
+           title="@server.Name">
+            @if (server.IconUrl != null)
+            {
+                <img src="@server.IconUrl" alt="@server.Name" />
+            }
+            else
+            {
+                <span>@server.Name.Substring(0, 1).ToUpper()</span>
+            }
+        </a>
+    }
+
+    <button class="server-icon add-server" id="open-create-server" title="Create a Server">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+        </svg>
+    </button>
+</div>
+
+<!-- Create Server Modal -->
+<div id="create-server-modal" class="modal hidden">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-content">
+        <h2>Create a Server</h2>
+        <p class="modal-subtitle">Give your server a name. You can always change it later.</p>
+        <form method="post" asp-page="/App/Index" asp-page-handler="CreateServer">
+            <input type="text" name="Name" placeholder="My Awesome Server" required maxlength="100" />
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="close-create-server">Cancel</button>
+                <button type="submit" class="btn-primary">Create Server</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById('open-create-server').addEventListener('click', () => {
+        document.getElementById('create-server-modal').classList.remove('hidden');
+    });
+    document.getElementById('close-create-server').addEventListener('click', () => {
+        document.getElementById('create-server-modal').classList.add('hidden');
+    });
+    document.getElementById('modal-backdrop').addEventListener('click', () => {
+        document.getElementById('create-server-modal').classList.add('hidden');
+    });
+</script>

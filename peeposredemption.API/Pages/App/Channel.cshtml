@@ -1,27 +1,85 @@
-﻿@page
+@page
 @model peeposredemption.API.Pages.App.ChannelModel
-<div id="messages">
-    @foreach (var msg in Model.Messages)
-    {
-        <div class="message">
-            <strong>@msg.AuthorUsername</strong>
-            <span>@msg.Content</span>
-            <small>@msg.SentAt.ToString("HH:mm")</small>
+@{
+    ViewData["Title"] = Model.ChannelName;
+}
+
+<div class="app-shell">
+
+    <!-- Col 1: Server icon strip -->
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <!-- Col 2: Channel list -->
+    <div class="sidebar">
+        <div class="sidebar-header server-name-header">
+            <span>@Model.ServerName</span>
         </div>
-    }
+
+        @if (Model.InviteLink != null)
+        {
+            <div class="invite-section">
+                <span class="invite-label">Invite</span>
+                <a href="@Model.InviteLink" class="invite-link" title="@Model.InviteLink">Copy Link</a>
+            </div>
+        }
+
+        <div class="sidebar-section-header">
+            CHANNELS
+            <button class="icon-btn" id="add-channel-toggle" title="Create Channel">+</button>
+        </div>
+        <div id="add-channel-section" class="hidden">
+            <form method="post" asp-page-handler="CreateChannel" class="add-friend-form">
+                <input type="hidden" name="serverId" value="@Model.ServerId" />
+                <input type="text" name="name" placeholder="new-channel" required maxlength="100" autocomplete="off" />
+                <button type="submit" class="btn-primary btn-sm">Create</button>
+            </form>
+        </div>
+        @foreach (var ch in Model.Channels)
+        {
+            <a href="/App/Channel?channelId=@ch.Id&serverId=@Model.ServerId"
+               class="channel-item @(ch.Id == Model.ChannelId ? "active" : "")">
+                <span class="channel-hash">#</span>
+                <span>@ch.Name</span>
+            </a>
+        }
+    </div>
+
+    <!-- Col 3: Messages -->
+    <div class="content-area">
+        <div class="content-header">
+            <span class="channel-hash">#</span>
+            <span>@Model.ChannelName</span>
+        </div>
+        <div id="messages" class="messages-container">
+            @foreach (var msg in Model.Messages)
+            {
+                <div class="message">
+                    <div class="message-author">@msg.AuthorUsername</div>
+                    <div class="message-content">@msg.Content</div>
+                    <div class="message-time">@msg.SentAt.ToString("HH:mm")</div>
+                </div>
+            }
+        </div>
+        <div id="typing-indicator" class="typing-indicator"></div>
+        <div class="message-input-area">
+            <form id="message-form">
+                <input id="message-input" type="text" placeholder="Message #@Model.ChannelName..." autocomplete="off" />
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+
 </div>
-<div id="typing-indicator"></div>
-<div id="invite-link">
-    Invite link: <a href="@Model.InviteLink">@Model.InviteLink</a>
-</div>
-<form id="message-form">
-    <input id="message-input" type="text" placeholder="Message..." />
-    <button type="submit">Send</button>
-</form>
+
 @section Scripts {
     <script>
         const channelId = '@Model.ChannelId';
-        const serverId = '@Model.ServerId'    
+        const serverId = '@Model.ServerId';
     </script>
     <script src="~/js/chat.js"></script>
+    <script>
+        document.getElementById('add-channel-toggle').addEventListener('click', () => {
+            document.getElementById('add-channel-section').classList.toggle('hidden');
+        });
+    </script>
 }

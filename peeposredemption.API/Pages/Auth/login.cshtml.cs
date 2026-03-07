@@ -12,6 +12,9 @@ namespace peeposredemption.API.Pages.Auth
 
         [BindProperty] public LoginCommand Input { get; set; }
 
+        public IActionResult OnGet() =>
+            User.Identity?.IsAuthenticated == true ? RedirectToPage("/App/Index") : Page();
+
         public async Task<IActionResult> OnPostAsync()
         {
             if (!ModelState.IsValid) return Page();
