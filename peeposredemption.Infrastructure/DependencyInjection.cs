@@ -23,10 +23,11 @@ namespace peeposredemption.Infrastructure
             services.AddScoped<IServerRepository, ServerRepository>();
             services.AddScoped<IMessageRepository, MessageRepository>();
             services.AddScoped<IDirectMessageRepository, DirectMessageRepository>();
+            services.AddScoped<IChannelRepository, ChannelRepository>();
+            services.AddScoped<IServerInviteRepository, ServerInviteRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             return services;
         }
     }
-
 }

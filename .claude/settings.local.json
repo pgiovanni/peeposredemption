@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(openssl rand:*)",
+      "Bash(openssl enc:*)",
+      "Bash(PGPASSWORD='KJhX24dpfD*Z*9f*9p7u' psql:*)",
+      "Bash(PGPASSWORD='KJhX24dpfD*Z*9f*9p7u' \"/c/Program Files/PostgreSQL/18/bin/psql.exe\":*)",
+      "Bash(dotnet ef:*)",
+      "Bash(dotnet build:*)",
+      "Bash(taskkill:*)",
+      "WebFetch(domain:sendgrid.com)",
+      "WebFetch(domain:resend.com)",
+      "Bash(\"/c/Program Files/PostgreSQL/17/bin/psql\":*)",
+      "Bash(dotnet add:*)"
+    ]
+  }
+}

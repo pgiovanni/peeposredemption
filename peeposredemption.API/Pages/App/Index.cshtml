@@ -7,7 +7,7 @@
         @foreach (var server in Model.Servers)
         {
             var channelId = Model.ServerDefaultChannels.GetValueOrDefault(server.Id);
-            <a href="/App/Channel?channelId=@channelId" class="server-icon" title="@server.Name">
+            <a href="/App/Channel?channelId=@channelId&serverId=@server.Id" class="server-icon" title="@server.Name">
                 @if (server.IconUrl != null)
                 {
                     <img src="@server.IconUrl" alt="@server.Name" />

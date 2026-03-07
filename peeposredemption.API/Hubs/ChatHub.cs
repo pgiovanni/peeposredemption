@@ -16,13 +16,16 @@ namespace peeposredemption.API.Hubs
         private Guid CurrentUserId =>
             Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
+        private string CurrentUsername =>
+            Context.User!.FindFirst(ClaimTypes.Name)!.Value;
+
         public async Task JoinChannel(Guid serverId, Guid channelId) =>
             await Groups.AddToGroupAsync(Context.ConnectionId, $"channel:{channelId}");
 
         public async Task SendChannelMessage(Guid channelId, string content)
         {
             var dto = await _mediator.Send(
-                new SendMessageCommand(channelId, CurrentUserId, content));
+                new SendMessageCommand(channelId, CurrentUserId, CurrentUsername, content));
             await Clients.Group($"channel:{channelId}")
                 .SendAsync("ReceiveChannelMessage", dto);
         }
