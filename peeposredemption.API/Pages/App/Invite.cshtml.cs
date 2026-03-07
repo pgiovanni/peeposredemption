@@ -19,8 +19,6 @@ namespace peeposredemption.API.Pages.App
 
         public async Task<IActionResult> OnGetAsync()
         {
-            System.Diagnostics.Debugger.Break(); // BP: invite page loaded, Code in URL
-
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null) return RedirectToPage("/Auth/Login");
 
@@ -39,8 +37,6 @@ namespace peeposredemption.API.Pages.App
 
             var userId = Guid.Parse(userIdClaim);
             var serverId = await _mediator.Send(new JoinServerCommand(Code, userId));
-
-            System.Diagnostics.Debugger.Break(); // BP: join complete, redirecting to server
 
             return RedirectToPage("/App/Index");
         }

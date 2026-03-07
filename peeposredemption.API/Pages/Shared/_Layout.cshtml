@@ -1,20 +1,14 @@
-﻿<!DOCTYPE html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>@ViewData["Title"] - peeposredemption</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PeePo's Redemption</title>
     <link rel="stylesheet" href="~/css/site.css" />
     <meta name="jwt" content="@Context.Request.Cookies["jwt"]" />
 </head>
 <body>
-    <div class="app-shell">
-        <nav class="server-sidebar">
-            @foreach (var server in ViewBag.Servers ?? new List<dynamic>())
-            {
-                <a href="/App/Index?serverId=@server.Id">@server.Name</a>
-            }
-        </nav>
-        <main>@RenderBody()</main>
-    </div>
+    @RenderBody()
     <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

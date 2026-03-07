@@ -17,11 +17,13 @@ namespace peeposredemption.Infrastructure
         public IDirectMessageRepository DirectMessages { get; }
         public IChannelRepository Channels { get; }
         public IServerInviteRepository ServerInvites { get; }
+        public IFriendRequestRepository FriendRequests { get; }
 
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
             IMessageRepository messages, IDirectMessageRepository directMessages,
-            IChannelRepository channels, IServerInviteRepository serverInvites)
+            IChannelRepository channels, IServerInviteRepository serverInvites,
+            IFriendRequestRepository friendRequests)
         {
             _db = db;
             Users = users;
@@ -30,6 +32,7 @@ namespace peeposredemption.Infrastructure
             DirectMessages = directMessages;
             Channels = channels;
             ServerInvites = serverInvites;
+            FriendRequests = friendRequests;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

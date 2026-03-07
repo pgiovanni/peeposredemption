@@ -14,7 +14,9 @@
       "Bash(dotnet add:*)",
       "WebFetch(domain:www.cloudflare.com)",
       "WebFetch(domain:domains.cloudflare.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(psql Host=localhost;Port=5432;Database=peeposredemption;Username=postgres;Password=KJhX24dpfD*Z*9f*9p7u:*)",
+      "Bash(export:*)"
     ]
   }
 }

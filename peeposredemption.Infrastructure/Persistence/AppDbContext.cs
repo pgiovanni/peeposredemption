@@ -16,6 +16,7 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<Message> Messages { get; set; }
         public DbSet<DirectMessage> DirectMessages { get; set; }
         public DbSet<ServerInvite> ServerInvites { get; set; }
+        public DbSet<FriendRequest> FriendRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -52,6 +53,18 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasOne(dm => dm.Recipient)
                 .WithMany(u => u.ReceivedDirectMessages)
                 .HasForeignKey(dm => dm.RecipientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<FriendRequest>()
+                .HasOne(fr => fr.Sender)
+                .WithMany()
+                .HasForeignKey(fr => fr.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<FriendRequest>()
+                .HasOne(fr => fr.Receiver)
+                .WithMany()
+                .HasForeignKey(fr => fr.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
 

@@ -25,6 +25,7 @@ namespace peeposredemption.Infrastructure
             services.AddScoped<IDirectMessageRepository, DirectMessageRepository>();
             services.AddScoped<IChannelRepository, ChannelRepository>();
             services.AddScoped<IServerInviteRepository, ServerInviteRepository>();
+            services.AddScoped<IFriendRequestRepository, FriendRequestRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             return services;
