@@ -1,0 +1,38 @@
+using System.Net;
+using System.Net.Mail;
+using Microsoft.Extensions.Configuration;
+
+namespace peeposredemption.Application.Services
+{
+    public class SmtpEmailService : IEmailService
+    {
+        private readonly string _host;
+        private readonly int _port;
+
+        public SmtpEmailService(IConfiguration config)
+        {
+            _host = config["Smtp:Host"] ?? "localhost";
+            _port = int.Parse(config["Smtp:Port"] ?? "1025");
+        }
+
+        public async Task SendConfirmationEmailAsync(string toEmail, string confirmationLink)
+        {
+            using var client = new SmtpClient(_host, _port)
+            {
+                EnableSsl = false,
+                Credentials = CredentialCache.DefaultNetworkCredentials
+            };
+
+            var message = new MailMessage
+            {
+                From = new MailAddress("noreply@peeposredemption.local", "PeePo's Redemption"),
+                Subject = "Confirm your email",
+                Body = $"<p>Click the link below to confirm your email address:</p><p><a href=\"{confirmationLink}\">Confirm Email</a></p>",
+                IsBodyHtml = true
+            };
+            message.To.Add(toEmail);
+
+            await client.SendMailAsync(message);
+        }
+    }
+}

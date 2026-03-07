@@ -19,6 +19,9 @@ namespace peeposredemption.Infrastructure.Repositories
         public Task<bool> EmailExistsAsync(string email) =>
             _db.Users.AnyAsync(u => u.Email == email);
 
+        public Task<bool> UsernameExistsAsync(string username) =>
+            _db.Users.AnyAsync(u => u.Username == username);
+
         public async Task AddAsync(User user) => await _db.Users.AddAsync(user);
 
         public Task<User?> GetByConfirmationTokenAsync(string token) =>

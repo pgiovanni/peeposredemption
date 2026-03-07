@@ -1,0 +1,9 @@
+@page
+@model peeposredemption.API.Pages.Auth.ResendConfirmationModel
+<h2>Resend Confirmation Email</h2>
+<form method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <input asp-for="Email" type="email" placeholder="Enter your email address" />
+    <button type="submit">Resend</button>
+</form>
+<a href="/Auth/Login">Back to Login</a>

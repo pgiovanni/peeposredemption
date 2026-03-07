@@ -15,13 +15,16 @@ namespace peeposredemption.Application.Features.Auth.Commands
     public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Unit>
     {
         private readonly IUnitOfWork _uow;
-        private readonly EmailService _emailService;
+        private readonly IEmailService _emailService;
 
-        public RegisterCommandHandler(IUnitOfWork uow, EmailService emailService)
+        public RegisterCommandHandler(IUnitOfWork uow, IEmailService emailService)
         { _uow = uow; _emailService = emailService; }
 
         public async Task<Unit> Handle(RegisterCommand cmd, CancellationToken ct)
         {
+            if (await _uow.Users.UsernameExistsAsync(cmd.Username))
+                throw new InvalidOperationException("Username already taken.");
+
             if (await _uow.Users.EmailExistsAsync(cmd.Email))
                 throw new InvalidOperationException("Email already in use.");
 
@@ -39,7 +42,7 @@ namespace peeposredemption.Application.Features.Auth.Commands
             await _uow.SaveChangesAsync();
 
             var confirmationLink = $"https://localhost:443/Auth/Confirm?token={confirmationToken}";
-            await _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink);
+            _ = _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink);
 
             return Unit.Value;
         }

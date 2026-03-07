@@ -10,6 +10,7 @@ namespace peeposredemption.Domain.Interfaces.Repositories
         Task<User?> GetByIdAsync(Guid id);
         Task<User?> GetByEmailAsync(string email);
         Task<bool> EmailExistsAsync(string email);
+        Task<bool> UsernameExistsAsync(string username);
         Task AddAsync(User user);
         Task<User?> GetByConfirmationTokenAsync(string token);
         Task<User?> GetByUsernameAsync(string username);

@@ -26,11 +26,18 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterValidator>();
 // Application services
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddOptions();
-builder.Services.AddHttpClient<ResendClient>();
-builder.Services.Configure<ResendClientOptions>(o => 
-o.ApiToken = builder.Configuration["Resend:ApiKey"]);
-builder.Services.AddTransient<IResend, ResendClient>();
-builder.Services.AddScoped<EmailService>();
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+}
+else
+{
+    builder.Services.AddHttpClient<ResendClient>();
+    builder.Services.Configure<ResendClientOptions>(o =>
+        o.ApiToken = builder.Configuration["Resend:ApiKey"]);
+    builder.Services.AddTransient<IResend, ResendClient>();
+    builder.Services.AddScoped<IEmailService, EmailService>();
+}
 builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
 
 // JWT Authentication

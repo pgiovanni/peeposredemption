@@ -2,11 +2,13 @@
 @model peeposredemption.API.Pages.Auth.RegisterModel
 <h2>Create Account</h2>
 <form method="post">
+    <div asp-validation-summary="All" class="text-danger"></div>
     <input asp-for="Input.Username" placeholder="Username" />
     <input asp-for="Input.Email" type="email" placeholder="Email" />
     <input asp-for="Input.Password" type="password" placeholder="Password" />
     <button type="submit">Register</button>
 </form>
+<a href="/Auth/Login">Already have an account? Log in</a>
 @section Scripts {
     @await Html.PartialAsync("_ValidationScriptsPartial")
 }

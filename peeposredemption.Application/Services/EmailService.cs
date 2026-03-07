@@ -3,7 +3,7 @@ using Resend;
 
 namespace peeposredemption.Application.Services
 {
-    public class EmailService
+    public class EmailService : IEmailService
     {
         private readonly IResend _resend;
 
