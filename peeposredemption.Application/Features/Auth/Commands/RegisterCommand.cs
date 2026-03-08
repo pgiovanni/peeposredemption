@@ -50,6 +50,9 @@ namespace peeposredemption.Application.Features.Auth.Commands
             _ = _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink)
                 .ContinueWith(t => _logger.LogError(t.Exception, "Failed to send confirmation email to {Email}", cmd.Email),
                     TaskContinuationOptions.OnlyOnFaulted);
+            _ = _emailService.SendNewUserNotificationAsync(cmd.Username, cmd.Email)
+                .ContinueWith(t => _logger.LogError(t.Exception, "Failed to send new user notification for {Username}", cmd.Username),
+                    TaskContinuationOptions.OnlyOnFaulted);
 
             return Unit.Value;
         }

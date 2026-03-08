@@ -29,6 +29,19 @@ namespace peeposredemption.Application.Services
             await _resend.EmailSendAsync(message);
         }
 
+        public async Task SendNewUserNotificationAsync(string username, string email)
+        {
+            var message = new EmailMessage
+            {
+                From = $"PeePo's Redemption <{_fromAddress}>",
+                To = { _adminEmail },
+                Subject = "[Torvex] New user registered",
+                HtmlBody = $"<p><strong>{username}</strong> just registered with email <strong>{email}</strong>.</p>"
+            };
+
+            await _resend.EmailSendAsync(message);
+        }
+
         public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
         {
             var message = new EmailMessage
