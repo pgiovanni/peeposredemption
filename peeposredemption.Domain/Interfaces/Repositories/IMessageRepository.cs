@@ -9,6 +9,7 @@ namespace peeposredemption.Domain.Interfaces.Repositories
     {
         Task<List<Message>> GetChannelMessagesAsync(Guid channelId, int page, int pageSize);
         Task AddAsync(Message message);
+        Task<Message?> GetByIdAsync(Guid messageId);
     }
 
 }

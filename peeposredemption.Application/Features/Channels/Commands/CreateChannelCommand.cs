@@ -5,7 +5,7 @@ using peeposredemption.Domain.Interfaces;
 
 namespace peeposredemption.Application.Features.Channels.Commands;
 
-public record CreateChannelCommand(Guid ServerId, string Name) : IRequest<ChannelDto>;
+public record CreateChannelCommand(Guid ServerId, string Name, Guid RequesterId) : IRequest<ChannelDto>;
 
 public class CreateChannelCommandHandler : IRequestHandler<CreateChannelCommand, ChannelDto>
 {
@@ -14,6 +14,10 @@ public class CreateChannelCommandHandler : IRequestHandler<CreateChannelCommand,
 
     public async Task<ChannelDto> Handle(CreateChannelCommand cmd, CancellationToken ct)
     {
+        var role = await _uow.Servers.GetMemberRoleAsync(cmd.ServerId, cmd.RequesterId);
+        if (role is null or ServerRole.Member)
+            throw new UnauthorizedAccessException("Moderator or higher is required to create channels.");
+
         var channel = new Channel
         {
             ServerId = cmd.ServerId,

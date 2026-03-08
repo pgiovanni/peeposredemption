@@ -17,6 +17,8 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<DirectMessage> DirectMessages { get; set; }
         public DbSet<ServerInvite> ServerInvites { get; set; }
         public DbSet<FriendRequest> FriendRequests { get; set; }
+        public DbSet<BannedMember> BannedMembers { get; set; }
+        public DbSet<ModerationLog> ModerationLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -70,6 +72,26 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasOne(fr => fr.Receiver)
                 .WithMany()
                 .HasForeignKey(fr => fr.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Prevent cascade delete conflict on BannedMember (multiple FKs to Users)
+            modelBuilder.Entity<BannedMember>()
+                .HasOne(b => b.BannedBy)
+                .WithMany()
+                .HasForeignKey(b => b.BannedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Prevent cascade delete conflict on ModerationLog (multiple FKs to Users)
+            modelBuilder.Entity<ModerationLog>()
+                .HasOne(ml => ml.Moderator)
+                .WithMany()
+                .HasForeignKey(ml => ml.ModeratorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ModerationLog>()
+                .HasOne(ml => ml.TargetUser)
+                .WithMany()
+                .HasForeignKey(ml => ml.TargetUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
 

@@ -20,7 +20,16 @@
       "Bash(PGPASSWORD='KJhX24dpfD*Z*9f*9p7u' \"/c/Program Files/PostgreSQL/17/bin/psql\":*)",
       "Bash(PGPASSWORD='KJhX24dpfD*Z*9f*9p7u' \"/c/Program Files/PostgreSQL/18/bin/psql\":*)",
       "Bash(winget install:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebSearch",
+      "Bash(ssh:*)",
+      "Bash(sshpass:*)",
+      "Bash(ssh-keygen:*)",
+      "Bash(dotnet publish:*)",
+      "Bash(scp:*)",
+      "Bash(nslookup:*)",
+      "Bash(powershell:*)",
+      "Bash(dotnet:*)"
     ]
   }
 }

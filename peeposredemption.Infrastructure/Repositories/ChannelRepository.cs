@@ -25,5 +25,11 @@ namespace peeposredemption.Infrastructure.Repositories
 
         public async Task AddAsync(Channel channel) =>
             await _db.Channels.AddAsync(channel);
+
+        public Task RemoveAsync(Channel channel)
+        {
+            _db.Channels.Remove(channel);
+            return Task.CompletedTask;
+        }
     }
 }

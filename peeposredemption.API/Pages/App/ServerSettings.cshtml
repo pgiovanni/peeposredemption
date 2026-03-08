@@ -1,0 +1,78 @@
+@page
+@model peeposredemption.API.Pages.App.ServerSettingsModel
+@using peeposredemption.Domain.Entities
+@{
+    ViewData["Title"] = "Server Settings";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="javascript:history.back()" class="icon-btn" title="Back">←</a>
+            <span>Server Settings</span>
+        </div>
+    </div>
+
+    <div class="content-area settings-page">
+
+        <!-- Members -->
+        <section class="settings-section">
+            <h3 class="settings-heading">MEMBERS — @Model.Members.Count</h3>
+            @foreach (var m in Model.Members)
+            {
+                <div class="member-row">
+                    <div class="friend-avatar">@m.Username.Substring(0, 1).ToUpper()</div>
+                    <span class="member-name">@m.Username</span>
+                    <span class="member-role role-@m.Role.ToString().ToLower()">@m.Role</span>
+                    @if (Model.CurrentUserRole == ServerRole.Owner && m.Role != ServerRole.Owner)
+                    {
+                        <form method="post" asp-page-handler="Kick" style="display:inline">
+                            <input type="hidden" name="serverId" value="@Model.ServerId" />
+                            <input type="hidden" name="targetUserId" value="@m.UserId" />
+                            <button type="submit" class="btn-danger btn-sm">Kick</button>
+                        </form>
+                        <form method="post" asp-page-handler="Ban" style="display:inline">
+                            <input type="hidden" name="serverId" value="@Model.ServerId" />
+                            <input type="hidden" name="targetUserId" value="@m.UserId" />
+                            <button type="submit" class="btn-danger btn-sm">Ban</button>
+                        </form>
+                    }
+                </div>
+            }
+        </section>
+
+        <!-- Audit Log -->
+        <section class="settings-section">
+            <h3 class="settings-heading">AUDIT LOG</h3>
+            @if (!Model.AuditLog.Any())
+            {
+                <div class="sidebar-empty">No moderation actions yet.</div>
+            }
+            else
+            {
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Moderator</th>
+                            <th>Action</th>
+                            <th>Target</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in Model.AuditLog)
+                        {
+                            <tr>
+                                <td class="audit-time">@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@entry.Moderator.Username</td>
+                                <td class="audit-action">@entry.Action</td>
+                                <td>@entry.TargetUser.Username</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+
+    </div>
+</div>

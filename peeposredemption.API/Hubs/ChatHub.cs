@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using peeposredemption.Application.Features.Messages.Commands;
+using peeposredemption.Application.Features.Moderation.Commands;
 using System.Security.Claims;
 
 
@@ -37,6 +38,12 @@ namespace peeposredemption.API.Hubs
             var payload = new { dto.SenderId, dto.Content, dto.SentAt };
             await Clients.User(recipientId.ToString()).SendAsync("ReceiveDirectMessage", payload);
             await Clients.Caller.SendAsync("ReceiveDirectMessage", payload);
+        }
+
+        public async Task DeleteChannelMessage(Guid serverId, Guid channelId, Guid messageId)
+        {
+            await _mediator.Send(new DeleteMessageCommand(messageId, serverId, CurrentUserId));
+            await Clients.Group($"channel:{channelId}").SendAsync("MessageDeleted", messageId);
         }
 
         public async Task TypingInChannel(Guid channelId) =>

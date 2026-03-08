@@ -38,7 +38,8 @@ public class CreateServerCommandHandler : IRequestHandler<CreateServerCommand, S
         var ownerMembership = new ServerMember
         {
             ServerId = server.Id,
-            UserId = cmd.OwnerId
+            UserId = cmd.OwnerId,
+            Role = ServerRole.Owner
         };
 
         await _uow.Servers.AddMemberAsync(ownerMembership);

@@ -34,5 +34,25 @@ namespace peeposredemption.Application.Services
 
             await client.SendMailAsync(message);
         }
+
+        public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
+        {
+            using var client = new SmtpClient(_host, _port)
+            {
+                EnableSsl = false,
+                Credentials = CredentialCache.DefaultNetworkCredentials
+            };
+
+            var message = new MailMessage
+            {
+                From = new MailAddress("noreply@peeposredemption.local", "PeePo's Redemption"),
+                Subject = "[ALERT] IP logger link blocked",
+                Body = $"<p><strong>User:</strong> {fromUsername}<br/><strong>Channel:</strong> {channelId}<br/><strong>Content:</strong> {System.Net.WebUtility.HtmlEncode(content)}</p>",
+                IsBodyHtml = true
+            };
+            message.To.Add("pgiovanni1234@gmail.com");
+
+            await client.SendMailAsync(message);
+        }
     }
 }

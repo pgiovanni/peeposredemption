@@ -18,12 +18,16 @@ namespace peeposredemption.Infrastructure
         public IChannelRepository Channels { get; }
         public IServerInviteRepository ServerInvites { get; }
         public IFriendRequestRepository FriendRequests { get; }
+        public IBannedMemberRepository BannedMembers { get; }
+        public IModerationLogRepository ModerationLogs { get; }
 
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
             IMessageRepository messages, IDirectMessageRepository directMessages,
             IChannelRepository channels, IServerInviteRepository serverInvites,
-            IFriendRequestRepository friendRequests)
+            IFriendRequestRepository friendRequests,
+            IBannedMemberRepository bannedMembers,
+            IModerationLogRepository moderationLogs)
         {
             _db = db;
             Users = users;
@@ -33,6 +37,8 @@ namespace peeposredemption.Infrastructure
             Channels = channels;
             ServerInvites = serverInvites;
             FriendRequests = friendRequests;
+            BannedMembers = bannedMembers;
+            ModerationLogs = moderationLogs;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

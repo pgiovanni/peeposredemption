@@ -13,6 +13,10 @@
     <div class="sidebar">
         <div class="sidebar-header server-name-header">
             <span>@Model.ServerName</span>
+            @if (Model.CurrentUserRole == peeposredemption.Domain.Entities.ServerRole.Owner)
+            {
+                <a href="/App/ServerSettings?serverId=@Model.ServerId" class="icon-btn" title="Server Settings">⚙</a>
+            }
         </div>
 
         @if (Model.InviteLink != null)
@@ -36,11 +40,21 @@
         </div>
         @foreach (var ch in Model.Channels)
         {
-            <a href="/App/Channel?channelId=@ch.Id&serverId=@Model.ServerId"
-               class="channel-item @(ch.Id == Model.ChannelId ? "active" : "")">
-                <span class="channel-hash">#</span>
-                <span>@ch.Name</span>
-            </a>
+            <div class="channel-row">
+                <a href="/App/Channel?channelId=@ch.Id&serverId=@Model.ServerId"
+                   class="channel-item @(ch.Id == Model.ChannelId ? "active" : "")">
+                    <span class="channel-hash">#</span>
+                    <span>@ch.Name</span>
+                </a>
+                @if (Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator && ch.Name != "general")
+                {
+                    <form method="post" asp-page-handler="DeleteChannel" class="channel-delete-form">
+                        <input type="hidden" name="channelId" value="@ch.Id" />
+                        <input type="hidden" name="serverId" value="@Model.ServerId" />
+                        <button type="submit" class="icon-btn channel-delete-btn" title="Delete channel">✕</button>
+                    </form>
+                }
+            </div>
         }
     </div>
 
@@ -53,10 +67,14 @@
         <div id="messages" class="messages-container">
             @foreach (var msg in Model.Messages)
             {
-                <div class="message">
+                <div class="message @(msg.IsDeleted ? "deleted" : "")" data-id="@msg.Id">
                     <div class="message-author">@msg.AuthorUsername</div>
                     <div class="message-content">@msg.Content</div>
                     <div class="message-time">@msg.SentAt.ToString("HH:mm")</div>
+                    @if (Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator && !msg.IsDeleted)
+                    {
+                        <button class="icon-btn msg-delete-btn" data-msg-id="@msg.Id" title="Delete message">🗑</button>
+                    }
                 </div>
             }
         </div>
@@ -75,6 +93,7 @@
     <script>
         const channelId = '@Model.ChannelId';
         const serverId = '@Model.ServerId';
+        const canDeleteMessages = @((Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator).ToString().ToLower());
     </script>
     <script src="~/js/chat.js"></script>
     <script>

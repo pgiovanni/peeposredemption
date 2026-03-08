@@ -8,6 +8,7 @@
         public string Content { get; set; }
         public DateTime SentAt { get; set; } = DateTime.UtcNow;
         public bool IsEdited { get; set; } = false;
+        public bool IsDeleted { get; set; } = false;
         public DateTime? EditedAt { get; set; }
         public Channel Channel { get; set; }
         public User Author { get; set; }
