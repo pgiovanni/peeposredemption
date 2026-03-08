@@ -23,6 +23,9 @@ namespace peeposredemption.Infrastructure.Repositories
                 .ToListAsync();
 
         public async Task AddAsync(Message message) => await _db.Messages.AddAsync(message);
+
+        public Task<Message?> GetByIdAsync(Guid messageId) =>
+            _db.Messages.FirstOrDefaultAsync(m => m.Id == messageId);
     }
 
 }

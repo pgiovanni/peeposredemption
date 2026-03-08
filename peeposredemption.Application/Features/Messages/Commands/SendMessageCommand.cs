@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using peeposredemption.Application.DTOs.Messages;
+using peeposredemption.Application.Services;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
 using System;
@@ -14,10 +15,23 @@ namespace peeposredemption.Application.Features.Messages.Commands
     public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, MessageDto>
     {
         private readonly IUnitOfWork _uow;
-        public SendMessageCommandHandler(IUnitOfWork uow) => _uow = uow;
+        private readonly ILinkScannerService _scanner;
+        private readonly IEmailService _email;
+        public SendMessageCommandHandler(IUnitOfWork uow, ILinkScannerService scanner, IEmailService email)
+        {
+            _uow = uow;
+            _scanner = scanner;
+            _email = email;
+        }
 
         public async Task<MessageDto> Handle(SendMessageCommand cmd, CancellationToken ct)
         {
+            if (_scanner.ContainsMaliciousLink(cmd.Content))
+            {
+                _ = _email.SendMaliciousLinkAlertAsync(cmd.AuthorUsername, cmd.ChannelId, cmd.Content);
+                throw new InvalidOperationException("Message contains a blocked link.");
+            }
+
             var message = new Message
             {
                 ChannelId = cmd.ChannelId,

@@ -14,6 +14,8 @@ namespace peeposredemption.Domain.Interfaces
         IChannelRepository Channels { get; }
         IServerInviteRepository ServerInvites { get; }
         IFriendRequestRepository FriendRequests { get; }
+        IBannedMemberRepository BannedMembers { get; }
+        IModerationLogRepository ModerationLogs { get; }
         Task<int> SaveChangesAsync();
     }
 

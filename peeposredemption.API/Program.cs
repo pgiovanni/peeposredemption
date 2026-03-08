@@ -1,6 +1,7 @@
 using FluentValidation;
 using Resend;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
 using peeposredemption.API.Hubs;
@@ -12,6 +13,11 @@ using peeposredemption.Infrastructure;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Persist DataProtection keys so antiforgery tokens survive restarts
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(
+        builder.Configuration["DataProtection:KeyPath"] ?? "/var/www/peeposredemption-keys"));
 
 // Infrastructure (DbContext, Repos, UoW)
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -39,6 +45,10 @@ else
     builder.Services.AddScoped<IEmailService, EmailService>();
 }
 builder.Services.AddSingleton<IUserIdProvider, UserIdProvider>();
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<LinkScannerService>();
+builder.Services.AddSingleton<ILinkScannerService>(sp => sp.GetRequiredService<LinkScannerService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<LinkScannerService>());
 
 // JWT Authentication
 builder.Services

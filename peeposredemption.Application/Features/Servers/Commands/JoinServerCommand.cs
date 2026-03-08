@@ -16,6 +16,9 @@ public class JoinServerCommandHandler : IRequestHandler<JoinServerCommand, Guid>
         var invite = await _uow.ServerInvites.GetByCodeAsync(cmd.Code)
             ?? throw new Exception("Invite not found.");
 
+        if (await _uow.BannedMembers.IsBannedAsync(invite.ServerId, cmd.UserId))
+            throw new InvalidOperationException("You are banned from this server.");
+
         var alreadyMember = await _uow.Servers.IsMemberAsync(invite.ServerId, cmd.UserId);
         if (!alreadyMember)
         {

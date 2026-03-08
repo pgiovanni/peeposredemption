@@ -31,5 +31,26 @@ namespace peeposredemption.Infrastructure.Repositories
 
         public async Task AddMemberAsync(ServerMember member) =>
             await _db.ServerMembers.AddAsync(member);
+
+        public Task<ServerMember?> GetMemberAsync(Guid serverId, Guid userId) =>
+            _db.ServerMembers.FirstOrDefaultAsync(sm => sm.ServerId == serverId && sm.UserId == userId);
+
+        public async Task RemoveMemberAsync(Guid serverId, Guid userId)
+        {
+            var member = await GetMemberAsync(serverId, userId);
+            if (member != null) _db.ServerMembers.Remove(member);
+        }
+
+        public Task<ServerRole?> GetMemberRoleAsync(Guid serverId, Guid userId) =>
+            _db.ServerMembers
+                .Where(sm => sm.ServerId == serverId && sm.UserId == userId)
+                .Select(sm => (ServerRole?)sm.Role)
+                .FirstOrDefaultAsync();
+
+        public Task<List<ServerMember>> GetServerMembersAsync(Guid serverId) =>
+            _db.ServerMembers
+                .Include(sm => sm.User)
+                .Where(sm => sm.ServerId == serverId)
+                .ToListAsync();
     }
 }

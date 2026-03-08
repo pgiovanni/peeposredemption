@@ -1,4 +1,6 @@
 ﻿using MediatR;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using peeposredemption.Application.DTOs.Auth;
 using peeposredemption.Application.Services;
 using peeposredemption.Domain.Entities;
@@ -16,9 +18,11 @@ namespace peeposredemption.Application.Features.Auth.Commands
     {
         private readonly IUnitOfWork _uow;
         private readonly IEmailService _emailService;
+        private readonly IConfiguration _config;
+        private readonly ILogger<RegisterCommandHandler> _logger;
 
-        public RegisterCommandHandler(IUnitOfWork uow, IEmailService emailService)
-        { _uow = uow; _emailService = emailService; }
+        public RegisterCommandHandler(IUnitOfWork uow, IEmailService emailService, IConfiguration config, ILogger<RegisterCommandHandler> logger)
+        { _uow = uow; _emailService = emailService; _config = config; _logger = logger; }
 
         public async Task<Unit> Handle(RegisterCommand cmd, CancellationToken ct)
         {
@@ -41,8 +45,11 @@ namespace peeposredemption.Application.Features.Auth.Commands
             await _uow.Users.AddAsync(user);
             await _uow.SaveChangesAsync();
 
-            var confirmationLink = $"https://localhost:443/Auth/Confirm?token={confirmationToken}";
-            _ = _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink);
+            var baseUrl = _config["AppBaseUrl"] ?? "https://localhost:443";
+            var confirmationLink = $"{baseUrl}/Auth/Confirm?token={confirmationToken}";
+            _ = _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink)
+                .ContinueWith(t => _logger.LogError(t.Exception, "Failed to send confirmation email to {Email}", cmd.Email),
+                    TaskContinuationOptions.OnlyOnFaulted);
 
             return Unit.Value;
         }

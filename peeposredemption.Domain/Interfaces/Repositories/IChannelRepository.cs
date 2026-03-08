@@ -10,5 +10,6 @@ namespace peeposredemption.Domain.Interfaces.Repositories
         Task<Channel?> GetByIdAsync(Guid id);
         Task<List<Channel>> GetServerChannelsAsync(Guid serverId);
         Task AddAsync(Channel channel);
+        Task RemoveAsync(Channel channel);
     }
 }
