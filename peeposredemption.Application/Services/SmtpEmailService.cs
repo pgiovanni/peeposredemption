@@ -35,6 +35,8 @@ namespace peeposredemption.Application.Services
             await client.SendMailAsync(message);
         }
 
+        public Task SendNewUserNotificationAsync(string username, string email) => Task.CompletedTask;
+
         public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
         {
             using var client = new SmtpClient(_host, _port)
