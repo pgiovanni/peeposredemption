@@ -47,12 +47,8 @@ namespace peeposredemption.Application.Features.Auth.Commands
 
             var baseUrl = _config["AppBaseUrl"] ?? "https://localhost:443";
             var confirmationLink = $"{baseUrl}/Auth/Confirm?token={confirmationToken}";
-            _ = _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink)
-                .ContinueWith(t => _logger.LogError(t.Exception, "Failed to send confirmation email to {Email}", cmd.Email),
-                    TaskContinuationOptions.OnlyOnFaulted);
-            _ = _emailService.SendNewUserNotificationAsync(cmd.Username, cmd.Email)
-                .ContinueWith(t => _logger.LogError(t.Exception, "Failed to send new user notification for {Username}", cmd.Username),
-                    TaskContinuationOptions.OnlyOnFaulted);
+            await _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink);
+            await _emailService.SendNewUserNotificationAsync(cmd.Username, cmd.Email);
 
             return Unit.Value;
         }

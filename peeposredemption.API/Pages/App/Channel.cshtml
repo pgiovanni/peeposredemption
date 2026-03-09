@@ -70,7 +70,7 @@
                 <div class="message @(msg.IsDeleted ? "deleted" : "")" data-id="@msg.Id">
                     <div class="message-author">@msg.AuthorUsername</div>
                     <div class="message-content">@msg.Content</div>
-                    <div class="message-time">@msg.SentAt.ToString("HH:mm")</div>
+                    <div class="message-time" data-time="@msg.SentAt.ToString("o")"></div>
                     @if (Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator && !msg.IsDeleted)
                     {
                         <button class="icon-btn msg-delete-btn" data-msg-id="@msg.Id" title="Delete message">🗑</button>
@@ -97,6 +97,9 @@
     </script>
     <script src="~/js/chat.js"></script>
     <script>
+        document.querySelectorAll('.message-time[data-time]').forEach(el => {
+            el.textContent = new Date(el.dataset.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        });
         document.getElementById('add-channel-toggle').addEventListener('click', () => {
             document.getElementById('add-channel-section').classList.toggle('hidden');
         });
