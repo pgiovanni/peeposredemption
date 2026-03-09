@@ -24,6 +24,7 @@ namespace peeposredemption.Application.Features.Messages.Queries
             return messages
                 .Select(m => new MessageDto(m.Id, m.AuthorId, m.Author.Username,
                     m.IsDeleted ? "[message deleted]" : m.Content, m.SentAt, m.IsDeleted))
+                .OrderBy(m => m.SentAt)
                 .ToList();
         }
     }

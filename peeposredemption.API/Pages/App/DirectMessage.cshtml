@@ -6,7 +6,7 @@
     {
         <div class="message @(msg.IsMine ? "mine" : "theirs")">
             <span>@msg.Content</span>
-            <small>@msg.SentAt.ToString("HH:mm")</small>
+            <small class="message-time" data-time="@msg.SentAt.ToString("o")"></small>
         </div>
     }
 </div>
@@ -18,4 +18,9 @@
 @section Scripts {
     <script>const recipientId = '@Model.RecipientId';</script>
     <script src="~/js/chat.js"></script>
+    <script>
+        document.querySelectorAll('.message-time[data-time]').forEach(el => {
+            el.textContent = new Date(el.dataset.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        });
+    </script>
 }
