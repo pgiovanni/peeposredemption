@@ -37,7 +37,8 @@ namespace peeposredemption.Infrastructure.Services
                 Key = key,
                 InputStream = imageStream,
                 ContentType = contentType,
-                CannedACL = S3CannedACL.PublicRead
+                CannedACL = S3CannedACL.PublicRead,
+                UseChunkEncoding = false  // R2 doesn't support chunked streaming uploads
             };
 
             await _s3.PutObjectAsync(request);
