@@ -19,7 +19,7 @@ namespace peeposredemption.Infrastructure.Repositories
                 .Where(dm =>
                     (dm.SenderId == userA && dm.RecipientId == userB) ||
                     (dm.SenderId == userB && dm.RecipientId == userA))
-                .OrderByDescending(dm => dm.SentAt)
+                .OrderByDescending(dm => dm.SentAt).ThenByDescending(dm => dm.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize).ToListAsync();
 
