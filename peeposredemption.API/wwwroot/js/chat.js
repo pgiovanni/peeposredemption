@@ -49,6 +49,7 @@ function formatTime(dateStr) {
 connection.on("ReceiveChannelMessage", (msg) => {
     const el = createMessageEl(msg.authorUsername, msg.content, formatTime(msg.sentAt), false, msg.id);
     document.getElementById("messages")?.appendChild(el);
+    if (typeof window.applyEmojiRendering === 'function') window.applyEmojiRendering();
     scrollToBottom();
 });
 

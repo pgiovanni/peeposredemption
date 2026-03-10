@@ -19,6 +19,8 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<FriendRequest> FriendRequests { get; set; }
         public DbSet<BannedMember> BannedMembers { get; set; }
         public DbSet<ModerationLog> ModerationLogs { get; set; }
+        public DbSet<ServerEmoji> ServerEmojis { get; set; }
+        public DbSet<StorageUpgradePurchase> StorageUpgradePurchases { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -92,6 +94,23 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasOne(ml => ml.TargetUser)
                 .WithMany()
                 .HasForeignKey(ml => ml.TargetUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ServerEmoji: unique (ServerId, Name)
+            modelBuilder.Entity<ServerEmoji>()
+                .HasIndex(e => new { e.ServerId, e.Name })
+                .IsUnique();
+
+            modelBuilder.Entity<ServerEmoji>()
+                .HasOne(e => e.UploadedBy)
+                .WithMany()
+                .HasForeignKey(e => e.UploadedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<StorageUpgradePurchase>()
+                .HasOne(p => p.Server)
+                .WithMany()
+                .HasForeignKey(p => p.ServerId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
 

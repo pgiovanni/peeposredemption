@@ -20,6 +20,8 @@ namespace peeposredemption.Infrastructure
         public IFriendRequestRepository FriendRequests { get; }
         public IBannedMemberRepository BannedMembers { get; }
         public IModerationLogRepository ModerationLogs { get; }
+        public IServerEmojiRepository ServerEmojis { get; }
+        public IStorageUpgradePurchaseRepository StorageUpgrades { get; }
 
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
@@ -27,7 +29,9 @@ namespace peeposredemption.Infrastructure
             IChannelRepository channels, IServerInviteRepository serverInvites,
             IFriendRequestRepository friendRequests,
             IBannedMemberRepository bannedMembers,
-            IModerationLogRepository moderationLogs)
+            IModerationLogRepository moderationLogs,
+            IServerEmojiRepository serverEmojis,
+            IStorageUpgradePurchaseRepository storageUpgrades)
         {
             _db = db;
             Users = users;
@@ -39,6 +43,8 @@ namespace peeposredemption.Infrastructure
             FriendRequests = friendRequests;
             BannedMembers = bannedMembers;
             ModerationLogs = moderationLogs;
+            ServerEmojis = serverEmojis;
+            StorageUpgrades = storageUpgrades;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

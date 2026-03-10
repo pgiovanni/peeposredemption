@@ -80,7 +80,9 @@
         </div>
         <div id="typing-indicator" class="typing-indicator"></div>
         <div class="message-input-area">
+            <div id="emoji-picker" class="emoji-picker hidden"></div>
             <form id="message-form">
+                <button type="button" id="emoji-picker-toggle" class="icon-btn emoji-picker-btn" title="Emojis">😀</button>
                 <input id="message-input" type="text" placeholder="Message #@Model.ChannelName..." autocomplete="off" />
                 <button type="submit">Send</button>
             </form>
@@ -103,5 +105,72 @@
         document.getElementById('add-channel-toggle').addEventListener('click', () => {
             document.getElementById('add-channel-section').classList.toggle('hidden');
         });
+
+        // Emoji rendering and picker
+        let serverEmojis = [];
+
+        function renderEmojis(text) {
+            if (!serverEmojis.length) return text;
+            return text.replace(/:([a-z0-9_]{2,32}):/g, (match, name) => {
+                const emoji = serverEmojis.find(e => e.name === name);
+                if (!emoji) return match;
+                return `<img src="${emoji.imageUrl}" alt=":${name}:" class="inline-emoji" title=":${name}:" />`;
+            });
+        }
+
+        function applyEmojiRendering() {
+            document.querySelectorAll('.message-content').forEach(el => {
+                if (!el.dataset.emojiRendered) {
+                    el.innerHTML = renderEmojis(el.textContent);
+                    el.dataset.emojiRendered = '1';
+                }
+            });
+        }
+
+        function buildEmojiPicker() {
+            const picker = document.getElementById('emoji-picker');
+            picker.innerHTML = '';
+            if (!serverEmojis.length) {
+                picker.innerHTML = '<span class="emoji-picker-empty">No custom emojis</span>';
+                return;
+            }
+            serverEmojis.forEach(e => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.title = `:${e.name}:`;
+                btn.innerHTML = `<img src="${e.imageUrl}" alt=":${e.name}:" class="inline-emoji" />`;
+                btn.addEventListener('click', () => {
+                    const input = document.getElementById('message-input');
+                    input.value += `:${e.name}:`;
+                    input.focus();
+                    picker.classList.add('hidden');
+                });
+                picker.appendChild(btn);
+            });
+        }
+
+        document.getElementById('emoji-picker-toggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('emoji-picker').classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', () => {
+            document.getElementById('emoji-picker').classList.add('hidden');
+        });
+
+        document.getElementById('emoji-picker').addEventListener('click', e => e.stopPropagation());
+
+        // Fetch server emojis and render
+        fetch(`/api/servers/${serverId}/emojis`)
+            .then(r => r.json())
+            .then(data => {
+                serverEmojis = data;
+                buildEmojiPicker();
+                applyEmojiRendering();
+            })
+            .catch(() => {});
+
+        // Expose so chat.js can call it when new real-time messages arrive
+        window.applyEmojiRendering = applyEmojiRendering;
     </script>
 }
