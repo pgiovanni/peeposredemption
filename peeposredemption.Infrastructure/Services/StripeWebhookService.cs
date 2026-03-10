@@ -28,14 +28,16 @@ namespace peeposredemption.Infrastructure.Services
 
             string? sessionId = null;
             string? serverId = null;
+            long amountTotal = 0;
 
             if (stripeEvent.Data.Object is Session session)
             {
                 sessionId = session.Id;
                 session.Metadata?.TryGetValue("serverId", out serverId);
+                amountTotal = session.AmountTotal ?? 0;
             }
 
-            return new StripeWebhookEvent(stripeEvent.Type, sessionId, serverId);
+            return new StripeWebhookEvent(stripeEvent.Type, sessionId, serverId, amountTotal);
         }
     }
 }

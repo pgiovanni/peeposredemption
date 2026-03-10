@@ -1,0 +1,88 @@
+@page
+@model peeposredemption.API.Pages.App.ReferralModel
+@{
+    ViewData["Title"] = "Referral";
+    var totalRevenue = Model.Purchases.Sum(p => p.AmountCents);
+    var commission = (long)(totalRevenue * 0.20);
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Index" class="icon-btn" title="Back">←</a>
+            <span>Referral</span>
+        </div>
+    </div>
+
+    <div class="content-area settings-page">
+        <section class="settings-section">
+            <h3 class="settings-heading">YOUR REFERRAL LINK</h3>
+            <p class="referral-desc">Share this link. When someone registers through it and makes a purchase, you earn 20% commission (paid out manually).</p>
+
+            <div class="referral-link-row">
+                <input id="refLink" class="referral-link-input" value="@Model.ReferralLink" readonly />
+                <button class="btn-primary btn-sm" onclick="copyRefLink()">Copy</button>
+            </div>
+            <div id="refCopied" class="referral-copied" style="display:none">Copied!</div>
+        </section>
+
+        <section class="settings-section">
+            <h3 class="settings-heading">STATS</h3>
+            <div class="referral-stats">
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Signups</div>
+                    <div class="referral-stat-label">Signups</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Purchases.Count</div>
+                    <div class="referral-stat-label">Purchases</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">$@((totalRevenue / 100m).ToString("F2"))</div>
+                    <div class="referral-stat-label">Revenue Generated</div>
+                </div>
+                <div class="referral-stat referral-stat-commission">
+                    <div class="referral-stat-value">$@((commission / 100m).ToString("F2"))</div>
+                    <div class="referral-stat-label">Your Commission (20%)</div>
+                </div>
+            </div>
+        </section>
+
+        @if (Model.Purchases.Any())
+        {
+            <section class="settings-section">
+                <h3 class="settings-heading">PURCHASE HISTORY</h3>
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Commission</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.Purchases.OrderByDescending(x => x.CreatedAt))
+                        {
+                            <tr>
+                                <td class="audit-time">@p.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td>$@((p.AmountCents / 100m).ToString("F2"))</td>
+                                <td>$@((p.AmountCents * 0.20m / 100m).ToString("F2"))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+        }
+    </div>
+</div>
+
+<script>
+function copyRefLink() {
+    var input = document.getElementById('refLink');
+    input.select();
+    document.execCommand('copy');
+    var copied = document.getElementById('refCopied');
+    copied.style.display = 'block';
+    setTimeout(function() { copied.style.display = 'none'; }, 2000);
+}
+</script>
