@@ -19,6 +19,7 @@ namespace peeposredemption.Domain.Interfaces
         IServerEmojiRepository ServerEmojis { get; }
         IStorageUpgradePurchaseRepository StorageUpgrades { get; }
         INotificationRepository Notifications { get; }
+        IReferralRepository Referrals { get; }
         Task<int> SaveChangesAsync();
     }
 

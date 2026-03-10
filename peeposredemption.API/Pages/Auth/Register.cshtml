@@ -6,6 +6,7 @@
     <input asp-for="Input.Username" placeholder="Username" />
     <input asp-for="Input.Email" type="email" placeholder="Email" />
     <input asp-for="Input.Password" type="password" placeholder="Password" />
+    <input type="hidden" asp-for="RefCode" />
     <button type="submit">Register</button>
 </form>
 <a href="/Auth/Login">Already have an account? Log in</a>

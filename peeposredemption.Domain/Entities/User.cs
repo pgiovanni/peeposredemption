@@ -11,6 +11,8 @@ public class User
     public bool EmailConfirmed {  get; set; }
     public string? EmailConfirmationtoken { get; set; }
  
+    public Guid? ReferredByCodeId { get; set; }
+
     public ICollection<ServerMember> ServerMemberships { get; set; }
     public ICollection<Message> Messages { get; set; }
     public ICollection<DirectMessage> SentDirectMessages { get; set; }

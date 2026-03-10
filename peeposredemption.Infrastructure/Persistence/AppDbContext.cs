@@ -22,6 +22,8 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<ServerEmoji> ServerEmojis { get; set; }
         public DbSet<StorageUpgradePurchase> StorageUpgradePurchases { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<ReferralCode> ReferralCodes { get; set; }
+        public DbSet<ReferralPurchase> ReferralPurchases { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -124,6 +126,24 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasOne(n => n.FromUser)
                 .WithMany()
                 .HasForeignKey(n => n.FromUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ReferralCode>()
+                .HasOne(r => r.Owner)
+                .WithMany()
+                .HasForeignKey(r => r.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ReferralPurchase>()
+                .HasOne(p => p.Purchaser)
+                .WithMany()
+                .HasForeignKey(p => p.PurchaserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ReferralPurchase>()
+                .HasOne(p => p.ReferralCode)
+                .WithMany(r => r.Purchases)
+                .HasForeignKey(p => p.ReferralCodeId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
 

@@ -33,6 +33,24 @@ namespace peeposredemption.Application.Features.Shop.Commands
                 if (server != null && purchase.TargetTier > server.StorageTier)
                     server.StorageTier = purchase.TargetTier;
 
+                // Track referral if the server owner was referred by a marketer
+                var serverMembers = await _uow.Servers.GetServerMembersAsync(purchase.ServerId);
+                var ownerMembership = serverMembers?.FirstOrDefault(m => m.Role == Domain.Entities.ServerRole.Owner);
+                if (ownerMembership != null)
+                {
+                    var buyer = await _uow.Users.GetByIdAsync(ownerMembership.UserId);
+                    if (buyer?.ReferredByCodeId != null && !await _uow.Referrals.PurchaseExistsAsync(evt.SessionId))
+                    {
+                        await _uow.Referrals.AddPurchaseAsync(new Domain.Entities.ReferralPurchase
+                        {
+                            ReferralCodeId = buyer.ReferredByCodeId.Value,
+                            PurchaserId = buyer.Id,
+                            AmountCents = evt.AmountTotal,
+                            StripeSessionId = evt.SessionId
+                        });
+                    }
+                }
+
                 await _uow.SaveChangesAsync();
             }
         }

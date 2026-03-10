@@ -11,7 +11,7 @@ using System.Text;
 
 namespace peeposredemption.Application.Features.Auth.Commands
 {
-    public record RegisterCommand(string Username, string Email, string Password)
+    public record RegisterCommand(string Username, string Email, string Password, string? ReferralCode = null)
      : IRequest<Unit>;
 
     public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Unit>
@@ -34,12 +34,20 @@ namespace peeposredemption.Application.Features.Auth.Commands
 
             var confirmationToken = Guid.NewGuid().ToString();
 
+            Guid? referredByCodeId = null;
+            if (!string.IsNullOrWhiteSpace(cmd.ReferralCode))
+            {
+                var refCode = await _uow.Referrals.GetCodeByStringAsync(cmd.ReferralCode);
+                if (refCode != null) referredByCodeId = refCode.Id;
+            }
+
             var user = new User
             {
                 Username = cmd.Username,
                 Email = cmd.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(cmd.Password),
-                EmailConfirmationtoken = confirmationToken
+                EmailConfirmationtoken = confirmationToken,
+                ReferredByCodeId = referredByCodeId
             };
 
             await _uow.Users.AddAsync(user);

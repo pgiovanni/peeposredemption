@@ -1,0 +1,70 @@
+@page
+@model peeposredemption.API.Pages.App.Admin.ReferralsModel
+@{
+    ViewData["Title"] = "Admin — Referrals";
+    var grandTotal = Model.Summaries.Sum(s => s.TotalRevenueCents);
+    var grandCommission = Model.Summaries.Sum(s => s.CommissionCents);
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Index" class="icon-btn" title="Back">←</a>
+            <span>Referrals</span>
+        </div>
+    </div>
+
+    <div class="content-area settings-page">
+        <section class="settings-section">
+            <h3 class="settings-heading">REFERRAL PAYOUTS</h3>
+
+            <div class="referral-stats" style="margin-bottom:1.5rem">
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Summaries.Count</div>
+                    <div class="referral-stat-label">Marketers</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">$@((grandTotal / 100m).ToString("F2"))</div>
+                    <div class="referral-stat-label">Total Revenue</div>
+                </div>
+                <div class="referral-stat referral-stat-commission">
+                    <div class="referral-stat-value">$@((grandCommission / 100m).ToString("F2"))</div>
+                    <div class="referral-stat-label">Total Owed (20%)</div>
+                </div>
+            </div>
+
+            @if (!Model.Summaries.Any())
+            {
+                <div class="sidebar-empty">No referral codes yet.</div>
+            }
+            else
+            {
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Marketer</th>
+                            <th>Code</th>
+                            <th>Signups</th>
+                            <th>Purchases</th>
+                            <th>Revenue</th>
+                            <th>Commission (20%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.Summaries)
+                        {
+                            <tr>
+                                <td><strong>@s.OwnerUsername</strong></td>
+                                <td><code>@s.Code</code></td>
+                                <td>@s.Signups</td>
+                                <td>@s.Purchases.Count</td>
+                                <td>$@((s.TotalRevenueCents / 100m).ToString("F2"))</td>
+                                <td class="referral-commission-cell">$@((s.CommissionCents / 100m).ToString("F2"))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    </div>
+</div>
