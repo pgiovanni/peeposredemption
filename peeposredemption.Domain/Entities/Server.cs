@@ -8,9 +8,12 @@
         public Guid OwnerId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        public User Owner { get; set; }
-        public ICollection<Channel> Channels { get; set; }
-        public ICollection<ServerMember> Members { get; set; }
+        public StorageTier StorageTier { get; set; } = StorageTier.Free;
+
+        public User Owner { get; set; } = null!;
+        public ICollection<Channel> Channels { get; set; } = new List<Channel>();
+        public ICollection<ServerMember> Members { get; set; } = new List<ServerMember>();
+        public ICollection<ServerEmoji> Emojis { get; set; } = new List<ServerEmoji>();
     }
 
 }

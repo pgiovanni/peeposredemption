@@ -16,6 +16,8 @@ namespace peeposredemption.Domain.Interfaces
         IFriendRequestRepository FriendRequests { get; }
         IBannedMemberRepository BannedMembers { get; }
         IModerationLogRepository ModerationLogs { get; }
+        IServerEmojiRepository ServerEmojis { get; }
+        IStorageUpgradePurchaseRepository StorageUpgrades { get; }
         Task<int> SaveChangesAsync();
     }
 

@@ -1,4 +1,5 @@
 using FluentValidation;
+using MediatR;
 using Resend;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
@@ -7,6 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 using peeposredemption.API.Hubs;
 using peeposredemption.API.Infrastructure;
 using peeposredemption.Application.Features.Auth.Commands;
+using peeposredemption.Application.Features.Emoji.Queries;
+using peeposredemption.Application.Features.Shop.Commands;
 using peeposredemption.Application.Services;
 using peeposredemption.Application.Validators;
 using peeposredemption.Infrastructure;
@@ -99,5 +102,28 @@ app.MapControllers();
 app.MapRazorPages();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapGet("/", () => Results.Redirect("/Auth/Login"));
+
+// Emoji list API
+app.MapGet("/api/servers/{serverId:guid}/emojis", async (Guid serverId, IMediator mediator) =>
+{
+    var emojis = await mediator.Send(new GetServerEmojisQuery(serverId));
+    return Results.Ok(emojis);
+}).RequireAuthorization();
+
+// Stripe webhook — must read raw body, no antiforgery
+app.MapPost("/webhooks/stripe", async (HttpRequest req, IMediator mediator) =>
+{
+    string payload;
+    using (var reader = new StreamReader(req.Body))
+        payload = await reader.ReadToEndAsync();
+    var sig = req.Headers["Stripe-Signature"].ToString();
+    try
+    {
+        await mediator.Send(new ProcessStripeWebhookCommand(payload, sig));
+        return Results.Ok();
+    }
+    catch (UnauthorizedAccessException) { return Results.BadRequest(); }
+    catch { return Results.Ok(); } // Don't expose internal errors to Stripe
+}).AllowAnonymous().DisableAntiforgery();
 
 app.Run();

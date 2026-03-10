@@ -15,6 +15,76 @@
 
     <div class="content-area settings-page">
 
+        @if (Model.StatusMessage != null)
+        {
+            <div class="alert-success">@Model.StatusMessage</div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert-error">@TempData["Error"]</div>
+        }
+
+        <!-- Emojis -->
+        <section class="settings-section">
+            <h3 class="settings-heading">
+                EMOJIS — @Model.Emojis.Count / @Model.EmojiLimit
+                @if (Model.ServerStorageTier == StorageTier.Boosted)
+                {
+                    <span class="badge-boosted">BOOSTED</span>
+                }
+            </h3>
+
+            @if (Model.Emojis.Any())
+            {
+                <div class="emoji-gallery">
+                    @foreach (var emoji in Model.Emojis)
+                    {
+                        <div class="emoji-item">
+                            <img src="@emoji.ImageUrl" alt="@emoji.Name" class="emoji-preview" />
+                            <span class="emoji-name">:@emoji.Name:</span>
+                            @if (Model.CurrentUserRole >= ServerRole.Moderator)
+                            {
+                                <form method="post" asp-page-handler="DeleteEmoji" style="display:inline">
+                                    <input type="hidden" name="serverId" value="@Model.ServerId" />
+                                    <input type="hidden" name="emojiId" value="@emoji.Id" />
+                                    <button type="submit" class="icon-btn emoji-delete-btn" title="Delete emoji">✕</button>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="sidebar-empty">No custom emojis yet.</div>
+            }
+
+            @if (Model.CurrentUserRole >= ServerRole.Moderator && Model.Emojis.Count < Model.EmojiLimit)
+            {
+                <form method="post" asp-page-handler="UploadEmoji" enctype="multipart/form-data" class="emoji-upload-form">
+                    <input type="hidden" name="serverId" value="@Model.ServerId" />
+                    <input type="text" name="emojiName" placeholder="emoji_name" required pattern="[a-z0-9_]{2,32}"
+                           title="2-32 lowercase letters, numbers, or underscores" autocomplete="off" />
+                    <input type="file" name="emojiFile" accept="image/png,image/gif,image/webp" required />
+                    <button type="submit" class="btn-primary btn-sm">Upload Emoji</button>
+                </form>
+                <div class="emoji-hint">PNG, GIF, or WebP · Max 256KB · Name: lowercase letters, numbers, underscores</div>
+            }
+            else if (Model.CurrentUserRole >= ServerRole.Moderator && Model.Emojis.Count >= Model.EmojiLimit)
+            {
+                <div class="emoji-hint">Emoji limit reached (@Model.EmojiLimit).</div>
+            }
+
+            @if (Model.CurrentUserRole == ServerRole.Owner && Model.ServerStorageTier == StorageTier.Free)
+            {
+                <form method="post" asp-page-handler="BuyBoost" class="boost-form">
+                    <input type="hidden" name="serverId" value="@Model.ServerId" />
+                    <button type="submit" class="btn-boost">⚡ Boost Server — $4.99</button>
+                </form>
+                <div class="emoji-hint">Boost to unlock up to 100 custom emojis.</div>
+            }
+        </section>
+
         <!-- Members -->
         <section class="settings-section">
             <h3 class="settings-heading">MEMBERS — @Model.Members.Count</h3>
