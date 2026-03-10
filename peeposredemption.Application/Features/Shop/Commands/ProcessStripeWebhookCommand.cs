@@ -11,11 +11,13 @@ namespace peeposredemption.Application.Features.Shop.Commands
     {
         private readonly IUnitOfWork _uow;
         private readonly IStripeWebhookService _webhookService;
+        private readonly IEmailService _emailService;
 
-        public ProcessStripeWebhookCommandHandler(IUnitOfWork uow, IStripeWebhookService webhookService)
+        public ProcessStripeWebhookCommandHandler(IUnitOfWork uow, IStripeWebhookService webhookService, IEmailService emailService)
         {
             _uow = uow;
             _webhookService = webhookService;
+            _emailService = emailService;
         }
 
         public async Task Handle(ProcessStripeWebhookCommand cmd, CancellationToken ct)
@@ -33,21 +35,31 @@ namespace peeposredemption.Application.Features.Shop.Commands
                 if (server != null && purchase.TargetTier > server.StorageTier)
                     server.StorageTier = purchase.TargetTier;
 
-                // Track referral if the server owner was referred by a marketer
+                // Track referral for any referred user who made a purchase
                 var serverMembers = await _uow.Servers.GetServerMembersAsync(purchase.ServerId);
-                var ownerMembership = serverMembers?.FirstOrDefault(m => m.Role == Domain.Entities.ServerRole.Owner);
-                if (ownerMembership != null)
+                if (serverMembers != null)
                 {
-                    var buyer = await _uow.Users.GetByIdAsync(ownerMembership.UserId);
-                    if (buyer?.ReferredByCodeId != null && !await _uow.Referrals.PurchaseExistsAsync(evt.SessionId))
+                    foreach (var member in serverMembers)
                     {
+                        var user = await _uow.Users.GetByIdAsync(member.UserId);
+                        if (user?.ReferredByCodeId == null) continue;
+                        if (await _uow.Referrals.PurchaseExistsAsync(evt.SessionId)) continue;
+
+                        var refCode = await _uow.Referrals.GetCodeByIdAsync(user.ReferredByCodeId.Value);
+                        var marketer = refCode != null ? await _uow.Users.GetByIdAsync(refCode.OwnerId) : null;
+
                         await _uow.Referrals.AddPurchaseAsync(new Domain.Entities.ReferralPurchase
                         {
-                            ReferralCodeId = buyer.ReferredByCodeId.Value,
-                            PurchaserId = buyer.Id,
+                            ReferralCodeId = user.ReferredByCodeId.Value,
+                            PurchaserId = user.Id,
                             AmountCents = evt.AmountTotal,
                             StripeSessionId = evt.SessionId
                         });
+
+                        if (marketer != null)
+                            await _emailService.SendReferralPurchaseNotificationAsync(marketer.Username, user.Username, evt.AmountTotal);
+
+                        break; // one purchase = one referral attribution
                     }
                 }
 

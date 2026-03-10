@@ -16,6 +16,9 @@ public class ReferralRepository : IReferralRepository
     public Task<ReferralCode?> GetCodeByOwnerIdAsync(Guid ownerId) =>
         _db.ReferralCodes.FirstOrDefaultAsync(r => r.OwnerId == ownerId);
 
+    public Task<ReferralCode?> GetCodeByIdAsync(Guid id) =>
+        _db.ReferralCodes.FirstOrDefaultAsync(r => r.Id == id);
+
     public async Task AddCodeAsync(ReferralCode code)
     {
         _db.ReferralCodes.Add(code);

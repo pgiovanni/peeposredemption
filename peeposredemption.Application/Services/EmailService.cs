@@ -42,6 +42,23 @@ namespace peeposredemption.Application.Services
             await _resend.EmailSendAsync(message);
         }
 
+        public async Task SendReferralPurchaseNotificationAsync(string marketerUsername, string buyerUsername, long amountCents)
+        {
+            var amount = (amountCents / 100m).ToString("F2");
+            var commission = (amountCents * 0.20m / 100m).ToString("F2");
+            var message = new EmailMessage
+            {
+                From = $"PeePo's Redemption <{_fromAddress}>",
+                To = { _adminEmail },
+                Subject = $"[Torvex] Referral purchase — ${amount} by {buyerUsername}",
+                HtmlBody = $"<p><strong>{buyerUsername}</strong> just made a purchase of <strong>${amount}</strong>.</p>" +
+                           $"<p>Referred by: <strong>{marketerUsername}</strong></p>" +
+                           $"<p>Commission owed: <strong>${commission}</strong> (20%)</p>" +
+                           $"<p>View all payouts at <a href=\"https://torvex.app/App/Admin/Referrals\">Admin Referrals</a>.</p>"
+            };
+            await _resend.EmailSendAsync(message);
+        }
+
         public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
         {
             var message = new EmailMessage
