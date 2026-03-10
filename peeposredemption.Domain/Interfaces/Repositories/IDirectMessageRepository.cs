@@ -10,6 +10,8 @@ namespace peeposredemption.Domain.Interfaces.Repositories
         Task<List<DirectMessage>> GetConversationAsync(
             Guid userA, Guid userB, int page, int pageSize);
         Task AddAsync(DirectMessage message);
+        Task<int> GetUnreadCountAsync(Guid userId);
+        Task MarkConversationReadAsync(Guid recipientId, Guid senderId);
     }
 
 }

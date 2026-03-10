@@ -28,7 +28,11 @@
         <section class="settings-section">
             <h3 class="settings-heading">
                 EMOJIS — @Model.Emojis.Count / @Model.EmojiLimit
-                @if (Model.ServerStorageTier == StorageTier.Boosted)
+                @if (Model.ServerStorageTier == StorageTier.Standard)
+                {
+                    <span class="badge-standard">STANDARD</span>
+                }
+                else if (Model.ServerStorageTier == StorageTier.Boosted)
                 {
                     <span class="badge-boosted">BOOSTED</span>
                 }
@@ -75,13 +79,23 @@
                 <div class="emoji-hint">Emoji limit reached (@Model.EmojiLimit).</div>
             }
 
-            @if (Model.CurrentUserRole == ServerRole.Owner && Model.ServerStorageTier == StorageTier.Free)
+            @if (Model.CurrentUserRole == ServerRole.Owner && Model.ServerStorageTier < StorageTier.Boosted)
             {
-                <form method="post" asp-page-handler="BuyBoost" class="boost-form">
-                    <input type="hidden" name="serverId" value="@Model.ServerId" />
-                    <button type="submit" class="btn-boost">⚡ Boost Server — $4.99</button>
-                </form>
-                <div class="emoji-hint">Boost to unlock up to 100 custom emojis.</div>
+                <div class="upgrade-options">
+                    @if (Model.ServerStorageTier < StorageTier.Standard)
+                    {
+                        <form method="post" asp-page-handler="BuyBoost" class="boost-form">
+                            <input type="hidden" name="serverId" value="@Model.ServerId" />
+                            <input type="hidden" name="targetTier" value="@((int)StorageTier.Standard)" />
+                            <button type="submit" class="btn-boost btn-boost-standard">⚡ Standard — $1.99 <span class="tier-detail">150 emojis · one-time</span></button>
+                        </form>
+                    }
+                    <form method="post" asp-page-handler="BuyBoost" class="boost-form">
+                        <input type="hidden" name="serverId" value="@Model.ServerId" />
+                        <input type="hidden" name="targetTier" value="@((int)StorageTier.Boosted)" />
+                        <button type="submit" class="btn-boost btn-boost-pro">🚀 Boosted — $4.99 <span class="tier-detail">500 emojis · one-time</span></button>
+                    </form>
+                </div>
             }
         </section>
 

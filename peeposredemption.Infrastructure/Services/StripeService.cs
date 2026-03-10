@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using peeposredemption.Application.Services;
+using peeposredemption.Domain.Entities;
 using Stripe;
 using Stripe.Checkout;
 
@@ -13,8 +14,15 @@ namespace peeposredemption.Infrastructure.Services
         }
 
         public async Task<StripeCheckoutResult> CreateStorageUpgradeSessionAsync(
-            Guid serverId, string serverName, string successUrl, string cancelUrl)
+            Guid serverId, string serverName, StorageTier targetTier, string successUrl, string cancelUrl)
         {
+            var (price, name, description) = targetTier switch
+            {
+                StorageTier.Standard => (199L, $"Standard Tier — {serverName}", "Increases emoji limit to 150 for this server. One-time payment."),
+                StorageTier.Boosted  => (499L, $"Boosted Tier — {serverName}", "Increases emoji limit to 500 for this server. One-time payment."),
+                _                    => throw new ArgumentException("Invalid upgrade tier.")
+            };
+
             var options = new SessionCreateOptions
             {
                 PaymentMethodTypes = new List<string> { "card" },
@@ -25,11 +33,11 @@ namespace peeposredemption.Infrastructure.Services
                         PriceData = new SessionLineItemPriceDataOptions
                         {
                             Currency = "usd",
-                            UnitAmount = 499, // $4.99
+                            UnitAmount = price,
                             ProductData = new SessionLineItemPriceDataProductDataOptions
                             {
-                                Name = $"Server Boost — {serverName}",
-                                Description = "Increases emoji limit from 10 to 100 for this server."
+                                Name = name,
+                                Description = description
                             }
                         },
                         Quantity = 1
@@ -40,7 +48,8 @@ namespace peeposredemption.Infrastructure.Services
                 CancelUrl = cancelUrl,
                 Metadata = new Dictionary<string, string>
                 {
-                    { "serverId", serverId.ToString() }
+                    { "serverId", serverId.ToString() },
+                    { "targetTier", ((int)targetTier).ToString() }
                 },
                 AutomaticTax = new SessionAutomaticTaxOptions { Enabled = true }
             };

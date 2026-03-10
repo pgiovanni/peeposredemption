@@ -34,7 +34,7 @@ public class ServerSettingsModel : PageModel
     public List<ServerEmojiDto> Emojis { get; set; } = new();
     public string? StatusMessage { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(Guid serverId, bool boosted = false)
+    public async Task<IActionResult> OnGetAsync(Guid serverId, bool upgraded = false)
     {
         var userId = GetUserId();
         if (userId == null) return RedirectToPage("/Auth/Login");
@@ -56,7 +56,7 @@ public class ServerSettingsModel : PageModel
         }
         catch (UnauthorizedAccessException) { return Forbid(); }
 
-        if (boosted) StatusMessage = "Server boosted! Your emoji limit is now 100.";
+        if (upgraded) StatusMessage = $"Server upgraded to {StorageLimits.GetLabel(ServerStorageTier)}! Your emoji limit is now {EmojiLimit}.";
 
         return Page();
     }
@@ -129,14 +129,14 @@ public class ServerSettingsModel : PageModel
         return RedirectToPage(new { serverId });
     }
 
-    public async Task<IActionResult> OnPostBuyBoostAsync(Guid serverId)
+    public async Task<IActionResult> OnPostBuyBoostAsync(Guid serverId, StorageTier targetTier)
     {
         var userId = GetUserId();
         if (userId == null) return RedirectToPage("/Auth/Login");
         try
         {
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            var checkoutUrl = await _mediator.Send(new CreateStorageUpgradeSessionCommand(serverId, userId.Value, baseUrl));
+            var checkoutUrl = await _mediator.Send(new CreateStorageUpgradeSessionCommand(serverId, userId.Value, targetTier, baseUrl));
             return Redirect(checkoutUrl);
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidOperationException or KeyNotFoundException)

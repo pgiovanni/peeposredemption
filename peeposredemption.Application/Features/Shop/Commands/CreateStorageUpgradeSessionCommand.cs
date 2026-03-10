@@ -8,6 +8,7 @@ namespace peeposredemption.Application.Features.Shop.Commands
     public record CreateStorageUpgradeSessionCommand(
         Guid ServerId,
         Guid RequestingUserId,
+        StorageTier TargetTier,
         string ReturnBaseUrl) : IRequest<string>;
 
     public class CreateStorageUpgradeSessionCommandHandler : IRequestHandler<CreateStorageUpgradeSessionCommand, string>
@@ -30,20 +31,20 @@ namespace peeposredemption.Application.Features.Shop.Commands
             if (role != ServerRole.Owner)
                 throw new UnauthorizedAccessException("Only the server owner can purchase a boost.");
 
-            if (server.StorageTier == StorageTier.Boosted)
-                throw new InvalidOperationException("This server is already boosted.");
+            if (server.StorageTier >= cmd.TargetTier)
+                throw new InvalidOperationException($"This server is already on the {StorageLimits.GetLabel(server.StorageTier)} tier or higher.");
 
-            var successUrl = $"{cmd.ReturnBaseUrl}/App/ServerSettings?serverId={cmd.ServerId}&boosted=true";
+            var successUrl = $"{cmd.ReturnBaseUrl}/App/ServerSettings?serverId={cmd.ServerId}&upgraded=true";
             var cancelUrl = $"{cmd.ReturnBaseUrl}/App/ServerSettings?serverId={cmd.ServerId}";
 
             var result = await _stripe.CreateStorageUpgradeSessionAsync(
-                cmd.ServerId, server.Name, successUrl, cancelUrl);
+                cmd.ServerId, server.Name, cmd.TargetTier, successUrl, cancelUrl);
 
-            // Save pending purchase so webhook can look it up by session ID
             await _uow.StorageUpgrades.AddAsync(new StorageUpgradePurchase
             {
                 ServerId = cmd.ServerId,
                 StripeSessionId = result.SessionId,
+                TargetTier = cmd.TargetTier,
                 Status = PurchaseStatus.Pending
             });
             await _uow.SaveChangesAsync();

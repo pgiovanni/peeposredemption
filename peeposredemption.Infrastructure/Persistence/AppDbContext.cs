@@ -21,6 +21,7 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<ModerationLog> ModerationLogs { get; set; }
         public DbSet<ServerEmoji> ServerEmojis { get; set; }
         public DbSet<StorageUpgradePurchase> StorageUpgradePurchases { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -111,6 +112,18 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasOne(p => p.Server)
                 .WithMany()
                 .HasForeignKey(p => p.ServerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.FromUser)
+                .WithMany()
+                .HasForeignKey(n => n.FromUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
 

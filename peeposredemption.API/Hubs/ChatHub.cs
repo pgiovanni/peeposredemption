@@ -3,7 +3,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using peeposredemption.Application.Features.Messages.Commands;
 using peeposredemption.Application.Features.Moderation.Commands;
+using peeposredemption.Domain.Entities;
+using peeposredemption.Domain.Interfaces;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 
 namespace peeposredemption.API.Hubs
@@ -12,7 +15,8 @@ namespace peeposredemption.API.Hubs
     public class ChatHub : Hub
     {
         private readonly IMediator _mediator;
-        public ChatHub(IMediator mediator) => _mediator = mediator;
+        private readonly IUnitOfWork _uow;
+        public ChatHub(IMediator mediator, IUnitOfWork uow) { _mediator = mediator; _uow = uow; }
 
         private Guid CurrentUserId =>
             Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
@@ -29,6 +33,38 @@ namespace peeposredemption.API.Hubs
                 new SendMessageCommand(channelId, CurrentUserId, CurrentUsername, content));
             await Clients.Group($"channel:{channelId}")
                 .SendAsync("ReceiveChannelMessage", dto);
+
+            // Detect @mentions and send notifications
+            var mentions = Regex.Matches(content, @"@([a-zA-Z0-9_]+)")
+                .Select(m => m.Groups[1].Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var username in mentions)
+            {
+                if (string.Equals(username, CurrentUsername, StringComparison.OrdinalIgnoreCase)) continue;
+                var mentionedUser = await _uow.Users.GetByUsernameAsync(username);
+                if (mentionedUser == null) continue;
+
+                // Check they're a member of the server
+                var channel = await _uow.Channels.GetByIdAsync(channelId);
+                if (channel == null) continue;
+
+                var notification = new Notification
+                {
+                    UserId = mentionedUser.Id,
+                    FromUserId = CurrentUserId,
+                    Type = NotificationType.Ping,
+                    Content = $"{CurrentUsername} mentioned you in #{channel.Name}",
+                    ChannelId = channelId,
+                    ServerId = channel.ServerId
+                };
+                await _uow.Notifications.AddAsync(notification);
+                await _uow.SaveChangesAsync();
+
+                // Push real-time notification to the mentioned user
+                await Clients.User(mentionedUser.Id.ToString())
+                    .SendAsync("ReceiveNotification", new { notification.Content, notification.Id });
+            }
         }
 
         public async Task SendDirectMessage(Guid recipientId, string content)

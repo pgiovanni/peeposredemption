@@ -46,7 +46,31 @@ function formatTime(dateStr) {
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function getDateLabel(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function getDateKey(dateStr) {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function ensureDateSeparator(dateStr) {
+    const key = getDateKey(dateStr);
+    const container = document.getElementById("messages");
+    if (!container) return;
+    const last = container.querySelector('.date-separator:last-of-type');
+    if (last && last.dataset.dateKey === key) return;
+    const sep = document.createElement('div');
+    sep.className = 'date-separator';
+    sep.dataset.dateKey = key;
+    sep.innerHTML = `<span>${getDateLabel(dateStr)}</span>`;
+    container.appendChild(sep);
+}
+
 connection.on("ReceiveChannelMessage", (msg) => {
+    ensureDateSeparator(msg.sentAt);
     const el = createMessageEl(msg.authorUsername, msg.content, formatTime(msg.sentAt), false, msg.id);
     document.getElementById("messages")?.appendChild(el);
     if (typeof window.applyEmojiRendering === 'function') window.applyEmojiRendering();

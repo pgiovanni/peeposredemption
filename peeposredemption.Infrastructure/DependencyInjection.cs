@@ -32,6 +32,7 @@ namespace peeposredemption.Infrastructure
             services.AddScoped<IModerationLogRepository, ModerationLogRepository>();
             services.AddScoped<IServerEmojiRepository, ServerEmojiRepository>();
             services.AddScoped<IStorageUpgradePurchaseRepository, StorageUpgradePurchaseRepository>();
+            services.AddScoped<INotificationRepository, NotificationRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             services.AddScoped<IR2StorageService, R2StorageService>();
