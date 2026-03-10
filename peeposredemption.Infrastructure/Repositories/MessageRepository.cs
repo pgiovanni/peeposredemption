@@ -17,7 +17,7 @@ namespace peeposredemption.Infrastructure.Repositories
             Guid channelId, int page, int pageSize) =>
             _db.Messages.Include(m => m.Author)
                 .Where(m => m.ChannelId == channelId)
-                .OrderByDescending(m => m.SentAt)
+                .OrderByDescending(m => m.SentAt).ThenByDescending(m => m.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

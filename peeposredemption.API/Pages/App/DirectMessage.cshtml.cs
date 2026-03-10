@@ -32,7 +32,7 @@ namespace peeposredemption.API.Pages.App
                 Content = dm.Content,
                 SentAt = dm.SentAt,
                 IsMine = dm.SenderId == currentUserId
-            }).ToList();
+            }).OrderBy(dm => dm.SentAt).ToList();
 
             return Page();
         }
