@@ -13,14 +13,20 @@ namespace peeposredemption.Infrastructure.Repositories
         private readonly AppDbContext _db;
         public MessageRepository(AppDbContext db) => _db = db;
 
-        public Task<List<Message>> GetChannelMessagesAsync(
-            Guid channelId, int page, int pageSize) =>
-            _db.Messages.Include(m => m.Author)
+        public async Task<List<Message>> GetChannelMessagesAsync(
+            Guid channelId, int page, int pageSize)
+        {
+            // Fetch newest N descending, then reverse to ascending for display
+            var rows = await _db.Messages.Include(m => m.Author)
                 .Where(m => m.ChannelId == channelId)
                 .OrderByDescending(m => m.SentAt).ThenByDescending(m => m.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+
+            rows.Reverse();
+            return rows;
+        }
 
         public async Task AddAsync(Message message) => await _db.Messages.AddAsync(message);
 
