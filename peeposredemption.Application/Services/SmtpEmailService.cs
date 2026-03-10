@@ -36,6 +36,7 @@ namespace peeposredemption.Application.Services
         }
 
         public Task SendNewUserNotificationAsync(string username, string email) => Task.CompletedTask;
+        public Task SendReferralPurchaseNotificationAsync(string marketerUsername, string buyerUsername, long amountCents) => Task.CompletedTask;
 
         public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
         {

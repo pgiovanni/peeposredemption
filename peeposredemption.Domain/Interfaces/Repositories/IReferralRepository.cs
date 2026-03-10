@@ -6,6 +6,7 @@ public interface IReferralRepository
 {
     Task<ReferralCode?> GetCodeByStringAsync(string code);
     Task<ReferralCode?> GetCodeByOwnerIdAsync(Guid ownerId);
+    Task<ReferralCode?> GetCodeByIdAsync(Guid id);
     Task AddCodeAsync(ReferralCode code);
     Task AddPurchaseAsync(ReferralPurchase purchase);
     Task<int> GetReferredUserCountAsync(Guid codeId);
