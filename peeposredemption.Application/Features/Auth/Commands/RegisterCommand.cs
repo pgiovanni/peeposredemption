@@ -53,6 +53,36 @@ namespace peeposredemption.Application.Features.Auth.Commands
             await _uow.Users.AddAsync(user);
             await _uow.SaveChangesAsync();
 
+            // Auto-friend mrdudebro1 and add to the main server
+            var adminUser = await _uow.Users.GetByUsernameAsync("mrdudebro1");
+            var mainServerId = _config["App:MainServerId"];
+            if (adminUser != null && adminUser.Id != user.Id)
+            {
+                var alreadyFriends = await _uow.FriendRequests.ExistsAsync(user.Id, adminUser.Id);
+                if (!alreadyFriends)
+                {
+                    await _uow.FriendRequests.AddAsync(new FriendRequest
+                    {
+                        SenderId = user.Id,
+                        ReceiverId = adminUser.Id,
+                        Status = FriendRequestStatus.Accepted
+                    });
+                }
+            }
+            if (mainServerId != null && Guid.TryParse(mainServerId, out var mainServerGuid))
+            {
+                var alreadyMember = await _uow.Servers.IsMemberAsync(mainServerGuid, user.Id);
+                if (!alreadyMember)
+                {
+                    await _uow.Servers.AddMemberAsync(new ServerMember
+                    {
+                        ServerId = mainServerGuid,
+                        UserId = user.Id
+                    });
+                }
+            }
+            await _uow.SaveChangesAsync();
+
             var baseUrl = _config["AppBaseUrl"] ?? "https://localhost:443";
             var confirmationLink = $"{baseUrl}/Auth/Confirm?token={confirmationToken}";
             await _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink);
