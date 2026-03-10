@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using peeposredemption.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using peeposredemption.Infrastructure.Persistence;
 namespace peeposredemption.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310014053_AddNotifications")]
+    partial class AddNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -470,10 +473,6 @@ namespace peeposredemption.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("stripe_session_id");
-
-                    b.Property<int>("TargetTier")
-                        .HasColumnType("integer")
-                        .HasColumnName("target_tier");
 
                     b.HasKey("Id")
                         .HasName("p_k_storage_upgrade_purchases");

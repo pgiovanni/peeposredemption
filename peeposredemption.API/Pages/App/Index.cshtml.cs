@@ -54,6 +54,10 @@ public class IndexModel : PageModel
                     SentAt = dm.SentAt,
                     IsMine = dm.SenderId == userId.Value
                 }).ToList();
+
+                // Mark DMs from this friend as read
+                await _uow.DirectMessages.MarkConversationReadAsync(userId.Value, friendId.Value);
+                await _uow.SaveChangesAsync();
             }
         }
 
@@ -108,7 +112,14 @@ public class IndexModel : PageModel
             var first = ch.FirstOrDefault();
             if (first != null) defaultChannels[s.Id] = first.Id;
         }
-        ServerList = new ServerListViewModel { Servers = servers, ServerDefaultChannels = defaultChannels };
+        var unreadDms = await _uow.DirectMessages.GetUnreadCountAsync(userId);
+        var unreadPings = await _uow.Notifications.GetUnreadCountAsync(userId);
+        ServerList = new ServerListViewModel
+        {
+            Servers = servers,
+            ServerDefaultChannels = defaultChannels,
+            UnreadCount = unreadDms + unreadPings
+        };
 
         Friends = await _mediator.Send(new GetFriendsQuery(userId));
         PendingRequests = await _mediator.Send(new GetPendingRequestsQuery(userId));

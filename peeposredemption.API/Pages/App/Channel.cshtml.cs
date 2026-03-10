@@ -11,6 +11,7 @@ using peeposredemption.Application.Features.Moderation.Queries;
 using peeposredemption.Application.Features.Servers.Commands;
 using peeposredemption.Application.Features.Servers.Queries;
 using peeposredemption.Domain.Entities;
+using peeposredemption.Domain.Interfaces;
 using System.Security.Claims;
 
 namespace peeposredemption.API.Pages.App;
@@ -18,7 +19,10 @@ namespace peeposredemption.API.Pages.App;
 public class ChannelModel : PageModel
 {
     private readonly IMediator _mediator;
-    public ChannelModel(IMediator mediator) => _mediator = mediator;
+    private readonly IUnitOfWork _uow;
+    public ChannelModel(IMediator mediator, IUnitOfWork uow) { _mediator = mediator; _uow = uow; }
+
+    public List<string> MemberUsernames { get; set; } = new();
 
     public ServerListViewModel ServerList { get; set; } = new();
     public Guid ChannelId { get; set; }
@@ -48,11 +52,14 @@ public class ChannelModel : PageModel
             var first = chs.FirstOrDefault();
             if (first != null) defaultChannels[s.Id] = first.Id;
         }
+        var unreadDms = await _uow.DirectMessages.GetUnreadCountAsync(userId);
+        var unreadPings = await _uow.Notifications.GetUnreadCountAsync(userId);
         ServerList = new ServerListViewModel
         {
             Servers = servers,
             ServerDefaultChannels = defaultChannels,
-            ActiveServerId = serverId
+            ActiveServerId = serverId,
+            UnreadCount = unreadDms + unreadPings
         };
 
         // Current server info
@@ -73,6 +80,10 @@ public class ChannelModel : PageModel
 
         // Load current user's role for permission-gated UI
         CurrentUserRole = await _mediator.Send(new GetMemberRoleQuery(serverId, userId));
+
+        // Member usernames for @mention autocomplete
+        var members = await _uow.Servers.GetServerMembersAsync(serverId);
+        MemberUsernames = members.Select(m => m.User.Username).ToList();
 
         return Page();
     }

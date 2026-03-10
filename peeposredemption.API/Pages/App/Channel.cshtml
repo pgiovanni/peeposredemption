@@ -65,8 +65,19 @@
             <span>@Model.ChannelName</span>
         </div>
         <div id="messages" class="messages-container">
+            @{
+                DateTime? lastDate = null;
+            }
             @foreach (var msg in Model.Messages)
             {
+                var msgDate = msg.SentAt.Date;
+                if (lastDate == null || lastDate != msgDate)
+                {
+                    <div class="date-separator">
+                        <span>@msg.SentAt.ToString("dddd, MMMM d, yyyy")</span>
+                    </div>
+                    lastDate = msgDate;
+                }
                 <div class="message @(msg.IsDeleted ? "deleted" : "")" data-id="@msg.Id">
                     <div class="message-author">@msg.AuthorUsername</div>
                     <div class="message-content">@msg.Content</div>
@@ -80,6 +91,7 @@
         </div>
         <div id="typing-indicator" class="typing-indicator"></div>
         <div class="message-input-area">
+            <div id="mention-list" class="mention-list hidden"></div>
             <div id="emoji-picker" class="emoji-picker hidden"></div>
             <form id="message-form">
                 <button type="button" id="emoji-picker-toggle" class="icon-btn emoji-picker-btn" title="Emojis">😀</button>
@@ -96,6 +108,7 @@
         const channelId = '@Model.ChannelId';
         const serverId = '@Model.ServerId';
         const canDeleteMessages = @((Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator).ToString().ToLower());
+        const memberUsernames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberUsernames));
     </script>
     <script src="~/js/chat.js"></script>
     <script>
@@ -172,5 +185,90 @@
 
         // Expose so chat.js can call it when new real-time messages arrive
         window.applyEmojiRendering = applyEmojiRendering;
+
+        // ── @@mention autocomplete ──────────────────────────────
+        const mentionList = document.getElementById('mention-list');
+        const msgInput = document.getElementById('message-input');
+
+        msgInput.addEventListener('input', () => {
+            const val = msgInput.value;
+            const atIdx = val.lastIndexOf('@@');
+            if (atIdx === -1 || (atIdx > 0 && !/\s/.test(val[atIdx - 1]))) {
+                mentionList.classList.add('hidden');
+                return;
+            }
+            const query = val.slice(atIdx + 1).toLowerCase();
+            const matches = memberUsernames.filter(u => u.toLowerCase().startsWith(query) && query.length >= 0);
+            if (!matches.length || query.includes(' ')) {
+                mentionList.classList.add('hidden');
+                return;
+            }
+            mentionList.innerHTML = '';
+            matches.slice(0, 8).forEach(u => {
+                const item = document.createElement('div');
+                item.className = 'mention-item';
+                item.textContent = '@@' + u;
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    const before = val.slice(0, atIdx);
+                    msgInput.value = before + '@@' + u + ' ';
+                    mentionList.classList.add('hidden');
+                    msgInput.focus();
+                });
+                mentionList.appendChild(item);
+            });
+            mentionList.classList.remove('hidden');
+        });
+
+        msgInput.addEventListener('keydown', (e) => {
+            if (mentionList.classList.contains('hidden')) return;
+            const items = mentionList.querySelectorAll('.mention-item');
+            const active = mentionList.querySelector('.mention-item.active');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const next = active ? active.nextElementSibling : items[0];
+                active?.classList.remove('active');
+                next?.classList.add('active');
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prev = active ? active.previousElementSibling : items[items.length - 1];
+                active?.classList.remove('active');
+                prev?.classList.add('active');
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                if (active) {
+                    e.preventDefault();
+                    active.dispatchEvent(new MouseEvent('mousedown'));
+                }
+            } else if (e.key === 'Escape') {
+                mentionList.classList.add('hidden');
+            }
+        });
+
+        document.addEventListener('click', () => mentionList.classList.add('hidden'));
+
+        // ── Real-time notification badge ───────────────────────
+        const homeBadge = document.querySelector('.home-icon .notif-badge');
+
+        if (typeof connection !== 'undefined') {
+            connection.on('ReceiveNotification', (notif) => {
+                // Increment badge or show it
+                const badge = document.querySelector('.home-icon .notif-badge');
+                if (badge) {
+                    const current = parseInt(badge.textContent) || 0;
+                    badge.textContent = current >= 9 ? '9+' : (current + 1).toString();
+                } else {
+                    const icon = document.querySelector('.home-icon');
+                    if (icon) {
+                        const b = document.createElement('span');
+                        b.className = 'notif-badge';
+                        b.textContent = '1';
+                        icon.appendChild(b);
+                    }
+                }
+                // Brief flash on the badge
+                document.querySelector('.home-icon .notif-badge')?.classList.add('notif-pulse');
+                setTimeout(() => document.querySelector('.home-icon .notif-badge')?.classList.remove('notif-pulse'), 600);
+            });
+        }
     </script>
 }

@@ -30,8 +30,8 @@ namespace peeposredemption.Application.Features.Shop.Commands
                 purchase.Status = PurchaseStatus.Completed;
 
                 var server = await _uow.Servers.GetByIdAsync(purchase.ServerId);
-                if (server != null)
-                    server.StorageTier = StorageTier.Boosted;
+                if (server != null && purchase.TargetTier > server.StorageTier)
+                    server.StorageTier = purchase.TargetTier;
 
                 await _uow.SaveChangesAsync();
             }

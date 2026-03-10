@@ -6,6 +6,10 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
         </svg>
+        @if (Model.UnreadCount > 0)
+        {
+            <span class="notif-badge">@(Model.UnreadCount > 9 ? "9+" : Model.UnreadCount.ToString())</span>
+        }
     </a>
     <div class="server-separator"></div>
 

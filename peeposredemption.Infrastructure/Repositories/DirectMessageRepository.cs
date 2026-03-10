@@ -24,6 +24,17 @@ namespace peeposredemption.Infrastructure.Repositories
                 .Take(pageSize).ToListAsync();
 
         public async Task AddAsync(DirectMessage dm) => await _db.DirectMessages.AddAsync(dm);
+
+        public Task<int> GetUnreadCountAsync(Guid userId) =>
+            _db.DirectMessages.CountAsync(dm => dm.RecipientId == userId && !dm.IsRead);
+
+        public async Task MarkConversationReadAsync(Guid recipientId, Guid senderId)
+        {
+            var unread = await _db.DirectMessages
+                .Where(dm => dm.RecipientId == recipientId && dm.SenderId == senderId && !dm.IsRead)
+                .ToListAsync();
+            foreach (var dm in unread) dm.IsRead = true;
+        }
     }
 
 }
