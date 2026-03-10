@@ -13,15 +13,21 @@ namespace peeposredemption.Infrastructure.Repositories
         private readonly AppDbContext _db;
         public DirectMessageRepository(AppDbContext db) => _db = db;
 
-        public Task<List<DirectMessage>> GetConversationAsync(
-            Guid userA, Guid userB, int page, int pageSize) =>
-            _db.DirectMessages
+        public async Task<List<DirectMessage>> GetConversationAsync(
+            Guid userA, Guid userB, int page, int pageSize)
+        {
+            var rows = await _db.DirectMessages
                 .Where(dm =>
                     (dm.SenderId == userA && dm.RecipientId == userB) ||
                     (dm.SenderId == userB && dm.RecipientId == userA))
                 .OrderByDescending(dm => dm.SentAt).ThenByDescending(dm => dm.Id)
                 .Skip((page - 1) * pageSize)
-                .Take(pageSize).ToListAsync();
+                .Take(pageSize)
+                .ToListAsync();
+
+            rows.Reverse();
+            return rows;
+        }
 
         public async Task AddAsync(DirectMessage dm) => await _db.DirectMessages.AddAsync(dm);
 
