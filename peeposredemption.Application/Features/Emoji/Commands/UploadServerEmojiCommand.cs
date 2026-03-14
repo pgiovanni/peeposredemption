@@ -75,7 +75,7 @@ namespace peeposredemption.Application.Features.Emoji.Commands
             await _uow.ServerEmojis.AddAsync(emoji);
             await _uow.SaveChangesAsync();
 
-            return new ServerEmojiDto(emoji.Id, emoji.Name, emoji.ImageUrl);
+            return new ServerEmojiDto(emoji.Id, emoji.Name, emoji.ImageUrl, emoji.ServerId, "");
         }
     }
 }

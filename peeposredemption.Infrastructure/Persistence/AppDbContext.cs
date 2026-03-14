@@ -24,6 +24,11 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<ReferralCode> ReferralCodes { get; set; }
         public DbSet<ReferralPurchase> ReferralPurchases { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<OrbTransaction> OrbTransactions { get; set; }
+        public DbSet<UserLoginStreak> UserLoginStreaks { get; set; }
+        public DbSet<OrbPurchase> OrbPurchases { get; set; }
+        public DbSet<OrbGift> OrbGifts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -145,6 +150,57 @@ namespace peeposredemption.Infrastructure.Persistence
                 .WithMany(r => r.Purchases)
                 .HasForeignKey(p => p.ReferralCodeId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RefreshToken>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(r => r.Token)
+                .IsUnique();
+
+            // OrbTransaction
+            modelBuilder.Entity<OrbTransaction>()
+                .HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<OrbTransaction>()
+                .HasIndex(t => new { t.UserId, t.CreatedAt });
+
+            // UserLoginStreak — one per user
+            modelBuilder.Entity<UserLoginStreak>()
+                .HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserLoginStreak>()
+                .HasIndex(s => s.UserId)
+                .IsUnique();
+
+            // OrbGift — multiple FKs to Users
+            modelBuilder.Entity<OrbGift>()
+                .HasOne(g => g.Sender)
+                .WithMany()
+                .HasForeignKey(g => g.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrbGift>()
+                .HasOne(g => g.Recipient)
+                .WithMany()
+                .HasForeignKey(g => g.RecipientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // OrbPurchase
+            modelBuilder.Entity<OrbPurchase>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         // Converts PascalCase to snake_case

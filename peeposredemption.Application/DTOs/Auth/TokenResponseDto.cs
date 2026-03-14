@@ -4,5 +4,5 @@ using System.Text;
 
 namespace peeposredemption.Application.DTOs.Auth
 {
-    public record TokenResponseDto(string Token);
+    public record TokenResponseDto(string Token, string RefreshToken);
 }

@@ -1,4 +1,4 @@
 namespace peeposredemption.Application.DTOs.Emoji
 {
-    public record ServerEmojiDto(Guid Id, string Name, string ImageUrl);
+    public record ServerEmojiDto(Guid Id, string Name, string ImageUrl, Guid ServerId, string ServerName);
 }

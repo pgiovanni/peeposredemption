@@ -24,6 +24,11 @@ namespace peeposredemption.Infrastructure
         public IStorageUpgradePurchaseRepository StorageUpgrades { get; }
         public INotificationRepository Notifications { get; }
         public IReferralRepository Referrals { get; }
+        public IRefreshTokenRepository RefreshTokens { get; }
+        public IOrbTransactionRepository OrbTransactions { get; }
+        public IUserLoginStreakRepository UserLoginStreaks { get; }
+        public IOrbPurchaseRepository OrbPurchases { get; }
+        public IOrbGiftRepository OrbGifts { get; }
 
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
@@ -35,7 +40,12 @@ namespace peeposredemption.Infrastructure
             IServerEmojiRepository serverEmojis,
             IStorageUpgradePurchaseRepository storageUpgrades,
             INotificationRepository notifications,
-            IReferralRepository referrals)
+            IReferralRepository referrals,
+            IRefreshTokenRepository refreshTokens,
+            IOrbTransactionRepository orbTransactions,
+            IUserLoginStreakRepository userLoginStreaks,
+            IOrbPurchaseRepository orbPurchases,
+            IOrbGiftRepository orbGifts)
         {
             _db = db;
             Users = users;
@@ -51,6 +61,11 @@ namespace peeposredemption.Infrastructure
             StorageUpgrades = storageUpgrades;
             Notifications = notifications;
             Referrals = referrals;
+            RefreshTokens = refreshTokens;
+            OrbTransactions = orbTransactions;
+            UserLoginStreaks = userLoginStreaks;
+            OrbPurchases = orbPurchases;
+            OrbGifts = orbGifts;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

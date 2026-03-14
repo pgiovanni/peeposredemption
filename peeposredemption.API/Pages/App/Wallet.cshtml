@@ -1,0 +1,84 @@
+@page
+@model peeposredemption.API.Pages.App.WalletModel
+@{
+    ViewData["Title"] = "Wallet";
+}
+
+<div class="app-shell">
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>Wallet</span>
+        </div>
+        <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
+        <a href="/App/OrbShop" class="dm-item">Orb Shop</a>
+    </div>
+
+    <div class="content-area">
+        <div class="content-header">
+            <span class="orb-icon">&#x1F7E1;</span>
+            <span>Wallet</span>
+        </div>
+
+        <div class="wallet-container">
+            @if (Model.JustPurchased)
+            {
+                <div class="wallet-success">Orbs purchased successfully! Your balance has been updated.</div>
+            }
+
+            <div class="wallet-summary">
+                <div class="wallet-balance-card">
+                    <div class="wallet-balance-label">Balance</div>
+                    <div class="wallet-balance-value">
+                        <span class="orb-icon-lg">&#x1F7E1;</span>
+                        <span>@Model.OrbBalance</span>
+                    </div>
+                </div>
+                <div class="wallet-stat-card">
+                    <div class="wallet-stat-label">Current Streak</div>
+                    <div class="wallet-stat-value">&#x1F525; @Model.CurrentStreak days</div>
+                </div>
+                <div class="wallet-stat-card">
+                    <div class="wallet-stat-label">Best Streak</div>
+                    <div class="wallet-stat-value">&#x1F3C6; @Model.LongestStreak days</div>
+                </div>
+            </div>
+
+            <h3 class="wallet-section-title">Transaction History</h3>
+            @if (Model.Transactions.Any())
+            {
+                <div class="transaction-table">
+                    <div class="transaction-header">
+                        <span>Type</span>
+                        <span>Description</span>
+                        <span>Amount</span>
+                        <span>Date</span>
+                    </div>
+                    @foreach (var tx in Model.Transactions)
+                    {
+                        <div class="transaction-row @(tx.Amount > 0 ? "credit" : "debit")">
+                            <span class="transaction-type">@tx.Type</span>
+                            <span class="transaction-desc">@tx.Description</span>
+                            <span class="transaction-amount">@(tx.Amount > 0 ? "+" : "")@tx.Amount</span>
+                            <span class="transaction-date" data-time="@tx.CreatedAt.ToString("o")"></span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="wallet-empty">No transactions yet. Claim your daily orbs or start chatting to earn!</div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.transaction-date[data-time]').forEach(el => {
+            const d = new Date(el.dataset.time);
+            el.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        });
+    </script>
+}

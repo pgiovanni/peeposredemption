@@ -7,5 +7,6 @@ namespace peeposredemption.Application.Services
     public interface IStripeService
     {
         Task<StripeCheckoutResult> CreateStorageUpgradeSessionAsync(Guid serverId, string serverName, StorageTier targetTier, string successUrl, string cancelUrl);
+        Task<StripeCheckoutResult> CreateOrbPurchaseSessionAsync(Guid userId, int orbAmount, long priceCents, string successUrl, string cancelUrl);
     }
 }

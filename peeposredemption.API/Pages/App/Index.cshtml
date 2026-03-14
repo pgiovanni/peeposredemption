@@ -68,10 +68,15 @@
             <div class="sidebar-section-header">FRIENDS</div>
             @foreach (var friend in Model.Friends)
             {
+                var dmUnread = Model.ServerList.DmUnreadCounts.GetValueOrDefault(friend.Id, 0);
                 <a href="/App/Index?friendId=@friend.Id"
                    class="dm-item @(Model.ActiveFriendId == friend.Id ? "active" : "")">
                     <div class="friend-avatar">@friend.Username.Substring(0, 1).ToUpper()</div>
                     <span>@friend.Username</span>
+                    @if (dmUnread > 0)
+                    {
+                        <span class="notif-badge">@(dmUnread > 9 ? "9+" : dmUnread.ToString())</span>
+                    }
                 </a>
             }
         }
@@ -114,6 +119,26 @@
                 <div class="welcome-icon">👋</div>
                 <h2>Welcome to Torvex</h2>
                 <p>Add friends and start chatting, or join a server on the left.</p>
+
+                <!-- Daily Orbs Claim -->
+                <div class="orb-claim-section">
+                    <div class="orb-balance-display">
+                        <span class="orb-icon-lg">&#x1F7E1;</span>
+                        <span class="orb-balance-amount" id="orb-balance-home">@Model.OrbBalance</span>
+                        <span class="orb-balance-label">Orbs</span>
+                    </div>
+                    <div class="streak-display">
+                        <span>&#x1F525; @Model.CurrentStreak day streak</span>
+                    </div>
+                    <button id="claim-daily-btn" class="btn-primary btn-daily-claim @(Model.ClaimedToday ? "claimed" : "")"
+                            @(Model.ClaimedToday ? "disabled" : "")>
+                        @(Model.ClaimedToday ? "Claimed Today" : "Claim Daily Orbs")
+                    </button>
+                    <div class="orb-links">
+                        <a href="/App/OrbShop" class="btn-secondary btn-sm">Orb Shop</a>
+                        <a href="/App/Wallet" class="btn-secondary btn-sm">Wallet</a>
+                    </div>
+                </div>
             </div>
         }
     </div>
@@ -134,5 +159,31 @@
         const toggle = document.getElementById('add-friend-toggle');
         const section = document.getElementById('add-friend-section');
         toggle.addEventListener('click', () => section.classList.toggle('hidden'));
+
+        // Daily claim
+        const claimBtn = document.getElementById('claim-daily-btn');
+        if (claimBtn && !claimBtn.disabled) {
+            claimBtn.addEventListener('click', async () => {
+                claimBtn.disabled = true;
+                claimBtn.textContent = 'Claiming...';
+                try {
+                    const resp = await fetch('/api/orbs/daily-claim', { method: 'POST' });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        claimBtn.textContent = `+${data.orbsAwarded} Orbs!`;
+                        claimBtn.classList.add('claimed');
+                        document.getElementById('orb-balance-home').textContent = data.newBalance;
+                        document.querySelector('.streak-display span').innerHTML = `&#x1F525; ${data.currentStreak} day streak`;
+                    } else {
+                        const err = await resp.json();
+                        claimBtn.textContent = err.error || 'Already claimed';
+                        claimBtn.classList.add('claimed');
+                    }
+                } catch {
+                    claimBtn.textContent = 'Error — try again';
+                    claimBtn.disabled = false;
+                }
+            });
+        }
     </script>
 }

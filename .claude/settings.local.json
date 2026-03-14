@@ -29,7 +29,23 @@
       "Bash(scp:*)",
       "Bash(nslookup:*)",
       "Bash(powershell:*)",
-      "Bash(dotnet:*)"
+      "Bash(dotnet:*)",
+      "Bash(rm:*)",
+      "Bash(git:*)",
+      "Bash(ls:*)",
+      "Bash(xargs grep:*)",
+      "Bash(stripe version:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "WebFetch(domain:docs.klipy.com)",
+      "WebFetch(domain:klipy.com)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:commons.wikimedia.org)",
+      "WebFetch(domain:opengameart.org)",
+      "Bash(unzip:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "WebFetch(domain:freesvg.org)"
     ]
   }
 }

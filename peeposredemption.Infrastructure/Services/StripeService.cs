@@ -58,5 +58,44 @@ namespace peeposredemption.Infrastructure.Services
             var session = await service.CreateAsync(options);
             return new StripeCheckoutResult(session.Id, session.Url);
         }
+
+        public async Task<StripeCheckoutResult> CreateOrbPurchaseSessionAsync(
+            Guid userId, int orbAmount, long priceCents, string successUrl, string cancelUrl)
+        {
+            var options = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = "usd",
+                            UnitAmount = priceCents,
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = $"{orbAmount} Orbs",
+                                Description = $"Purchase {orbAmount} orbs for your Torvex account."
+                            }
+                        },
+                        Quantity = 1
+                    }
+                },
+                Mode = "payment",
+                SuccessUrl = successUrl,
+                CancelUrl = cancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    { "type", "orb_purchase" },
+                    { "userId", userId.ToString() }
+                },
+                AutomaticTax = new SessionAutomaticTaxOptions { Enabled = true }
+            };
+
+            var service = new SessionService();
+            var session = await service.CreateAsync(options);
+            return new StripeCheckoutResult(session.Id, session.Url);
+        }
     }
 }

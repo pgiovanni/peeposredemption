@@ -14,7 +14,7 @@ namespace peeposredemption.Application.Features.Emoji.Queries
         public async Task<List<ServerEmojiDto>> Handle(GetServerEmojisQuery query, CancellationToken ct)
         {
             var emojis = await _uow.ServerEmojis.GetByServerIdAsync(query.ServerId);
-            return emojis.Select(e => new ServerEmojiDto(e.Id, e.Name, e.ImageUrl)).ToList();
+            return emojis.Select(e => new ServerEmojiDto(e.Id, e.Name, e.ImageUrl, e.ServerId, "")).ToList();
         }
     }
 }

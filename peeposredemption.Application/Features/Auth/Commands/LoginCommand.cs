@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using peeposredemption.Application.DTOs.Auth;
 using peeposredemption.Application.Services;
+using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -32,7 +33,18 @@ namespace peeposredemption.Application.Features.Auth.Commands
             if (!user.EmailConfirmed)
                 throw new UnauthorizedAccessException("Please confirm your email before logging in.");
 
-            return new TokenResponseDto(_tokenService.GenerateToken(user));
+            var jwt = _tokenService.GenerateToken(user);
+            var rawRefresh = _tokenService.GenerateRefreshToken();
+
+            await _uow.RefreshTokens.AddAsync(new RefreshToken
+            {
+                UserId = user.Id,
+                Token = TokenService.HashToken(rawRefresh),
+                ExpiresAt = DateTime.UtcNow.AddDays(30)
+            });
+            await _uow.SaveChangesAsync();
+
+            return new TokenResponseDto(jwt, rawRefresh);
         }
     }
 }
