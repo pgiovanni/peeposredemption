@@ -87,11 +87,14 @@
         }
     </div>
 
+    <div class="sidebar-backdrop"></div>
+
     <!-- Col 3: DM conversation or welcome -->
     <div class="content-area">
         @if (Model.ActiveFriend != null)
         {
             <div class="content-header">
+                <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
                 <div class="friend-avatar">@Model.ActiveFriend.Username.Substring(0, 1).ToUpper()</div>
                 <span>@Model.ActiveFriend.Username</span>
             </div>
@@ -115,6 +118,10 @@
         }
         else
         {
+            <div class="content-header mobile-only-header">
+                <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+                <span>Home</span>
+            </div>
             <div class="welcome-screen">
                 <div class="welcome-icon">👋</div>
                 <h2>Welcome to Torvex</h2>
@@ -123,7 +130,7 @@
                 <!-- Daily Orbs Claim -->
                 <div class="orb-claim-section">
                     <div class="orb-balance-display">
-                        <span class="orb-icon-lg">&#x1F7E1;</span>
+                        <span class="orb-icon-lg"></span>
                         <span class="orb-balance-amount" id="orb-balance-home">@Model.OrbBalance</span>
                         <span class="orb-balance-label">Orbs</span>
                     </div>

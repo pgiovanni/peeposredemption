@@ -12,6 +12,37 @@
     @RenderBody()
     <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@@twemoji/api@@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const shell = document.querySelector('.app-shell');
+            if (!shell) return;
+
+            const menuBtn = shell.querySelector('.mobile-menu-btn');
+            const backdrop = shell.querySelector('.sidebar-backdrop');
+
+            if (menuBtn) {
+                menuBtn.addEventListener('click', () => shell.classList.toggle('sidebar-open'));
+            }
+            if (backdrop) {
+                backdrop.addEventListener('click', () => shell.classList.remove('sidebar-open'));
+            }
+
+            // Close sidebar when navigating (clicking a channel/server/friend)
+            shell.querySelectorAll('.channel-item, .dm-item, .server-icon').forEach(el => {
+                el.addEventListener('click', () => shell.classList.remove('sidebar-open'));
+            });
+
+            // Swipe to close sidebar
+            let touchStartX = 0;
+            document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+            document.addEventListener('touchend', e => {
+                const dx = e.changedTouches[0].clientX - touchStartX;
+                if (dx < -60 && shell.classList.contains('sidebar-open')) {
+                    shell.classList.remove('sidebar-open');
+                }
+            }, { passive: true });
+        });
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

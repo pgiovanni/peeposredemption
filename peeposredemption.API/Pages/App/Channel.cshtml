@@ -58,13 +58,16 @@
         }
     </div>
 
+    <div class="sidebar-backdrop"></div>
+
     <!-- Col 3: Messages -->
     <div class="content-area">
         <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
             <span class="channel-hash">#</span>
             <span>@Model.ChannelName</span>
             <a href="/App/Wallet" class="orb-balance" title="View Wallet" style="margin-left:auto">
-                <span class="orb-icon">&#x1F7E1;</span>
+                <span class="orb-icon"></span>
                 <span id="orb-count">@Model.OrbBalance</span>
             </a>
             <button id="notif-mute-toggle" class="icon-btn" title="Toggle notification sound">🔔</button>
@@ -108,7 +111,7 @@
             <!-- Gift modal -->
             <div id="gift-modal" class="gift-modal hidden">
                 <div class="gift-modal-header">Send Orbs</div>
-                <div class="gift-modal-balance">Your balance: <span class="orb-icon">&#x1F7E1;</span> <span id="gift-modal-balance">@Model.OrbBalance</span></div>
+                <div class="gift-modal-balance">Your balance: <span class="orb-icon"></span> <span id="gift-modal-balance">@Model.OrbBalance</span></div>
                 <label>To:</label>
                 <select id="gift-recipient" class="gift-input">
                     @foreach (var username in Model.MemberUsernames)
@@ -604,7 +607,7 @@
                 giftMsg.innerHTML = `<div class="gift-message-content">` +
                     `<span class="orb-icon">&#x1F381;</span> ` +
                     `<strong>${data.senderUsername}</strong> gifted ` +
-                    `<span class="orb-icon">&#x1F7E1;</span> ${data.amount} orbs to ` +
+                    `<span class="orb-icon"></span> ${data.amount} orbs to ` +
                     `<strong>${data.recipientUsername}</strong>` +
                     `${data.message ? ' — "' + data.message + '"' : ''}` +
                     `</div>`;
@@ -636,8 +639,7 @@
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'gift-particle';
-                particle.textContent = '&#x1F7E1;';
-                particle.innerHTML = '&#x1F7E1;';
+                particle.innerHTML = '<span class="orb-icon"></span>';
                 particle.style.left = (30 + Math.random() * 40) + '%';
                 particle.style.animationDelay = (Math.random() * 0.5) + 's';
                 particle.style.animationDuration = (1 + Math.random()) + 's';

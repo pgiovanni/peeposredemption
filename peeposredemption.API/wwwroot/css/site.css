@@ -3,6 +3,7 @@
 
 html, body {
     height: 100%;
+    height: 100dvh;
     background: #313338;
     color: #dcddde;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -17,6 +18,7 @@ button { cursor: pointer; font-family: inherit; }
 .app-shell {
     display: flex;
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
     overflow: hidden;
 }
@@ -1027,8 +1029,20 @@ img.emoji {
     transition: background 0.15s;
 }
 .orb-balance:hover { background: rgba(255, 183, 0, 0.22); }
-.orb-icon { font-size: 16px; }
-.orb-icon-lg { font-size: 32px; }
+.orb-icon {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    background: url('/images/orb.png') center/contain no-repeat;
+    vertical-align: middle;
+}
+.orb-icon-lg {
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+    background: url('/images/orb.png') center/contain no-repeat;
+    vertical-align: middle;
+}
 
 /* Daily claim section on home page */
 .orb-claim-section {
@@ -1290,3 +1304,134 @@ img.emoji {
 .gift-particle:nth-child(3n) { --r: 0.5; font-size: 24px; }
 .gift-particle:nth-child(5n) { --r: 0.1; }
 .gift-particle:nth-child(7n) { --r: 0.9; }
+
+/* ===== MOBILE MENU BUTTON ===== */
+.mobile-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: #dcddde;
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    padding: 0;
+}
+.mobile-menu-btn:hover { background: #35373c; }
+
+.mobile-only-header { display: none; }
+
+/* ===== SIDEBAR BACKDROP (mobile) ===== */
+.sidebar-backdrop {
+    display: none;
+}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .mobile-menu-btn { display: flex; }
+    .mobile-only-header { display: flex; }
+
+    .app-shell { position: relative; }
+
+    #server-list {
+        position: fixed;
+        top: 0;
+        left: -72px;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 200;
+        transition: left 0.2s ease;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -240px;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 199;
+        transition: left 0.2s ease;
+    }
+
+    .app-shell.sidebar-open #server-list { left: 0; }
+    .app-shell.sidebar-open .sidebar { left: 72px; }
+
+    .sidebar-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 198;
+    }
+
+    .app-shell.sidebar-open .sidebar-backdrop { display: block; }
+
+    .content-area {
+        width: 100vw;
+        min-width: 100vw;
+    }
+
+    /* Pickers: full-width on mobile */
+    .emoji-picker {
+        width: calc(100vw - 32px);
+        left: 16px;
+        max-height: 50vh;
+    }
+
+    .gif-picker {
+        width: calc(100vw - 32px);
+        left: 16px;
+        max-height: 50vh;
+    }
+
+    .gift-modal {
+        width: calc(100vw - 32px);
+        left: 16px;
+    }
+
+    .mention-list {
+        left: 16px;
+        max-width: calc(100vw - 32px);
+    }
+
+    /* Message input: tighter padding */
+    .message-input-area { padding: 0 8px 12px; }
+
+    /* Embedded images: constrain to viewport */
+    .embedded-gif { max-width: 100%; }
+
+    /* Orb shop cards: stack vertically */
+    .shop-grid {
+        grid-template-columns: 1fr;
+        max-width: 100%;
+    }
+
+    .shop-container, .wallet-container { padding: 16px; }
+
+    /* Wallet summary: stack vertically */
+    .wallet-summary {
+        grid-template-columns: 1fr;
+        max-width: 100%;
+    }
+
+    /* Transaction table: horizontal scroll */
+    .transaction-table { overflow-x: auto; max-width: 100%; }
+    .transaction-header, .transaction-row { min-width: 520px; }
+
+    /* Welcome screen: smaller padding */
+    .welcome-screen { padding: 16px; }
+    .welcome-screen h2 { font-size: 20px; }
+
+    /* Modal: responsive */
+    .modal-content {
+        width: calc(100vw - 32px);
+        max-width: 440px;
+        padding: 24px;
+    }
+
+    /* Auth pages: responsive */
+    .auth-container { margin: 16px; }
+}
