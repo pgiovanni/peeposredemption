@@ -34,7 +34,7 @@ namespace peeposredemption.Application.Features.Auth.Commands
             }
 
             var baseUrl = _config["AppBaseUrl"] ?? "https://localhost:443";
-            var confirmationLink = $"{baseUrl}/Auth/Confirm?token={user.EmailConfirmationtoken}";
+            var confirmationLink = $"{baseUrl}/Auth/ConfirmEmail?token={user.EmailConfirmationtoken}";
             _logger.LogInformation("Sending confirmation email to {Email} via {BaseUrl}", user.Email, baseUrl);
             await _emailService.SendConfirmationEmailAsync(user.Email, confirmationLink);
 

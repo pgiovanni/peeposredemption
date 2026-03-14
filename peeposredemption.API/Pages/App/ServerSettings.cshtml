@@ -8,12 +8,18 @@
 <div class="app-shell">
     <div class="sidebar">
         <div class="sidebar-header">
-            <a href="javascript:history.back()" class="icon-btn" title="Back">←</a>
             <span>Server Settings</span>
         </div>
+        <a href="javascript:history.back()" class="dm-item">&#x2190; Back to Server</a>
     </div>
 
+    <div class="sidebar-backdrop"></div>
+
     <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Server Settings</span>
+        </div>
 
         @if (Model.StatusMessage != null)
         {

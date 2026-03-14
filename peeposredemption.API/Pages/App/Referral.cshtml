@@ -7,14 +7,24 @@
 }
 
 <div class="app-shell">
+    <partial name="_ServerList" model="Model.ServerList" />
+
     <div class="sidebar">
         <div class="sidebar-header">
-            <a href="/App/Index" class="icon-btn" title="Back">←</a>
             <span>Referral</span>
         </div>
+        <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
+        <a href="/App/OrbShop" class="dm-item">Orb Shop</a>
+        <a href="/App/Wallet" class="dm-item">Wallet</a>
     </div>
 
+    <div class="sidebar-backdrop"></div>
+
     <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Referral</span>
+        </div>
         <section class="settings-section">
             <h3 class="settings-heading">YOUR REFERRAL LINK</h3>
             <p class="referral-desc">Share this link. When someone registers through it and makes a purchase, you earn 20% commission (paid out manually).</p>

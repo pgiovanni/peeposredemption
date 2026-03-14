@@ -4,10 +4,10 @@ using peeposredemption.Domain.Interfaces;
 
 namespace peeposredemption.API.Pages.Auth
 {
-    public class ConfirmModel : PageModel
+    public class ConfirmEmailModel : PageModel
     {
         private readonly IUnitOfWork _uow;
-        public ConfirmModel(IUnitOfWork uow) => _uow = uow;
+        public ConfirmEmailModel(IUnitOfWork uow) => _uow = uow;
 
         public async Task<IActionResult> OnGetAsync(string token)
         {
