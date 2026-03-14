@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace peeposredemption.Application.Services
@@ -32,6 +33,19 @@ namespace peeposredemption.Application.Services
                 claims: claims,
                 signingCredentials: creds);
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public string GenerateRefreshToken()
+        {
+            var bytes = RandomNumberGenerator.GetBytes(64);
+            return Convert.ToBase64String(bytes)
+                .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+        }
+
+        public static string HashToken(string rawToken)
+        {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));
+            return Convert.ToHexString(bytes);
         }
     }
 }

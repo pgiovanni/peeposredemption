@@ -6,6 +6,7 @@
     <title>@ViewData["Title"] - Torvex</title>
     <link rel="stylesheet" href="~/css/site.css" />
     <meta name="jwt" content="@Context.Request.Cookies["jwt"]" />
+    <meta name="gif-key" content="@(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(Context.RequestServices)["Klipy:ApiKey"])" />
 </head>
 <body>
     @RenderBody()

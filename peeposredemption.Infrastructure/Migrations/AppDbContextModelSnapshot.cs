@@ -303,6 +303,135 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.ToTable("notifications");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.OrbGift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid?>("ChannelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("channel_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("text")
+                        .HasColumnName("message");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_id");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_id");
+
+                    b.Property<Guid?>("ServerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("server_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_orb_gifts");
+
+                    b.HasIndex("RecipientId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("orb_gifts");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.OrbPurchase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("OrbAmount")
+                        .HasColumnType("integer")
+                        .HasColumnName("orb_amount");
+
+                    b.Property<long>("PriceCents")
+                        .HasColumnType("bigint")
+                        .HasColumnName("price_cents");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StripeSessionId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("stripe_session_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_orb_purchases");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("orb_purchases");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.OrbTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<Guid?>("RelatedEntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("related_entity_id");
+
+                    b.Property<Guid?>("RelatedUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("related_user_id");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_orb_transactions");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("orb_transactions");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.ReferralCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -371,6 +500,49 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("ReferralCodeId");
 
                     b.ToTable("referral_purchases");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_revoked");
+
+                    b.Property<string>("ReplacedByTokenId")
+                        .HasColumnType("text")
+                        .HasColumnName("replaced_by_token_id");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("token");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_refresh_tokens");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("refresh_tokens");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Server", b =>
@@ -581,6 +753,10 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("email_confirmed");
 
+                    b.Property<long>("OrbBalance")
+                        .HasColumnType("bigint")
+                        .HasColumnName("orb_balance");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
@@ -602,6 +778,50 @@ namespace peeposredemption.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("users");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.UserLoginStreak", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("CurrentStreak")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_streak");
+
+                    b.Property<DateTime?>("LastClaimedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_claimed_date");
+
+                    b.Property<int>("LongestStreak")
+                        .HasColumnType("integer")
+                        .HasColumnName("longest_streak");
+
+                    b.Property<DateTime?>("MessageCountDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("message_count_date");
+
+                    b.Property<int>("MessageCountToday")
+                        .HasColumnType("integer")
+                        .HasColumnName("message_count_today");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_user_login_streaks");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("user_login_streaks");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.BannedMember", b =>
@@ -758,6 +978,51 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.OrbGift", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "Recipient")
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_orb_gifts__users_recipient_id");
+
+                    b.HasOne("peeposredemption.Domain.Entities.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_orb_gifts__users_sender_id");
+
+                    b.Navigation("Recipient");
+
+                    b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.OrbPurchase", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_orb_purchases__users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.OrbTransaction", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_orb_transactions__users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.ReferralCode", b =>
                 {
                     b.HasOne("peeposredemption.Domain.Entities.User", "Owner")
@@ -789,6 +1054,18 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("Purchaser");
 
                     b.Navigation("ReferralCode");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_refresh_tokens__users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Server", b =>
@@ -876,6 +1153,18 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasConstraintName("f_k_storage_upgrade_purchases_servers_server_id");
 
                     b.Navigation("Server");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.UserLoginStreak", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_user_login_streaks_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Channel", b =>

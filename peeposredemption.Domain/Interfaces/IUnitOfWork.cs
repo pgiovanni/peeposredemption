@@ -20,6 +20,11 @@ namespace peeposredemption.Domain.Interfaces
         IStorageUpgradePurchaseRepository StorageUpgrades { get; }
         INotificationRepository Notifications { get; }
         IReferralRepository Referrals { get; }
+        IRefreshTokenRepository RefreshTokens { get; }
+        IOrbTransactionRepository OrbTransactions { get; }
+        IUserLoginStreakRepository UserLoginStreaks { get; }
+        IOrbPurchaseRepository OrbPurchases { get; }
+        IOrbGiftRepository OrbGifts { get; }
         Task<int> SaveChangesAsync();
     }
 

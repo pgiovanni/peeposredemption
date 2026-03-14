@@ -1,0 +1,97 @@
+@page
+@model peeposredemption.API.Pages.App.OrbShopModel
+@{
+    ViewData["Title"] = "Orb Shop";
+}
+
+<div class="app-shell">
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>Orb Shop</span>
+        </div>
+        <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
+        <a href="/App/Wallet" class="dm-item">Wallet</a>
+    </div>
+
+    <div class="content-area">
+        <div class="content-header">
+            <span class="orb-icon">&#x1F7E1;</span>
+            <span>Orb Shop</span>
+            <span class="orb-balance" style="margin-left:auto">
+                <span class="orb-icon">&#x1F7E1;</span>
+                <span>@Model.OrbBalance</span>
+            </span>
+        </div>
+
+        <div class="shop-container">
+            <h2 class="shop-title">Buy Orbs</h2>
+            <p class="shop-subtitle">Support Torvex and get orbs instantly. Everything is also earnable for free through grinding!</p>
+
+            <div class="shop-grid">
+                <div class="shop-card">
+                    <div class="shop-card-orbs">&#x1F7E1; 100</div>
+                    <div class="shop-card-name">Starter Pack</div>
+                    <div class="shop-card-price">$0.99</div>
+                    <button class="btn-primary buy-orbs-btn" data-tier="0">Buy Now</button>
+                </div>
+                <div class="shop-card popular">
+                    <div class="shop-card-badge">Best Value</div>
+                    <div class="shop-card-orbs">&#x1F7E1; 600</div>
+                    <div class="shop-card-name">Value Pack</div>
+                    <div class="shop-card-price">$4.99</div>
+                    <button class="btn-primary buy-orbs-btn" data-tier="1">Buy Now</button>
+                </div>
+                <div class="shop-card">
+                    <div class="shop-card-orbs">&#x1F7E1; 1,500</div>
+                    <div class="shop-card-name">Mega Pack</div>
+                    <div class="shop-card-price">$9.99</div>
+                    <button class="btn-primary buy-orbs-btn" data-tier="2">Buy Now</button>
+                </div>
+            </div>
+
+            <div class="shop-earn-section">
+                <h3>Earn Orbs Free</h3>
+                <div class="earn-methods">
+                    <div class="earn-method">
+                        <span class="earn-icon">&#x1F4C5;</span>
+                        <span><strong>Daily Login</strong> — 10 orbs/day + streak bonuses (+50 at 7 days, +200 at 30 days)</span>
+                    </div>
+                    <div class="earn-method">
+                        <span class="earn-icon">&#x1F4AC;</span>
+                        <span><strong>Chat</strong> — 1 orb per 10 messages (up to 50 orbs/day)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.buy-orbs-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                btn.textContent = 'Redirecting...';
+                try {
+                    const resp = await fetch('/api/orbs/purchase', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tier: parseInt(btn.dataset.tier) })
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        window.location.href = data.url;
+                    } else {
+                        btn.textContent = 'Error — try again';
+                        btn.disabled = false;
+                    }
+                } catch {
+                    btn.textContent = 'Error — try again';
+                    btn.disabled = false;
+                }
+            });
+        });
+    </script>
+}

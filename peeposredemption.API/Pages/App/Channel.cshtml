@@ -63,6 +63,11 @@
         <div class="content-header">
             <span class="channel-hash">#</span>
             <span>@Model.ChannelName</span>
+            <a href="/App/Wallet" class="orb-balance" title="View Wallet" style="margin-left:auto">
+                <span class="orb-icon">&#x1F7E1;</span>
+                <span id="orb-count">@Model.OrbBalance</span>
+            </a>
+            <button id="notif-mute-toggle" class="icon-btn" title="Toggle notification sound">🔔</button>
         </div>
         <div id="messages" class="messages-container">
             @{
@@ -93,13 +98,46 @@
         <div class="message-input-area">
             <div id="mention-list" class="mention-list hidden"></div>
             <div id="emoji-picker" class="emoji-picker hidden"></div>
+            <div id="gif-picker" class="gif-picker hidden">
+                <div class="gif-picker-header">
+                    <input type="text" id="gif-search" class="emoji-search" placeholder="Search GIFs..." />
+                </div>
+                <div id="gif-grid" class="gif-grid"></div>
+                <div class="gif-attribution">Powered by KLIPY</div>
+            </div>
+            <!-- Gift modal -->
+            <div id="gift-modal" class="gift-modal hidden">
+                <div class="gift-modal-header">Send Orbs</div>
+                <div class="gift-modal-balance">Your balance: <span class="orb-icon">&#x1F7E1;</span> <span id="gift-modal-balance">@Model.OrbBalance</span></div>
+                <label>To:</label>
+                <select id="gift-recipient" class="gift-input">
+                    @foreach (var username in Model.MemberUsernames)
+                    {
+                        <option value="@username">@username</option>
+                    }
+                </select>
+                <label>Amount:</label>
+                <input type="number" id="gift-amount" class="gift-input" min="1" placeholder="Amount" />
+                <label>Message (optional):</label>
+                <input type="text" id="gift-message" class="gift-input" placeholder="Nice work!" maxlength="100" autocomplete="off" />
+                <div id="gift-error" class="gift-error hidden"></div>
+                <div class="gift-modal-actions">
+                    <button id="gift-cancel" class="btn-secondary btn-sm">Cancel</button>
+                    <button id="gift-send" class="btn-primary btn-sm">Send Gift</button>
+                </div>
+            </div>
             <form id="message-form">
                 <button type="button" id="emoji-picker-toggle" class="icon-btn emoji-picker-btn" title="Emojis">😀</button>
+                <button type="button" id="gif-picker-toggle" class="icon-btn emoji-picker-btn" title="GIFs">GIF</button>
+                <button type="button" id="gift-toggle" class="icon-btn emoji-picker-btn" title="Gift Orbs">&#x1F381;</button>
                 <input id="message-input" type="text" placeholder="Message #@Model.ChannelName..." autocomplete="off" />
                 <button type="submit">Send</button>
             </form>
         </div>
     </div>
+
+    <!-- Gift animation container -->
+    <div id="gift-animation-container" class="gift-animation-container"></div>
 
 </div>
 
@@ -119,15 +157,25 @@
             document.getElementById('add-channel-section').classList.toggle('hidden');
         });
 
-        // Emoji rendering and picker
-        let serverEmojis = [];
+        // Emoji rendering and picker — cross-server
+        let allEmojis = []; // all emojis from all user servers
+        let emojiMap = new Map(); // name → emoji (current server wins)
+
+        function buildEmojiMap() {
+            emojiMap.clear();
+            // Current server emojis take priority — add them last so they overwrite
+            const otherServer = allEmojis.filter(e => e.serverId !== serverId);
+            const thisServer = allEmojis.filter(e => e.serverId === serverId);
+            otherServer.forEach(e => emojiMap.set(e.name, e));
+            thisServer.forEach(e => emojiMap.set(e.name, e));
+        }
 
         function renderEmojis(text) {
-            if (!serverEmojis.length) return text;
+            if (!emojiMap.size) return text;
             return text.replace(/:([a-z0-9_]{2,32}):/g, (match, name) => {
-                const emoji = serverEmojis.find(e => e.name === name);
+                const emoji = emojiMap.get(name);
                 if (!emoji) return match;
-                return `<img src="${emoji.imageUrl}" alt=":${name}:" class="inline-emoji" title=":${name}:" />`;
+                return `<img src="${emoji.imageUrl}" alt=":${name}:" class="inline-emoji" title=":${name}: (${emoji.serverName})" />`;
             });
         }
 
@@ -137,29 +185,170 @@
                     el.innerHTML = renderEmojis(el.textContent);
                     el.dataset.emojiRendered = '1';
                 }
+                // Twemoji: replace unicode emoji with CDN images
+                if (window.twemoji) twemoji.parse(el, { folder: 'svg', ext: '.svg' });
             });
+            // Also embed GIFs / images in messages
+            if (typeof window.applyGifEmbedding === 'function') window.applyGifEmbedding();
+        }
+
+        const unicodeEmojis = {
+            'Smileys': ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🫡','🤐','🤨','😐','😑','😶','🫥','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','🫤','😟','🙁','☹️','😮','😯','😲','😳','🥺','🥹','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
+            'Gestures': ['👋','🤚','🖐️','✋','🖖','🫱','🫲','🫳','🫴','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🧠','🫀','🫁','🦷','🦴','👀','👁️','👅','👄'],
+            'People': ['👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷','👮','🕵️','💂','🥷','👷','🫅','🤴','👸','👳','👲','🧕','🤵','👰','🤰','🫃','🫄','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧛','🧜','🧝','🧞','🧟','🧌','💆','💇','🚶','🧍','🧎','🏃','💃','🕺','👯','🧖','🧗','🤸','⛹️','🏋️','🚴','🚵','🤼','🤽','🤾','🤺','⛷️','🏂','🏌️','🏇','🏊','🤹'],
+            'Animals': ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐻‍❄️','🐨','🐯','🦁','🐮','🐷','🐽','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🫎','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🪰','🪲','🪳','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🪸','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🪽','🐊','🐅','🐆','🦓','🫏','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🫎','🐕','🐩','🦮','🐕‍🦺','🐈','🐈‍⬛','🪶','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿️','🦔'],
+            'Food': ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🫑','🥬','🥒','🌶️','🫒','🧄','🧅','🌽','🥕','🫘','🥔','🍠','🫚','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🥫','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥠','🥮','🍢','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🥛','🫗','🍼','🫖','☕','🍵','🧃','🥤','🧋','🍶','🍺','🍻','🥂','🍷','🫙','🥃','🍸','🍹','🧉','🍾','🧊','🥄','🍽️','🥣','🥡','🥢','🧂'],
+            'Travel': ['🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🛵','🏍️','🛺','🚲','🛴','🛹','🛼','🚏','🛣️','🛤️','⛽','🛞','🚨','🚥','🚦','🛑','🚧','⚓','🛟','⛵','🚤','🛳️','⛴️','🛥️','🚢','✈️','🛩️','🛫','🛬','🪂','💺','🚁','🚟','🚠','🚡','🛰️','🚀','🛸','🌍','🌎','🌏','🗺️','🧭','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🏟️','🏛️','🏗️','🧱','🪨','🪵','🛖','🏘️','🏚️','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','🌁','🌃','🏙️','🌄','🌅','🌆','🌇','🌉','🎠','🛝','🎡','🎢','💈','🎪','🚂','🚃','🚄','🚅','🚆','🚇','🚈','🚉','🚊','🚝','🚞'],
+            'Objects': ['⌚','📱','📲','💻','⌨️','🖥️','🖨️','🖱️','🖲️','🕹️','🗜️','💽','💾','💿','📀','📼','📷','📸','📹','🎥','📽️','🎞️','📞','☎️','📟','📠','📺','📻','🎙️','🎚️','🎛️','🧭','⏱️','⏲️','⏰','🕰️','⌛','⏳','📡','🔋','🪫','🔌','💡','🔦','🕯️','🪔','🧯','🗑️','🛢️','💸','💵','💴','💶','💷','🪙','💰','💳','🪪','💎','⚖️','🪜','🧰','🪛','🔧','🔨','⚒️','🛠️','⛏️','🪚','🔩','⚙️','🪤','🧱','⛓️','🧲','🔫','💣','🧨','🪓','🔪','🗡️','⚔️','🛡️','🚬','⚰️','🪦','⚱️','🏺','🔮','📿','🧿','🪬','💈','⚗️','🔭','🔬','🕳️','🩹','🩺','🩻','🩼','💊','💉','🩸','🧬','🦠','🧫','🧪','🌡️','🧹','🪠','🧺','🧻','🧼','🫧','🪥','🧽','🧴','🛎️','🔑','🗝️','🚪','🪑','🛋️','🛏️','🛌','🧸','🪆','🖼️','🪞','🪟','🛍️','🛒','🎁','🎈','🎏','🎀','🪄','🪅','🎊','🎉','🎎','🏮','🎐','🧧','✉️','📩','📨','📧','💌','📥','📤','📦','🏷️','🪧','📪','📫','📬','📭','📮','📯','📜','📃','📄','📑','🧾','📊','📈','📉','🗒️','🗓️','📆','📅','🗑️','📇','🗃️','🗳️','🗄️','📋','📁','📂','🗂️','🗞️','📰','📓','📔','📒','📕','📗','📘','📙','📚','📖','🔖','🧷','🔗','📎','🖇️','📐','📏','🧮','📌','📍','✂️','🖊️','🖋️','✒️','🖌️','🖍️','📝','✏️','🔍','🔎','🔏','🔐','🔒','🔓'],
+            'Symbols': ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❇️','✳️','❎','🌐','💠','Ⓜ️','🌀','💤','🏧','🚾','♿','🅿️','🛗','🈳','🈂️','🛂','🛃','🛄','🛅','🚹','🚺','🚼','⚧️','🚻','🚮','🎦','📶','🈁','🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔢','#️⃣','*️⃣','⏏️','▶️','⏸️','⏯️','⏹️','⏺️','⏭️','⏮️','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↪️','↩️','⤴️','⤵️','🔀','🔁','🔂','🔄','🔃','🎵','🎶','➕','➖','➗','✖️','🟰','♾️','💲','💱','™️','©️','®️','👁️‍🗨️','🔚','🔙','🔛','🔝','🔜','〰️','➰','➿','✔️','☑️','🔘','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔺','🔻','🔸','🔹','🔶','🔷','🔳','🔲','▪️','▫️','◾','◽','◼️','◻️','🟥','🟧','🟨','🟩','🟦','🟪','⬛','⬜','🟫','🔈','🔇','🔉','🔊','🔔','🔕','📣','📢','💬','💭','🗯️','♠️','♣️','♥️','♦️','🃏','🎴','🀄','🕐','🕑','🕒','🕓','🕔','🕕','🕖','🕗','🕘','🕙','🕚','🕛','🕜','🕝','🕞','🕟','🕠','🕡','🕢','🕣','🕤','🕥','🕦','🕧'],
+            'Flags': ['🏁','🚩','🎌','🏴','🏳️','🏳️‍🌈','🏳️‍⚧️','🏴‍☠️','🇺🇸','🇬🇧','🇨🇦','🇦🇺','🇩🇪','🇫🇷','🇪🇸','🇮🇹','🇯🇵','🇰🇷','🇨🇳','🇧🇷','🇲🇽','🇮🇳','🇷🇺','🇿🇦','🇳🇬','🇦🇷','🇨🇴','🇵🇪','🇨🇱','🇻🇪','🇪🇨','🇺🇾','🇵🇾','🇧🇴','🇵🇦','🇨🇷','🇬🇹','🇭🇳','🇸🇻','🇳🇮','🇨🇺','🇩🇴','🇵🇷','🇯🇲','🇹🇹','🇧🇸','🇧🇧','🇭🇹','🇪🇬','🇰🇪','🇹🇿','🇪🇹','🇬🇭','🇨🇮','🇸🇳','🇲🇦','🇹🇳','🇩🇿','🇱🇾','🇸🇩','🇦🇪','🇸🇦','🇮🇶','🇮🇷','🇮🇱','🇵🇸','🇱🇧','🇯🇴','🇸🇾','🇹🇷','🇬🇷','🇵🇱','🇺🇦','🇷🇴','🇭🇺','🇨🇿','🇸🇰','🇦🇹','🇨🇭','🇧🇪','🇳🇱','🇱🇺','🇩🇰','🇸🇪','🇳🇴','🇫🇮','🇮🇸','🇮🇪','🇵🇹','🇹🇭','🇻🇳','🇵🇭','🇮🇩','🇲🇾','🇸🇬','🇲🇲','🇰🇭','🇱🇦','🇧🇩','🇱🇰','🇳🇵','🇵🇰','🇦🇫','🇳🇿','🇫🇯','🇵🇬']
+        };
+
+        const categoryIcons = { 'Custom': '⭐', 'Smileys': '😀', 'Gestures': '👋', 'People': '👤', 'Animals': '🐶', 'Food': '🍔', 'Travel': '🚗', 'Objects': '💡', 'Symbols': '❤️', 'Flags': '🏁' };
+
+        let _activeCategory = null;
+
+        function getServerGroups() {
+            const groups = {};
+            allEmojis.forEach(e => {
+                if (!groups[e.serverId]) groups[e.serverId] = { name: e.serverName, emojis: [] };
+                groups[e.serverId].emojis.push(e);
+            });
+            return groups;
         }
 
         function buildEmojiPicker() {
             const picker = document.getElementById('emoji-picker');
             picker.innerHTML = '';
-            if (!serverEmojis.length) {
-                picker.innerHTML = '<span class="emoji-picker-empty">No custom emojis</span>';
-                return;
+
+            // Search bar
+            const search = document.createElement('input');
+            search.type = 'text';
+            search.className = 'emoji-search';
+            search.placeholder = 'Search emojis...';
+            search.addEventListener('click', e => e.stopPropagation());
+            search.addEventListener('input', () => searchEmojis(search.value.toLowerCase()));
+            picker.appendChild(search);
+
+            // Tab bar — one tab per server + unicode categories
+            const tabs = document.createElement('div');
+            tabs.className = 'emoji-tabs';
+            tabs.id = 'emoji-tabs';
+
+            const serverGroups = getServerGroups();
+            const serverIds = Object.keys(serverGroups);
+            // Current server first
+            serverIds.sort((a, b) => (a === serverId ? -1 : b === serverId ? 1 : 0));
+            const categories = [...serverIds.map(id => `server:${id}`), ...Object.keys(unicodeEmojis)];
+
+            categories.forEach((cat, i) => {
+                const tab = document.createElement('button');
+                tab.type = 'button';
+                tab.className = 'emoji-tab' + (i === 0 ? ' active' : '');
+                if (cat.startsWith('server:')) {
+                    const sid = cat.slice(7);
+                    const group = serverGroups[sid];
+                    tab.textContent = group.name.charAt(0).toUpperCase();
+                    tab.title = group.name;
+                } else {
+                    tab.textContent = categoryIcons[cat] || cat[0];
+                    tab.title = cat;
+                }
+                tab.dataset.cat = cat;
+                tab.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    tabs.querySelectorAll('.emoji-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    showCategory(cat);
+                    search.value = '';
+                });
+                tabs.appendChild(tab);
+            });
+            picker.appendChild(tabs);
+
+            // Grid
+            const grid = document.createElement('div');
+            grid.className = 'emoji-grid';
+            grid.id = 'emoji-grid';
+            picker.appendChild(grid);
+
+            showCategory(categories[0] || 'Smileys');
+        }
+
+        function showCategory(cat) {
+            _activeCategory = cat;
+            const grid = document.getElementById('emoji-grid');
+            grid.innerHTML = '';
+            if (cat.startsWith('server:')) {
+                const sid = cat.slice(7);
+                const groups = getServerGroups();
+                const group = groups[sid];
+                if (!group || !group.emojis.length) {
+                    grid.innerHTML = '<span class="emoji-picker-empty">No custom emojis yet</span>';
+                    return;
+                }
+                const label = document.createElement('div');
+                label.className = 'emoji-category-label';
+                label.textContent = group.name;
+                grid.appendChild(label);
+                group.emojis.forEach(e => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.title = `:${e.name}: (${e.serverName})`;
+                    btn.innerHTML = `<img src="${e.imageUrl}" alt=":${e.name}:" class="inline-emoji" />`;
+                    btn.addEventListener('click', () => insertEmoji(`:${e.name}:`));
+                    grid.appendChild(btn);
+                });
+            } else {
+                (unicodeEmojis[cat] || []).forEach(em => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.title = em;
+                    btn.textContent = em;
+                    btn.addEventListener('click', () => insertEmoji(em));
+                    grid.appendChild(btn);
+                });
+                if (window.twemoji) twemoji.parse(grid, { folder: 'svg', ext: '.svg' });
             }
-            serverEmojis.forEach(e => {
+        }
+
+        function searchEmojis(query) {
+            const grid = document.getElementById('emoji-grid');
+            grid.innerHTML = '';
+            if (!query) { showCategory(_activeCategory || 'Smileys'); return; }
+
+            // Search custom emojis by name (across all servers)
+            allEmojis.filter(e => e.name.includes(query)).forEach(e => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.title = `:${e.name}:`;
+                btn.title = `:${e.name}: (${e.serverName})`;
                 btn.innerHTML = `<img src="${e.imageUrl}" alt=":${e.name}:" class="inline-emoji" />`;
-                btn.addEventListener('click', () => {
-                    const input = document.getElementById('message-input');
-                    input.value += `:${e.name}:`;
-                    input.focus();
-                    picker.classList.add('hidden');
-                });
-                picker.appendChild(btn);
+                btn.addEventListener('click', () => insertEmoji(`:${e.name}:`));
+                grid.appendChild(btn);
             });
+
+            // Search unicode by matching the emoji character itself (users can paste emoji to search)
+            Object.values(unicodeEmojis).flat().forEach(em => {
+                if (em.includes(query) || query.includes(em)) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.title = em;
+                    btn.textContent = em;
+                    btn.addEventListener('click', () => insertEmoji(em));
+                    grid.appendChild(btn);
+                }
+            });
+
+            if (!grid.children.length) {
+                grid.innerHTML = '<span class="emoji-picker-empty">No results</span>';
+            }
+            if (window.twemoji) twemoji.parse(grid, { folder: 'svg', ext: '.svg' });
+        }
+
+        function insertEmoji(value) {
+            const input = document.getElementById('message-input');
+            input.value += value;
+            input.focus();
         }
 
         document.getElementById('emoji-picker-toggle').addEventListener('click', (e) => {
@@ -173,11 +362,12 @@
 
         document.getElementById('emoji-picker').addEventListener('click', e => e.stopPropagation());
 
-        // Fetch server emojis and render
-        fetch(`/api/servers/${serverId}/emojis`)
+        // Fetch all emojis from user's servers (cross-server)
+        fetch('/api/users/emojis')
             .then(r => r.json())
             .then(data => {
-                serverEmojis = data;
+                allEmojis = data;
+                buildEmojiMap();
                 buildEmojiPicker();
                 applyEmojiRendering();
             })
@@ -246,29 +436,244 @@
 
         document.addEventListener('click', () => mentionList.classList.add('hidden'));
 
-        // ── Real-time notification badge ───────────────────────
-        const homeBadge = document.querySelector('.home-icon .notif-badge');
+        // ── GIF picker ────────────────────────────────────────────
+        const gifKey = document.querySelector('meta[name="gif-key"]')?.content;
+        const gifPicker = document.getElementById('gif-picker');
+        const gifGrid = document.getElementById('gif-grid');
+        const gifSearch = document.getElementById('gif-search');
+        let _gifDebounce = null;
 
-        if (typeof connection !== 'undefined') {
-            connection.on('ReceiveNotification', (notif) => {
-                // Increment badge or show it
-                const badge = document.querySelector('.home-icon .notif-badge');
-                if (badge) {
-                    const current = parseInt(badge.textContent) || 0;
-                    badge.textContent = current >= 9 ? '9+' : (current + 1).toString();
-                } else {
-                    const icon = document.querySelector('.home-icon');
-                    if (icon) {
-                        const b = document.createElement('span');
-                        b.className = 'notif-badge';
-                        b.textContent = '1';
-                        icon.appendChild(b);
-                    }
-                }
-                // Brief flash on the badge
-                document.querySelector('.home-icon .notif-badge')?.classList.add('notif-pulse');
-                setTimeout(() => document.querySelector('.home-icon .notif-badge')?.classList.remove('notif-pulse'), 600);
+        document.getElementById('gif-picker-toggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('emoji-picker').classList.add('hidden');
+            gifPicker.classList.toggle('hidden');
+            if (!gifPicker.classList.contains('hidden') && gifKey) loadTrendingGifs();
+        });
+
+        gifPicker.addEventListener('click', e => e.stopPropagation());
+        document.addEventListener('click', () => gifPicker.classList.add('hidden'));
+
+        gifSearch.addEventListener('click', e => e.stopPropagation());
+        gifSearch.addEventListener('input', () => {
+            clearTimeout(_gifDebounce);
+            _gifDebounce = setTimeout(() => {
+                const q = gifSearch.value.trim();
+                if (q) searchGifs(q); else loadTrendingGifs();
+            }, 300);
+        });
+
+        async function loadTrendingGifs() {
+            if (!gifKey) { gifGrid.innerHTML = '<span class="emoji-picker-empty">Tenor API key not configured</span>'; return; }
+            try {
+                const resp = await fetch(`https://api.klipy.com/v2/featured?key=${gifKey}&limit=20&media_filter=gif`);
+                const data = await resp.json();
+                renderGifResults(data.results || []);
+            } catch { gifGrid.innerHTML = '<span class="emoji-picker-empty">Failed to load GIFs</span>'; }
+        }
+
+        async function searchGifs(query) {
+            if (!gifKey) return;
+            try {
+                const resp = await fetch(`https://api.klipy.com/v2/search?key=${gifKey}&q=${encodeURIComponent(query)}&limit=20&media_filter=gif`);
+                const data = await resp.json();
+                renderGifResults(data.results || []);
+            } catch { gifGrid.innerHTML = '<span class="emoji-picker-empty">Search failed</span>'; }
+        }
+
+        function renderGifResults(results) {
+            gifGrid.innerHTML = '';
+            if (!results.length) { gifGrid.innerHTML = '<span class="emoji-picker-empty">No GIFs found</span>'; return; }
+            results.forEach(r => {
+                const gif = r.media_formats?.gif || r.media_formats?.tinygif;
+                if (!gif) return;
+                const preview = r.media_formats?.tinygif || gif;
+                const img = document.createElement('img');
+                img.src = preview.url;
+                img.alt = r.title || 'GIF';
+                img.className = 'gif-thumb';
+                img.loading = 'lazy';
+                img.addEventListener('click', () => {
+                    // Send the full-size GIF URL as the message
+                    connection.invoke('SendChannelMessage', channelId, gif.url);
+                    gifPicker.classList.add('hidden');
+                    gifSearch.value = '';
+                });
+                gifGrid.appendChild(img);
             });
         }
+
+        // Also close gif picker when emoji picker opens
+        document.getElementById('emoji-picker-toggle').addEventListener('click', () => {
+            gifPicker.classList.add('hidden');
+        });
+
+        // ── GIF / image URL embedding in messages ─────────────────
+        const gifUrlPattern = /^https?:\/\/(?:media\.tenor\.com\/[^\s]+\.gif|tenor\.com\/view\/[^\s]+|[^\s]+\.gif)$/i;
+        const imageUrlPattern = /^https?:\/\/[^\s]+\.(gif|png|jpg|jpeg|webp)(\?[^\s]*)?$/i;
+
+        function applyGifEmbedding() {
+            document.querySelectorAll('.message-content').forEach(el => {
+                if (el.dataset.gifRendered) return;
+                const text = el.textContent.trim();
+                if (imageUrlPattern.test(text)) {
+                    el.dataset.gifRendered = '1';
+                    const img = document.createElement('img');
+                    img.src = text;
+                    img.className = 'embedded-gif';
+                    img.alt = 'Embedded image';
+                    img.loading = 'lazy';
+                    el.textContent = '';
+                    el.appendChild(img);
+                }
+            });
+        }
+
+        window.applyGifEmbedding = applyGifEmbedding;
+
+        // ── Orb Gift system ─────────────────────────────────────
+        const giftModal = document.getElementById('gift-modal');
+        const giftToggle = document.getElementById('gift-toggle');
+        const giftCancel = document.getElementById('gift-cancel');
+        const giftSend = document.getElementById('gift-send');
+        const giftError = document.getElementById('gift-error');
+
+        giftToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('emoji-picker').classList.add('hidden');
+            gifPicker.classList.add('hidden');
+            giftModal.classList.toggle('hidden');
+        });
+        giftModal.addEventListener('click', e => e.stopPropagation());
+        document.addEventListener('click', () => giftModal.classList.add('hidden'));
+        giftCancel.addEventListener('click', () => giftModal.classList.add('hidden'));
+
+        giftSend.addEventListener('click', async () => {
+            const recipientUsername = document.getElementById('gift-recipient').value;
+            const amount = parseInt(document.getElementById('gift-amount').value);
+            const message = document.getElementById('gift-message').value.trim() || null;
+
+            if (!amount || amount < 1) {
+                giftError.textContent = 'Enter at least 1 orb.';
+                giftError.classList.remove('hidden');
+                return;
+            }
+
+            // Find recipient user ID from member list
+            const recipientMember = memberUsernames.find(u => u === recipientUsername);
+            if (!recipientMember) {
+                giftError.textContent = 'Select a recipient.';
+                giftError.classList.remove('hidden');
+                return;
+            }
+
+            giftSend.disabled = true;
+            giftSend.textContent = 'Sending...';
+            giftError.classList.add('hidden');
+
+            try {
+                // We need the user ID — fetch it via a quick lookup
+                const resp = await fetch(`/api/orbs/gift`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId, recipientUsername, amount, message })
+                });
+                if (resp.ok) {
+                    giftModal.classList.add('hidden');
+                    document.getElementById('gift-amount').value = '';
+                    document.getElementById('gift-message').value = '';
+                } else {
+                    const data = await resp.json();
+                    giftError.textContent = data.error || 'Failed to send gift.';
+                    giftError.classList.remove('hidden');
+                }
+            } catch {
+                giftError.textContent = 'Failed to send gift.';
+                giftError.classList.remove('hidden');
+            }
+            giftSend.disabled = false;
+            giftSend.textContent = 'Send Gift';
+        });
+
+        // Receive gift animation
+        if (typeof connection !== 'undefined') {
+            connection.on('ReceiveOrbGift', (data) => {
+                // Insert system message in chat
+                const msgContainer = document.getElementById('messages');
+                const giftMsg = document.createElement('div');
+                giftMsg.className = 'message gift-message';
+                giftMsg.innerHTML = `<div class="gift-message-content">` +
+                    `<span class="orb-icon">&#x1F381;</span> ` +
+                    `<strong>${data.senderUsername}</strong> gifted ` +
+                    `<span class="orb-icon">&#x1F7E1;</span> ${data.amount} orbs to ` +
+                    `<strong>${data.recipientUsername}</strong>` +
+                    `${data.message ? ' — "' + data.message + '"' : ''}` +
+                    `</div>`;
+                msgContainer.appendChild(giftMsg);
+                msgContainer.scrollTop = msgContainer.scrollHeight;
+
+                // Play animation
+                playGiftAnimation(data.amount);
+
+                // Play coin sound
+                if (localStorage.getItem('notifMuted') !== '1') playCoinSound();
+            });
+
+            connection.on('OrbBalanceUpdated', (newBalance) => {
+                document.getElementById('orb-count').textContent = newBalance;
+                const modalBal = document.getElementById('gift-modal-balance');
+                if (modalBal) modalBal.textContent = newBalance;
+            });
+
+            connection.on('OrbGiftError', (msg) => {
+                giftError.textContent = msg;
+                giftError.classList.remove('hidden');
+            });
+        }
+
+        function playGiftAnimation(amount) {
+            const container = document.getElementById('gift-animation-container');
+            const particleCount = amount >= 100 ? 30 : amount >= 10 ? 15 : 6;
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'gift-particle';
+                particle.textContent = '&#x1F7E1;';
+                particle.innerHTML = '&#x1F7E1;';
+                particle.style.left = (30 + Math.random() * 40) + '%';
+                particle.style.animationDelay = (Math.random() * 0.5) + 's';
+                particle.style.animationDuration = (1 + Math.random()) + 's';
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 2000);
+            }
+        }
+
+        function playCoinSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1200, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch {}
+        }
+
+        // ── Notification mute toggle ───────────────────────────
+        const muteBtn = document.getElementById('notif-mute-toggle');
+        function updateMuteBtn() {
+            muteBtn.textContent = localStorage.getItem('notifMuted') === '1' ? '🔕' : '🔔';
+            muteBtn.title = localStorage.getItem('notifMuted') === '1' ? 'Notifications muted (click to unmute)' : 'Mute notification sound';
+        }
+        updateMuteBtn();
+        muteBtn.addEventListener('click', () => {
+            const muted = localStorage.getItem('notifMuted') === '1';
+            localStorage.setItem('notifMuted', muted ? '0' : '1');
+            updateMuteBtn();
+        });
     </script>
 }

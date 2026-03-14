@@ -22,7 +22,15 @@ namespace peeposredemption.API.Pages.Auth
             {
                 var result = await _mediator.Send(Input);
                 Response.Cookies.Append("jwt", result.Token, new CookieOptions
-                { HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
+                {
+                    HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
+                    MaxAge = TimeSpan.FromMinutes(15)
+                });
+                Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
+                    MaxAge = TimeSpan.FromDays(30)
+                });
                 return RedirectToPage("/App/Index");
             }
             catch (UnauthorizedAccessException ex)

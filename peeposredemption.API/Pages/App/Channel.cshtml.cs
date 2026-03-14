@@ -33,6 +33,7 @@ public class ChannelModel : PageModel
     public List<ChannelDto> Channels { get; set; } = new();
     public string? InviteLink { get; set; }
     public ServerRole CurrentUserRole { get; set; } = ServerRole.Member;
+    public long OrbBalance { get; set; }
 
     public async Task<IActionResult> OnGetAsync(Guid channelId, Guid serverId)
     {
@@ -52,14 +53,22 @@ public class ChannelModel : PageModel
             var first = chs.FirstOrDefault();
             if (first != null) defaultChannels[s.Id] = first.Id;
         }
+        // Mark pings for this server as read since the user is viewing it
+        await _uow.Notifications.MarkServerNotificationsReadAsync(userId, serverId);
+        await _uow.SaveChangesAsync();
+
         var unreadDms = await _uow.DirectMessages.GetUnreadCountAsync(userId);
         var unreadPings = await _uow.Notifications.GetUnreadCountAsync(userId);
+        var serverUnreadCounts = await _uow.Notifications.GetUnreadCountByServerAsync(userId);
+        var dmUnreadCounts = await _uow.DirectMessages.GetUnreadCountBySenderAsync(userId);
         ServerList = new ServerListViewModel
         {
             Servers = servers,
             ServerDefaultChannels = defaultChannels,
             ActiveServerId = serverId,
-            UnreadCount = unreadDms + unreadPings
+            UnreadCount = unreadDms + unreadPings,
+            ServerUnreadCounts = serverUnreadCounts,
+            DmUnreadCounts = dmUnreadCounts
         };
 
         // Current server info
@@ -84,6 +93,10 @@ public class ChannelModel : PageModel
         // Member usernames for @mention autocomplete
         var members = await _uow.Servers.GetServerMembersAsync(serverId);
         MemberUsernames = members.Select(m => m.User.Username).ToList();
+
+        // Load orb balance
+        var currentUser = await _uow.Users.GetByIdAsync(userId);
+        OrbBalance = currentUser?.OrbBalance ?? 0;
 
         return Page();
     }

@@ -10,5 +10,6 @@ namespace peeposredemption.Domain.Interfaces.Repositories
         Task AddAsync(ServerEmoji emoji);
         Task<int> CountByServerIdAsync(Guid serverId);
         void Delete(ServerEmoji emoji);
+        Task<List<ServerEmoji>> GetByUserServersAsync(Guid userId);
     }
 }

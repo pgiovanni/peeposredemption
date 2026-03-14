@@ -13,6 +13,16 @@ namespace peeposredemption.Infrastructure.Repositories
         public Task<int> GetUnreadCountAsync(Guid userId) =>
             _db.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead);
 
+        public async Task<Dictionary<Guid, int>> GetUnreadCountByServerAsync(Guid userId)
+        {
+            var rows = await _db.Notifications
+                .Where(n => n.UserId == userId && !n.IsRead && n.ServerId != null)
+                .GroupBy(n => n.ServerId!.Value)
+                .Select(g => new { ServerId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            return rows.ToDictionary(r => r.ServerId, r => r.Count);
+        }
+
         public async Task AddAsync(Notification notification) =>
             await _db.Notifications.AddAsync(notification);
 
@@ -20,6 +30,14 @@ namespace peeposredemption.Infrastructure.Repositories
         {
             var unread = await _db.Notifications
                 .Where(n => n.UserId == userId && !n.IsRead)
+                .ToListAsync();
+            foreach (var n in unread) n.IsRead = true;
+        }
+
+        public async Task MarkServerNotificationsReadAsync(Guid userId, Guid serverId)
+        {
+            var unread = await _db.Notifications
+                .Where(n => n.UserId == userId && n.ServerId == serverId && !n.IsRead)
                 .ToListAsync();
             foreach (var n in unread) n.IsRead = true;
         }

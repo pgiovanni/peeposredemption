@@ -26,6 +26,28 @@ namespace peeposredemption.Application.Features.Shop.Commands
 
             if (evt.Type == "checkout.session.completed" && evt.SessionId != null)
             {
+                // Handle orb purchases
+                var orbPurchase = await _uow.OrbPurchases.GetBySessionIdAsync(evt.SessionId);
+                if (orbPurchase != null && orbPurchase.Status == PurchaseStatus.Pending)
+                {
+                    orbPurchase.Status = PurchaseStatus.Completed;
+                    var orbUser = await _uow.Users.GetByIdAsync(orbPurchase.UserId);
+                    if (orbUser != null)
+                    {
+                        await _uow.OrbTransactions.AddAsync(new OrbTransaction
+                        {
+                            UserId = orbPurchase.UserId,
+                            Amount = orbPurchase.OrbAmount,
+                            Type = OrbTransactionType.StripePurchase,
+                            Description = $"Purchased {orbPurchase.OrbAmount} orbs"
+                        });
+                        orbUser.OrbBalance += orbPurchase.OrbAmount;
+                    }
+                    await _uow.SaveChangesAsync();
+                    return;
+                }
+
+                // Handle storage upgrades
                 var purchase = await _uow.StorageUpgrades.GetBySessionIdAsync(evt.SessionId);
                 if (purchase == null) return;
 

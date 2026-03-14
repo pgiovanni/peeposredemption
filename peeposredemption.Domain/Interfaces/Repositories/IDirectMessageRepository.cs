@@ -11,6 +11,7 @@ namespace peeposredemption.Domain.Interfaces.Repositories
             Guid userA, Guid userB, int page, int pageSize);
         Task AddAsync(DirectMessage message);
         Task<int> GetUnreadCountAsync(Guid userId);
+        Task<Dictionary<Guid, int>> GetUnreadCountBySenderAsync(Guid userId);
         Task MarkConversationReadAsync(Guid recipientId, Guid senderId);
     }
 

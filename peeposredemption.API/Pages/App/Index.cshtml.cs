@@ -32,6 +32,9 @@ public class IndexModel : PageModel
     public List<DmViewModel> DmMessages { get; set; } = new();
     public string? FriendRequestError { get; set; }
     public bool FriendRequestSuccess { get; set; }
+    public long OrbBalance { get; set; }
+    public int CurrentStreak { get; set; }
+    public bool ClaimedToday { get; set; }
 
     public async Task<IActionResult> OnGetAsync(Guid? friendId)
     {
@@ -114,15 +117,27 @@ public class IndexModel : PageModel
         }
         var unreadDms = await _uow.DirectMessages.GetUnreadCountAsync(userId);
         var unreadPings = await _uow.Notifications.GetUnreadCountAsync(userId);
+        var serverUnreadCounts = await _uow.Notifications.GetUnreadCountByServerAsync(userId);
+        var dmUnreadCounts = await _uow.DirectMessages.GetUnreadCountBySenderAsync(userId);
         ServerList = new ServerListViewModel
         {
             Servers = servers,
             ServerDefaultChannels = defaultChannels,
-            UnreadCount = unreadDms + unreadPings
+            UnreadCount = unreadDms + unreadPings,
+            ServerUnreadCounts = serverUnreadCounts,
+            DmUnreadCounts = dmUnreadCounts
         };
 
         Friends = await _mediator.Send(new GetFriendsQuery(userId));
         PendingRequests = await _mediator.Send(new GetPendingRequestsQuery(userId));
+
+        // Load orb data
+        var currentUser = await _uow.Users.GetByIdAsync(userId);
+        OrbBalance = currentUser?.OrbBalance ?? 0;
+        var streak = await _uow.UserLoginStreaks.GetByUserIdAsync(userId);
+        CurrentStreak = streak?.CurrentStreak ?? 0;
+        var today = DateTime.UtcNow.Date;
+        ClaimedToday = streak?.LastClaimedDate.HasValue == true && streak.LastClaimedDate.Value.Date == today;
     }
 
     private Guid? GetUserId()

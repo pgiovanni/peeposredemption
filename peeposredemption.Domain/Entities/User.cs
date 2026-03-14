@@ -12,6 +12,7 @@ public class User
     public string? EmailConfirmationtoken { get; set; }
  
     public Guid? ReferredByCodeId { get; set; }
+    public long OrbBalance { get; set; }
 
     public ICollection<ServerMember> ServerMemberships { get; set; }
     public ICollection<Message> Messages { get; set; }

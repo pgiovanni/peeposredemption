@@ -16,9 +16,11 @@
     @foreach (var server in Model.Servers)
     {
         var channelId = Model.ServerDefaultChannels.GetValueOrDefault(server.Id);
+        var serverUnread = Model.ServerUnreadCounts.GetValueOrDefault(server.Id, 0);
         <a href="/App/Channel?channelId=@channelId&serverId=@server.Id"
            class="server-icon @(Model.ActiveServerId == server.Id ? "active" : "")"
-           title="@server.Name">
+           title="@server.Name"
+           data-server-id="@server.Id">
             @if (server.IconUrl != null)
             {
                 <img src="@server.IconUrl" alt="@server.Name" />
@@ -26,6 +28,10 @@
             else
             {
                 <span>@server.Name.Substring(0, 1).ToUpper()</span>
+            }
+            @if (serverUnread > 0)
+            {
+                <span class="notif-badge">@(serverUnread > 9 ? "9+" : serverUnread.ToString())</span>
             }
         </a>
     }

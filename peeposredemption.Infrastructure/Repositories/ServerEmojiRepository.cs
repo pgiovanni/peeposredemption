@@ -28,5 +28,12 @@ namespace peeposredemption.Infrastructure.Repositories
 
         public void Delete(ServerEmoji emoji) =>
             _db.ServerEmojis.Remove(emoji);
+
+        public Task<List<ServerEmoji>> GetByUserServersAsync(Guid userId) =>
+            _db.ServerEmojis
+                .Include(e => e.Server)
+                .Where(e => _db.Set<ServerMember>().Any(sm => sm.ServerId == e.ServerId && sm.UserId == userId))
+                .OrderBy(e => e.Server.Name).ThenBy(e => e.Name)
+                .ToListAsync();
     }
 }

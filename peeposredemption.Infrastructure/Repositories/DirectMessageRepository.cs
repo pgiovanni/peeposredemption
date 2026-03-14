@@ -34,6 +34,16 @@ namespace peeposredemption.Infrastructure.Repositories
         public Task<int> GetUnreadCountAsync(Guid userId) =>
             _db.DirectMessages.CountAsync(dm => dm.RecipientId == userId && !dm.IsRead);
 
+        public async Task<Dictionary<Guid, int>> GetUnreadCountBySenderAsync(Guid userId)
+        {
+            var rows = await _db.DirectMessages
+                .Where(dm => dm.RecipientId == userId && !dm.IsRead)
+                .GroupBy(dm => dm.SenderId)
+                .Select(g => new { SenderId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            return rows.ToDictionary(r => r.SenderId, r => r.Count);
+        }
+
         public async Task MarkConversationReadAsync(Guid recipientId, Guid senderId)
         {
             var unread = await _db.DirectMessages
