@@ -33,6 +33,10 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<BadgeDefinition> BadgeDefinitions { get; set; }
         public DbSet<UserBadge> UserBadges { get; set; }
         public DbSet<UserActivityStats> UserActivityStats { get; set; }
+        public DbSet<Artist> Artists { get; set; }
+        public DbSet<ArtItem> ArtItems { get; set; }
+        public DbSet<ArtistCommission> ArtistCommissions { get; set; }
+        public DbSet<ArtistPayout> ArtistPayouts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -254,6 +258,63 @@ namespace peeposredemption.Infrastructure.Persistence
             modelBuilder.Entity<UserActivityStats>()
                 .HasIndex(s => s.UserId)
                 .IsUnique();
+
+            // Artist — unique payout email
+            modelBuilder.Entity<Artist>()
+                .HasIndex(a => a.PayoutEmail)
+                .IsUnique();
+
+            modelBuilder.Entity<Artist>()
+                .HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ArtItem
+            modelBuilder.Entity<ArtItem>()
+                .HasOne(i => i.Artist)
+                .WithMany()
+                .HasForeignKey(i => i.ArtistId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ArtItem>()
+                .HasIndex(i => new { i.ArtistId, i.Rarity });
+
+            modelBuilder.Entity<ArtItem>()
+                .HasIndex(i => i.R2Key)
+                .IsUnique();
+
+            // ArtistCommission — immutable ledger
+            modelBuilder.Entity<ArtistCommission>()
+                .HasOne(c => c.Artist)
+                .WithMany()
+                .HasForeignKey(c => c.ArtistId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ArtistCommission>()
+                .HasOne(c => c.ArtItem)
+                .WithMany()
+                .HasForeignKey(c => c.ArtItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ArtistCommission>()
+                .HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ArtistCommission>()
+                .HasIndex(c => new { c.ArtistId, c.CreatedAt });
+
+            modelBuilder.Entity<ArtistCommission>()
+                .HasIndex(c => c.ArtItemId);
+
+            // ArtistPayout
+            modelBuilder.Entity<ArtistPayout>()
+                .HasOne(p => p.Artist)
+                .WithMany()
+                .HasForeignKey(p => p.ArtistId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
         // Converts PascalCase to snake_case

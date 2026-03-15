@@ -11,6 +11,7 @@ namespace peeposredemption.API.Pages.Auth
         public RegisterModel(IMediator mediator) => _mediator = mediator;
 
         [BindProperty] public RegisterCommand Input { get; set; }
+        [BindProperty] public string? ConfirmPassword { get; set; }
         [BindProperty] public string? RefCode { get; set; }
 
         public void OnGet(string? @ref = null)
@@ -21,6 +22,13 @@ namespace peeposredemption.API.Pages.Auth
         public async Task<IActionResult> OnPostAsync()
         {
             if (!ModelState.IsValid) return Page();
+
+            if (Input.Password != ConfirmPassword)
+            {
+                ModelState.AddModelError(string.Empty, "Passwords do not match.");
+                return Page();
+            }
+
             try
             {
                 var cmd = Input with { ReferralCode = RefCode };

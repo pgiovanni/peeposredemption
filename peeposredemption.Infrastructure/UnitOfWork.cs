@@ -33,6 +33,10 @@ namespace peeposredemption.Infrastructure
         public IBadgeDefinitionRepository BadgeDefinitions { get; }
         public IUserBadgeRepository UserBadges { get; }
         public IUserActivityStatsRepository UserActivityStats { get; }
+        public IArtistRepository Artists { get; }
+        public IArtItemRepository ArtItems { get; }
+        public IArtistCommissionRepository ArtistCommissions { get; }
+        public IArtistPayoutRepository ArtistPayouts { get; }
 
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
@@ -53,7 +57,11 @@ namespace peeposredemption.Infrastructure
             IParentalLinkRepository parentalLinks,
             IBadgeDefinitionRepository badgeDefinitions,
             IUserBadgeRepository userBadges,
-            IUserActivityStatsRepository userActivityStats)
+            IUserActivityStatsRepository userActivityStats,
+            IArtistRepository artists,
+            IArtItemRepository artItems,
+            IArtistCommissionRepository artistCommissions,
+            IArtistPayoutRepository artistPayouts)
         {
             _db = db;
             Users = users;
@@ -78,6 +86,10 @@ namespace peeposredemption.Infrastructure
             BadgeDefinitions = badgeDefinitions;
             UserBadges = userBadges;
             UserActivityStats = userActivityStats;
+            Artists = artists;
+            ArtItems = artItems;
+            ArtistCommissions = artistCommissions;
+            ArtistPayouts = artistPayouts;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

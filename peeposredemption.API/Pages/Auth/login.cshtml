@@ -1,16 +1,41 @@
-﻿@page
+@page
 @model peeposredemption.API.Pages.Auth.LoginModel
-<h2>Login</h2>
-<form method="post">
-    <input asp-for="Input.Email" type="email" placeholder="Email" />
-    <span asp-validation-for="Input.Email"></span>
-    <input asp-for="Input.Password" type="password" placeholder="Password" />
-    <span asp-validation-for="Input.Password"></span>
-    <div asp-validation-summary="All"></div>
-    <button type="submit">Login</button>
-    <a href="/Auth/Register">Register</a>
-</form>
-<p>Didn't receive a confirmation email? <a href="/Auth/ResendConfirmation">Click here to resend it</a></p>
+@{
+    ViewData["Title"] = "Login";
+}
+
+<script>document.body.classList.add('auth-page');</script>
+
+<div class="auth-container">
+    <div style="text-align: center; margin-bottom: 8px;">
+        <img src="/images/orb.png" alt="Orb" style="width: 64px; height: 64px;" />
+    </div>
+    <h1>Welcome Back</h1>
+
+    <form method="post">
+        <div asp-validation-summary="All" class="text-danger" style="margin-bottom: 12px; font-size: 13px;"></div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input asp-for="Input.Email" type="email" placeholder="Email" />
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input asp-for="Input.Password" type="password" placeholder="Password" />
+        </div>
+
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 8px;">Login</button>
+    </form>
+
+    <p style="text-align: center; margin-top: 16px; font-size: 13px; color: #949ba4;">
+        Don't have an account? <a href="/Auth/Register" style="color: #5865f2;">Register</a>
+    </p>
+    <p style="text-align: center; margin-top: 8px; font-size: 12px; color: #72767d;">
+        Didn't receive a confirmation email? <a href="/Auth/ResendConfirmation" style="color: #5865f2;">Resend it</a>
+    </p>
+</div>
+
 @section Scripts {
     @await Html.PartialAsync("_ValidationScriptsPartial")
 }

@@ -1,0 +1,130 @@
+@page
+@model peeposredemption.API.Pages.App.Admin.ArtistAdminModel
+@{
+    ViewData["Title"] = "Admin — Artist Payouts";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Index" class="icon-btn" title="Back">←</a>
+            <span>Artist Payouts</span>
+        </div>
+    </div>
+
+    <div class="content-area settings-page">
+        <section class="settings-section">
+            <h3 class="settings-heading">ARTIST COMMISSION OVERVIEW</h3>
+
+            <div class="referral-stats" style="margin-bottom:1.5rem">
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Artists.Count</div>
+                    <div class="referral-stat-label">Artists</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">$@((Model.GrandTotalEarned / 100m).ToString("F2"))</div>
+                    <div class="referral-stat-label">Total Earned</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">$@((Model.GrandTotalPaid / 100m).ToString("F2"))</div>
+                    <div class="referral-stat-label">Total Paid</div>
+                </div>
+                <div class="referral-stat referral-stat-commission">
+                    <div class="referral-stat-value">$@((Model.GrandTotalPending / 100m).ToString("F2"))</div>
+                    <div class="referral-stat-label">Pending (50%)</div>
+                </div>
+            </div>
+
+            @if (!Model.Artists.Any())
+            {
+                <div class="sidebar-empty">No artists registered yet.</div>
+            }
+            else
+            {
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Artist</th>
+                            <th>Payout Email</th>
+                            <th>Method</th>
+                            <th>Earned</th>
+                            <th>Paid</th>
+                            <th>Pending</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in Model.Artists)
+                        {
+                            <tr>
+                                <td><strong>@a.DisplayName</strong></td>
+                                <td>@a.PayoutEmail</td>
+                                <td>@a.PayoutMethod</td>
+                                <td>$@((a.TotalEarnedCents / 100m).ToString("F2"))</td>
+                                <td>$@((a.TotalPaidCents / 100m).ToString("F2"))</td>
+                                <td class="referral-commission-cell">$@((a.PendingCents / 100m).ToString("F2"))</td>
+                                <td>
+                                    @if (a.PendingCents >= 500)
+                                    {
+                                        <button class="btn btn-sm btn-primary record-payout-btn"
+                                                data-artist-id="@a.ArtistId"
+                                                data-pending="@a.PendingCents"
+                                                data-name="@a.DisplayName">
+                                            Record Payout
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:var(--text-muted);font-size:0.85rem">Below $5 min</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.querySelectorAll('.record-payout-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const artistId = btn.dataset.artistId;
+        const pending = parseInt(btn.dataset.pending);
+        const name = btn.dataset.name;
+        const pendingDollars = (pending / 100).toFixed(2);
+
+        const ref = prompt(`Recording payout for ${name}.\nPending: $${pendingDollars}\n\nEnter transaction reference (PayPal/Venmo ID):`);
+        if (ref === null) return;
+
+        const amount = prompt(`Amount in cents to pay (max ${pending}):`, pending.toString());
+        if (amount === null) return;
+
+        const amountCents = parseInt(amount);
+        if (isNaN(amountCents) || amountCents < 500 || amountCents > pending) {
+            alert('Invalid amount. Must be between 500 and ' + pending);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/artists/payout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ artistId, amountCents, reference: ref })
+            });
+            if (res.ok) {
+                alert('Payout recorded successfully.');
+                location.reload();
+            } else {
+                const err = await res.json();
+                alert('Error: ' + (err.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Network error: ' + e.message);
+        }
+    });
+});
+</script>
+}

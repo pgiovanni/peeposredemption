@@ -13,7 +13,8 @@ public record BadgeProgressDto(
     long Threshold,
     long CurrentValue,
     bool Earned,
-    DateTime? EarnedAt);
+    DateTime? EarnedAt,
+    long OrbReward);
 
 public record GetBadgeProgressQuery(Guid UserId) : IRequest<List<BadgeProgressDto>>;
 
@@ -44,7 +45,8 @@ public class GetBadgeProgressQueryHandler : IRequestHandler<GetBadgeProgressQuer
                 badge.Threshold,
                 currentValue,
                 isEarned,
-                isEarned ? ub!.EarnedAt : null
+                isEarned ? ub!.EarnedAt : null,
+                badge.OrbReward
             ));
         }
 
