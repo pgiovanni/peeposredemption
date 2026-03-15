@@ -1,4 +1,5 @@
 using MediatR;
+using peeposredemption.Application.Features.Badges.Commands;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
 
@@ -9,10 +10,20 @@ public record JoinServerCommand(string Code, Guid UserId) : IRequest<Guid>;
 public class JoinServerCommandHandler : IRequestHandler<JoinServerCommand, Guid>
 {
     private readonly IUnitOfWork _uow;
-    public JoinServerCommandHandler(IUnitOfWork uow) => _uow = uow;
+    private readonly IMediator _mediator;
+    public JoinServerCommandHandler(IUnitOfWork uow, IMediator mediator)
+    {
+        _uow = uow;
+        _mediator = mediator;
+    }
 
     public async Task<Guid> Handle(JoinServerCommand cmd, CancellationToken ct)
     {
+        // Parental controls enforcement
+        var parentalLink = await _uow.ParentalLinks.GetActiveByChildIdAsync(cmd.UserId);
+        if (parentalLink is { AccountFrozen: true })
+            throw new InvalidOperationException("Your account is frozen by parental controls.");
+
         var invite = await _uow.ServerInvites.GetByCodeAsync(cmd.Code)
             ?? throw new Exception("Invite not found.");
 
@@ -29,6 +40,9 @@ public class JoinServerCommandHandler : IRequestHandler<JoinServerCommand, Guid>
             });
             await _uow.SaveChangesAsync();
 
+            // Update server join stats + check badges
+            var stats = await _mediator.Send(new UpdateActivityStatsCommand(cmd.UserId, IncrementServersJoined: 1), ct);
+            await _mediator.Send(new CheckAndAwardBadgesCommand(cmd.UserId, "ServersJoined", stats.ServersJoined), ct);
         }
 
         return invite.ServerId;

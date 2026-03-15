@@ -29,6 +29,10 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<UserLoginStreak> UserLoginStreaks { get; set; }
         public DbSet<OrbPurchase> OrbPurchases { get; set; }
         public DbSet<OrbGift> OrbGifts { get; set; }
+        public DbSet<ParentalLink> ParentalLinks { get; set; }
+        public DbSet<BadgeDefinition> BadgeDefinitions { get; set; }
+        public DbSet<UserBadge> UserBadges { get; set; }
+        public DbSet<UserActivityStats> UserActivityStats { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -195,12 +199,61 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasForeignKey(g => g.RecipientId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // ParentalLink
+            modelBuilder.Entity<ParentalLink>()
+                .HasIndex(l => l.LinkCode)
+                .IsUnique();
+
+            modelBuilder.Entity<ParentalLink>()
+                .HasOne(l => l.Parent)
+                .WithMany(u => u.ParentalLinksAsParent)
+                .HasForeignKey(l => l.ParentUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ParentalLink>()
+                .HasOne(l => l.Child)
+                .WithMany(u => u.ParentalLinksAsChild)
+                .HasForeignKey(l => l.ChildUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // OrbPurchase
             modelBuilder.Entity<OrbPurchase>()
                 .HasOne(p => p.User)
                 .WithMany()
                 .HasForeignKey(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // BadgeDefinition
+            modelBuilder.Entity<BadgeDefinition>()
+                .HasIndex(b => new { b.StatKey, b.Threshold });
+
+            // UserBadge — unique (UserId, BadgeDefinitionId)
+            modelBuilder.Entity<UserBadge>()
+                .HasIndex(ub => new { ub.UserId, ub.BadgeDefinitionId })
+                .IsUnique();
+
+            modelBuilder.Entity<UserBadge>()
+                .HasOne(ub => ub.User)
+                .WithMany()
+                .HasForeignKey(ub => ub.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserBadge>()
+                .HasOne(ub => ub.BadgeDefinition)
+                .WithMany()
+                .HasForeignKey(ub => ub.BadgeDefinitionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // UserActivityStats — one per user
+            modelBuilder.Entity<UserActivityStats>()
+                .HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserActivityStats>()
+                .HasIndex(s => s.UserId)
+                .IsUnique();
         }
 
         // Converts PascalCase to snake_case

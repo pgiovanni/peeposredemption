@@ -13,6 +13,11 @@ public class SendFriendRequestCommandHandler : IRequestHandler<SendFriendRequest
 
     public async Task<bool> Handle(SendFriendRequestCommand cmd, CancellationToken ct)
     {
+        // Parental controls enforcement
+        var parentalLink = await _uow.ParentalLinks.GetActiveByChildIdAsync(cmd.SenderId);
+        if (parentalLink is { AccountFrozen: true })
+            throw new InvalidOperationException("Your account is frozen by parental controls.");
+
         var recipient = await _uow.Users.GetByUsernameAsync(cmd.RecipientUsername);
         if (recipient == null || recipient.Id == cmd.SenderId) return false;
 

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using peeposredemption.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using peeposredemption.Infrastructure.Persistence;
 namespace peeposredemption.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260315012631_AddBadges")]
+    partial class AddBadges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -70,7 +73,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("StatKey", "Threshold");
 
-                    b.ToTable("badge_definitions", (string)null);
+                    b.ToTable("badge_definitions");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.BannedMember", b =>
@@ -105,7 +108,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("banned_members", (string)null);
+                    b.ToTable("banned_members");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Channel", b =>
@@ -137,7 +140,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("ServerId");
 
-                    b.ToTable("channels", (string)null);
+                    b.ToTable("channels");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.DirectMessage", b =>
@@ -175,7 +178,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("direct_messages", (string)null);
+                    b.ToTable("direct_messages");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.FriendRequest", b =>
@@ -208,7 +211,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("friend_requests", (string)null);
+                    b.ToTable("friend_requests");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Message", b =>
@@ -254,7 +257,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("ChannelId");
 
-                    b.ToTable("messages", (string)null);
+                    b.ToTable("messages");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ModerationLog", b =>
@@ -301,7 +304,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("TargetUserId");
 
-                    b.ToTable("moderation_logs", (string)null);
+                    b.ToTable("moderation_logs");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Notification", b =>
@@ -351,7 +354,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("notifications", (string)null);
+                    b.ToTable("notifications");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.OrbGift", b =>
@@ -396,7 +399,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("orb_gifts", (string)null);
+                    b.ToTable("orb_gifts");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.OrbPurchase", b =>
@@ -436,7 +439,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("orb_purchases", (string)null);
+                    b.ToTable("orb_purchases");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.OrbTransaction", b =>
@@ -480,7 +483,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("UserId", "CreatedAt");
 
-                    b.ToTable("orb_transactions", (string)null);
+                    b.ToTable("orb_transactions");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ParentalLink", b =>
@@ -529,7 +532,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("ParentUserId");
 
-                    b.ToTable("parental_links", (string)null);
+                    b.ToTable("parental_links");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ReferralCode", b =>
@@ -561,7 +564,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("referral_codes", (string)null);
+                    b.ToTable("referral_codes");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ReferralPurchase", b =>
@@ -599,7 +602,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("ReferralCodeId");
 
-                    b.ToTable("referral_purchases", (string)null);
+                    b.ToTable("referral_purchases");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.RefreshToken", b =>
@@ -642,7 +645,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("refresh_tokens", (string)null);
+                    b.ToTable("refresh_tokens");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Server", b =>
@@ -678,7 +681,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("servers", (string)null);
+                    b.ToTable("servers");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ServerEmoji", b =>
@@ -723,7 +726,7 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("ServerId", "Name")
                         .IsUnique();
 
-                    b.ToTable("server_emojis", (string)null);
+                    b.ToTable("server_emojis");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ServerInvite", b =>
@@ -757,7 +760,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("ServerId");
 
-                    b.ToTable("server_invites", (string)null);
+                    b.ToTable("server_invites");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ServerMember", b =>
@@ -786,7 +789,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("ServerId");
 
-                    b.ToTable("server_members", (string)null);
+                    b.ToTable("server_members");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.StorageUpgradePurchase", b =>
@@ -822,7 +825,7 @@ namespace peeposredemption.Infrastructure.Migrations
 
                     b.HasIndex("ServerId");
 
-                    b.ToTable("storage_upgrade_purchases", (string)null);
+                    b.ToTable("storage_upgrade_purchases");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.User", b =>
@@ -881,7 +884,7 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("users", (string)null);
+                    b.ToTable("users");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.UserActivityStats", b =>
@@ -925,7 +928,7 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("user_activity_stats", (string)null);
+                    b.ToTable("user_activity_stats");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.UserBadge", b =>
@@ -959,7 +962,7 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("UserId", "BadgeDefinitionId")
                         .IsUnique();
 
-                    b.ToTable("user_badges", (string)null);
+                    b.ToTable("user_badges");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.UserLoginStreak", b =>
@@ -1003,7 +1006,7 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("user_login_streaks", (string)null);
+                    b.ToTable("user_login_streaks");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.BannedMember", b =>

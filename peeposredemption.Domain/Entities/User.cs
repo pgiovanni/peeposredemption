@@ -14,8 +14,15 @@ public class User
     public Guid? ReferredByCodeId { get; set; }
     public long OrbBalance { get; set; }
 
+    public DateTime? DateOfBirth { get; set; }
+    public bool IsMinor => DateOfBirth.HasValue
+        && DateOfBirth.Value.AddYears(18) > DateTime.UtcNow
+        && DateOfBirth.Value.AddYears(13) <= DateTime.UtcNow;
+
     public ICollection<ServerMember> ServerMemberships { get; set; }
     public ICollection<Message> Messages { get; set; }
     public ICollection<DirectMessage> SentDirectMessages { get; set; }
     public ICollection<DirectMessage> ReceivedDirectMessages { get; set; }
+    public ICollection<ParentalLink> ParentalLinksAsChild { get; set; }
+    public ICollection<ParentalLink> ParentalLinksAsParent { get; set; }
 }

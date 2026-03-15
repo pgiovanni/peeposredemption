@@ -1,0 +1,71 @@
+@page
+@model peeposredemption.API.Pages.App.BadgesModel
+@{
+    ViewData["Title"] = "Badges";
+}
+
+<div class="app-shell">
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>Badges</span>
+        </div>
+        <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
+        <a href="/App/Wallet" class="dm-item">Wallet</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Badges</span>
+        </div>
+
+        <div class="badges-container">
+            <div class="badges-summary">
+                <span class="badges-count">@Model.EarnedCount / @Model.TotalCount earned</span>
+            </div>
+
+            @{
+                var categories = Model.Badges.GroupBy(b => b.Category).OrderBy(g => g.Key);
+            }
+            @foreach (var group in categories)
+            {
+                <h3 class="badges-category-title">@group.Key</h3>
+                <div class="badges-grid">
+                    @foreach (var badge in group)
+                    {
+                        var pct = badge.Threshold > 0 ? Math.Min(100, (int)(badge.CurrentValue * 100 / badge.Threshold)) : 0;
+                        <div class="badge-card @(badge.Earned ? "earned" : "locked")">
+                            <div class="badge-icon">@badge.Icon</div>
+                            <div class="badge-name">@badge.Name</div>
+                            <div class="badge-desc">@badge.Description</div>
+                            @if (badge.Earned)
+                            {
+                                <div class="badge-earned-date" data-time="@badge.EarnedAt?.ToString("o")">Earned</div>
+                            }
+                            else
+                            {
+                                <div class="badge-progress-bar">
+                                    <div class="badge-progress-fill" style="width:@(pct)%"></div>
+                                </div>
+                                <div class="badge-progress-text">@badge.CurrentValue / @badge.Threshold</div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.badge-earned-date[data-time]').forEach(el => {
+            const d = new Date(el.dataset.time);
+            el.textContent = 'Earned ' + d.toLocaleDateString();
+        });
+    </script>
+}

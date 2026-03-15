@@ -39,6 +39,10 @@ namespace peeposredemption.Infrastructure
             services.AddScoped<IUserLoginStreakRepository, UserLoginStreakRepository>();
             services.AddScoped<IOrbPurchaseRepository, OrbPurchaseRepository>();
             services.AddScoped<IOrbGiftRepository, OrbGiftRepository>();
+            services.AddScoped<IParentalLinkRepository, ParentalLinkRepository>();
+            services.AddScoped<IBadgeDefinitionRepository, BadgeDefinitionRepository>();
+            services.AddScoped<IUserBadgeRepository, UserBadgeRepository>();
+            services.AddScoped<IUserActivityStatsRepository, UserActivityStatsRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             services.AddScoped<IR2StorageService, R2StorageService>();

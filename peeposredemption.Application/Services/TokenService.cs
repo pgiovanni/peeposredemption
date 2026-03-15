@@ -17,12 +17,18 @@ namespace peeposredemption.Application.Services
 
         public string GenerateToken(User user)
         {
-            var claims = new[]
+            var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Email, user.Email),
             };
+            if (user.DateOfBirth.HasValue)
+            {
+                claims.Add(new Claim(ClaimTypes.DateOfBirth, user.DateOfBirth.Value.ToString("yyyy-MM-dd")));
+                if (user.IsMinor)
+                    claims.Add(new Claim("IsMinor", "true"));
+            }
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

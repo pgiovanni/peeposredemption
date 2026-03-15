@@ -1,4 +1,5 @@
 using MediatR;
+using peeposredemption.Application.Features.Badges.Commands;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
 
@@ -11,7 +12,12 @@ public record ClaimDailyLoginCommand(Guid UserId) : IRequest<DailyClaimResult>;
 public class ClaimDailyLoginCommandHandler : IRequestHandler<ClaimDailyLoginCommand, DailyClaimResult>
 {
     private readonly IUnitOfWork _uow;
-    public ClaimDailyLoginCommandHandler(IUnitOfWork uow) => _uow = uow;
+    private readonly IMediator _mediator;
+    public ClaimDailyLoginCommandHandler(IUnitOfWork uow, IMediator mediator)
+    {
+        _uow = uow;
+        _mediator = mediator;
+    }
 
     public async Task<DailyClaimResult> Handle(ClaimDailyLoginCommand cmd, CancellationToken ct)
     {
@@ -57,6 +63,14 @@ public class ClaimDailyLoginCommandHandler : IRequestHandler<ClaimDailyLoginComm
 
         user.OrbBalance += orbs;
         await _uow.SaveChangesAsync();
+
+        // Update activity stats + check badges
+        var stats = await _mediator.Send(new UpdateActivityStatsCommand(
+            cmd.UserId,
+            NewLongestStreak: streak.LongestStreak,
+            NewOrbBalance: user.OrbBalance), ct);
+        await _mediator.Send(new CheckAndAwardBadgesCommand(cmd.UserId, "LongestStreak", stats.LongestStreak), ct);
+        await _mediator.Send(new CheckAndAwardBadgesCommand(cmd.UserId, "PeakOrbBalance", stats.PeakOrbBalance), ct);
 
         return new DailyClaimResult(orbs, streak.CurrentStreak, streak.LongestStreak, user.OrbBalance);
     }

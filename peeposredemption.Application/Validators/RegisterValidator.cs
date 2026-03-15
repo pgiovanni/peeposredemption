@@ -14,6 +14,9 @@ namespace peeposredemption.Application.Validators
             RuleFor(x => x.Username).NotEmpty().MinimumLength(3).MaximumLength(32);
             RuleFor(x => x.Email).NotEmpty().EmailAddress();
             RuleFor(x => x.Password).NotEmpty().MinimumLength(8);
+            RuleFor(x => x.DateOfBirth).NotEmpty()
+                .Must(dob => dob.AddYears(13) <= DateTime.UtcNow)
+                .WithMessage("You must be at least 13 years old to create an account.");
         }
     }
 }
