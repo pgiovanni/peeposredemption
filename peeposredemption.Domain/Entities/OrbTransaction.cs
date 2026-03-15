@@ -15,7 +15,8 @@ public enum OrbTransactionType
     AdminGrant = 10,
     CraftingSpent = 11,
     MarketplaceSale = 12,
-    MarketplacePurchase = 13
+    MarketplacePurchase = 13,
+    BadgeReward = 14
 }
 
 public class OrbTransaction

@@ -16,6 +16,7 @@ public class BadgeDefinition
     public BadgeCategory Category { get; set; }
     public string StatKey { get; set; } = string.Empty; // which UserActivityStats field to check
     public long Threshold { get; set; } // value needed to earn this badge
+    public long OrbReward { get; set; } // orbs granted when badge is earned
     public int SortOrder { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

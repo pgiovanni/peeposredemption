@@ -2,6 +2,9 @@
 @model peeposredemption.API.Pages.App.BadgesModel
 @{
     ViewData["Title"] = "Badges";
+    var pctTotal = Model.TotalCount > 0 ? (int)(Model.EarnedCount * 100.0 / Model.TotalCount) : 0;
+    var circumference = 2 * Math.PI * 30;
+    var dashOffset = circumference - (circumference * pctTotal / 100.0);
 }
 
 <div class="app-shell">
@@ -13,6 +16,7 @@
         </div>
         <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
         <a href="/App/Wallet" class="dm-item">Wallet</a>
+        <a href="/App/OrbShop" class="dm-item">Orb Shop</a>
     </div>
 
     <div class="sidebar-backdrop"></div>
@@ -24,8 +28,29 @@
         </div>
 
         <div class="badges-container">
-            <div class="badges-summary">
-                <span class="badges-count">@Model.EarnedCount / @Model.TotalCount earned</span>
+            <div class="badges-hero">
+                <div class="badges-ring">
+                    <svg viewBox="0 0 72 72">
+                        <circle class="badges-ring-bg" cx="36" cy="36" r="30" />
+                        <circle class="badges-ring-fill" cx="36" cy="36" r="30"
+                                stroke-dasharray="@circumference.ToString("F1")"
+                                stroke-dashoffset="@dashOffset.ToString("F1")" />
+                    </svg>
+                    <div class="badges-ring-text">@Model.EarnedCount/@Model.TotalCount</div>
+                </div>
+                <div class="badges-hero-info">
+                    <h2>Your Badges</h2>
+                    <div class="badges-hero-sub">
+                        @if (Model.EarnedCount == Model.TotalCount)
+                        {
+                            <span>All badges earned — you're a completionist!</span>
+                        }
+                        else
+                        {
+                            <span>@(Model.TotalCount - Model.EarnedCount) more to unlock. Earn orbs for each badge!</span>
+                        }
+                    </div>
+                </div>
             </div>
 
             @{
@@ -33,28 +58,51 @@
             }
             @foreach (var group in categories)
             {
-                <h3 class="badges-category-title">@group.Key</h3>
-                <div class="badges-grid">
-                    @foreach (var badge in group)
-                    {
-                        var pct = badge.Threshold > 0 ? Math.Min(100, (int)(badge.CurrentValue * 100 / badge.Threshold)) : 0;
-                        <div class="badge-card @(badge.Earned ? "earned" : "locked")">
-                            <div class="badge-icon">@badge.Icon</div>
-                            <div class="badge-name">@badge.Name</div>
-                            <div class="badge-desc">@badge.Description</div>
-                            @if (badge.Earned)
-                            {
-                                <div class="badge-earned-date" data-time="@badge.EarnedAt?.ToString("o")">Earned</div>
-                            }
-                            else
-                            {
-                                <div class="badge-progress-bar">
-                                    <div class="badge-progress-fill" style="width:@(pct)%"></div>
-                                </div>
-                                <div class="badge-progress-text">@badge.CurrentValue / @badge.Threshold</div>
-                            }
-                        </div>
-                    }
+                <div class="badges-category">
+                    <div class="badges-category-header">
+                        <h3 class="badges-category-title">@group.Key</h3>
+                        <div class="badges-category-line"></div>
+                    </div>
+                    <div class="badges-grid">
+                        @foreach (var badge in group)
+                        {
+                            var pct = badge.Threshold > 0 ? Math.Min(100, (int)(badge.CurrentValue * 100 / badge.Threshold)) : 0;
+                            <div class="badge-card @(badge.Earned ? "earned" : "locked")">
+                                @if (badge.Earned)
+                                {
+                                    <span class="badge-earned-check">&#10003;</span>
+                                }
+                                <div class="badge-icon">@badge.Icon</div>
+                                <div class="badge-name">@badge.Name</div>
+                                <div class="badge-desc">@badge.Description</div>
+                                @if (badge.OrbReward > 0)
+                                {
+                                    <div class="badge-reward">
+                                        <span class="orb-icon"></span>
+                                        @if (badge.Earned)
+                                        {
+                                            <span>+@badge.OrbReward earned</span>
+                                        }
+                                        else
+                                        {
+                                            <span>+@badge.OrbReward orbs</span>
+                                        }
+                                    </div>
+                                }
+                                @if (badge.Earned)
+                                {
+                                    <div class="badge-earned-date" data-time="@badge.EarnedAt?.ToString("o")">Earned</div>
+                                }
+                                else
+                                {
+                                    <div class="badge-progress-bar">
+                                        <div class="badge-progress-fill" style="width:@(pct)%"></div>
+                                    </div>
+                                    <div class="badge-progress-text">@badge.CurrentValue / @badge.Threshold</div>
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
             }
         </div>

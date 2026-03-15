@@ -45,7 +45,10 @@
       "Bash(unzip:*)",
       "Bash(python:*)",
       "Bash(python3:*)",
-      "WebFetch(domain:freesvg.org)"
+      "WebFetch(domain:freesvg.org)",
+      "Bash(where:*)",
+      "Bash(pip install:*)",
+      "Bash(powershell.exe:*)"
     ]
   }
 }

@@ -29,6 +29,10 @@ namespace peeposredemption.Domain.Interfaces
         IBadgeDefinitionRepository BadgeDefinitions { get; }
         IUserBadgeRepository UserBadges { get; }
         IUserActivityStatsRepository UserActivityStats { get; }
+        IArtistRepository Artists { get; }
+        IArtItemRepository ArtItems { get; }
+        IArtistCommissionRepository ArtistCommissions { get; }
+        IArtistPayoutRepository ArtistPayouts { get; }
         Task<int> SaveChangesAsync();
     }
 

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using peeposredemption.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using peeposredemption.Infrastructure.Persistence;
 namespace peeposredemption.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260315033404_AddArtistCommissionSystem")]
+    partial class AddArtistCommissionSystem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -255,10 +258,6 @@ namespace peeposredemption.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("name");
-
-                    b.Property<long>("OrbReward")
-                        .HasColumnType("bigint")
-                        .HasColumnName("orb_reward");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer")

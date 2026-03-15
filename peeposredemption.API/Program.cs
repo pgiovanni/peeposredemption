@@ -303,14 +303,59 @@ app.MapGet("/api/users/{userId}/badges", async (Guid userId, IMediator mediator)
     return Results.Ok(result);
 }).RequireAuthorization();
 
-// Seed badge definitions on startup
+// Artist dashboard — artist views own earnings
+app.MapGet("/api/artists/dashboard", async (HttpContext ctx, IMediator mediator, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var artist = await uow.Artists.GetByUserIdAsync(Guid.Parse(uid));
+    if (artist == null) return Results.NotFound("No artist profile linked to this account.");
+    var result = await mediator.Send(new peeposredemption.Application.Features.Artists.Queries.GetArtistDashboardQuery(artist.Id));
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+// Admin — view all artists + pending payouts
+app.MapGet("/api/admin/artists", async (HttpContext ctx, IMediator mediator, IConfiguration config) =>
+{
+    var emailClaim = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+    var adminEmail = config["Email:AdminEmail"] ?? string.Empty;
+    if (string.IsNullOrEmpty(adminEmail) || !string.Equals(emailClaim, adminEmail, StringComparison.OrdinalIgnoreCase))
+        return Results.Forbid();
+    var result = await mediator.Send(new peeposredemption.Application.Features.Artists.Queries.GetAllArtistsQuery());
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+// Admin — record a payout
+app.MapPost("/api/admin/artists/payout", async (HttpContext ctx, IMediator mediator, IConfiguration config, ArtistPayoutRequest body) =>
+{
+    var emailClaim = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+    var adminEmail = config["Email:AdminEmail"] ?? string.Empty;
+    if (string.IsNullOrEmpty(adminEmail) || !string.Equals(emailClaim, adminEmail, StringComparison.OrdinalIgnoreCase))
+        return Results.Forbid();
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    try
+    {
+        var payoutId = await mediator.Send(new peeposredemption.Application.Features.Artists.Commands.RecordPayoutCommand(
+            body.ArtistId, body.AmountCents, body.Reference, Guid.Parse(uid)));
+        return Results.Ok(new { PayoutId = payoutId });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { Error = ex.Message });
+    }
+}).RequireAuthorization();
+
+// Seed badge definitions + artists on startup
 using (var scope = app.Services.CreateScope())
 {
     var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
     await mediator.Send(new peeposredemption.Application.Features.Badges.Commands.SeedBadgeDefinitionsCommand());
+    await mediator.Send(new peeposredemption.Application.Features.Artists.Commands.SeedArtistsCommand());
 }
 
 app.Run();
 
 record OrbPurchaseRequest(int Tier);
 record OrbGiftRequest(string ChannelId, string RecipientUsername, long Amount, string? Message);
+record ArtistPayoutRequest(Guid ArtistId, long AmountCents, string? Reference);
