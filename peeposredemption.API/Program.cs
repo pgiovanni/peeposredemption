@@ -288,6 +288,28 @@ app.MapPost("/webhooks/stripe", async (HttpRequest req, IMediator mediator) =>
     catch { return Results.Ok(); } // Don't expose internal errors to Stripe
 }).AllowAnonymous().DisableAntiforgery();
 
+// Badge endpoints
+app.MapGet("/api/badges/progress", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var result = await mediator.Send(new peeposredemption.Application.Features.Badges.Queries.GetBadgeProgressQuery(Guid.Parse(uid)));
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+app.MapGet("/api/users/{userId}/badges", async (Guid userId, IMediator mediator) =>
+{
+    var result = await mediator.Send(new peeposredemption.Application.Features.Badges.Queries.GetUserBadgesQuery(userId));
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+// Seed badge definitions on startup
+using (var scope = app.Services.CreateScope())
+{
+    var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+    await mediator.Send(new peeposredemption.Application.Features.Badges.Commands.SeedBadgeDefinitionsCommand());
+}
+
 app.Run();
 
 record OrbPurchaseRequest(int Tier);

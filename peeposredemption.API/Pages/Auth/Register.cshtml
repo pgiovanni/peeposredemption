@@ -6,6 +6,8 @@
     <input asp-for="Input.Username" placeholder="Username" />
     <input asp-for="Input.Email" type="email" placeholder="Email" />
     <input asp-for="Input.Password" type="password" placeholder="Password" />
+    <label for="Input_DateOfBirth">Date of Birth</label>
+    <input asp-for="Input.DateOfBirth" type="date" max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" min="1900-01-01" />
     <input type="hidden" asp-for="RefCode" />
     <button type="submit">Register</button>
 </form>

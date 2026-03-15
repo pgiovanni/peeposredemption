@@ -26,6 +26,11 @@ namespace peeposredemption.Application.Features.Messages.Commands
 
         public async Task<MessageDto> Handle(SendMessageCommand cmd, CancellationToken ct)
         {
+            // Parental controls enforcement
+            var parentalLink = await _uow.ParentalLinks.GetActiveByChildIdAsync(cmd.AuthorId);
+            if (parentalLink is { AccountFrozen: true })
+                throw new InvalidOperationException("Your account is frozen by parental controls.");
+
             if (_scanner.ContainsMaliciousLink(cmd.Content))
             {
                 _ = _email.SendMaliciousLinkAlertAsync(cmd.AuthorUsername, cmd.ChannelId, cmd.Content);

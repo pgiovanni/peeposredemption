@@ -1,4 +1,5 @@
 using MediatR;
+using peeposredemption.Application.Features.Badges.Commands;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
 
@@ -17,7 +18,12 @@ public record SendOrbGiftCommand(
 public class SendOrbGiftCommandHandler : IRequestHandler<SendOrbGiftCommand, OrbGiftResult>
 {
     private readonly IUnitOfWork _uow;
-    public SendOrbGiftCommandHandler(IUnitOfWork uow) => _uow = uow;
+    private readonly IMediator _mediator;
+    public SendOrbGiftCommandHandler(IUnitOfWork uow, IMediator mediator)
+    {
+        _uow = uow;
+        _mediator = mediator;
+    }
 
     public async Task<OrbGiftResult> Handle(SendOrbGiftCommand cmd, CancellationToken ct)
     {
@@ -68,6 +74,13 @@ public class SendOrbGiftCommandHandler : IRequestHandler<SendOrbGiftCommand, Orb
         await _uow.OrbGifts.AddAsync(gift);
 
         await _uow.SaveChangesAsync();
+
+        // Update gifting activity stats + check badges
+        var stats = await _mediator.Send(new UpdateActivityStatsCommand(cmd.SenderId, IncrementOrbsGifted: cmd.Amount), ct);
+        await _mediator.Send(new CheckAndAwardBadgesCommand(cmd.SenderId, "TotalOrbsGifted", stats.TotalOrbsGifted), ct);
+
+        // Check recipient's peak balance badge
+        await _mediator.Send(new UpdateActivityStatsCommand(cmd.RecipientId, NewOrbBalance: recipient.OrbBalance), ct);
 
         return new OrbGiftResult(sender.OrbBalance, recipient.OrbBalance, gift.Id);
     }

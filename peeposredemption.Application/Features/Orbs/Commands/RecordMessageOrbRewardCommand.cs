@@ -1,4 +1,5 @@
 using MediatR;
+using peeposredemption.Application.Features.Badges.Commands;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
 
@@ -9,7 +10,12 @@ public record RecordMessageOrbRewardCommand(Guid UserId) : IRequest;
 public class RecordMessageOrbRewardCommandHandler : IRequestHandler<RecordMessageOrbRewardCommand>
 {
     private readonly IUnitOfWork _uow;
-    public RecordMessageOrbRewardCommandHandler(IUnitOfWork uow) => _uow = uow;
+    private readonly IMediator _mediator;
+    public RecordMessageOrbRewardCommandHandler(IUnitOfWork uow, IMediator mediator)
+    {
+        _uow = uow;
+        _mediator = mediator;
+    }
 
     private const int MessagesPerOrb = 10;
     private const int DailyOrbCap = 50;
@@ -55,5 +61,9 @@ public class RecordMessageOrbRewardCommandHandler : IRequestHandler<RecordMessag
         }
 
         await _uow.SaveChangesAsync();
+
+        // Update activity stats + check badges (fire-and-forget style within handler)
+        var stats = await _mediator.Send(new UpdateActivityStatsCommand(cmd.UserId, IncrementMessages: 1), ct);
+        await _mediator.Send(new CheckAndAwardBadgesCommand(cmd.UserId, "TotalMessages", stats.TotalMessages), ct);
     }
 }

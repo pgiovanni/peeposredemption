@@ -29,6 +29,10 @@ namespace peeposredemption.Infrastructure
         public IUserLoginStreakRepository UserLoginStreaks { get; }
         public IOrbPurchaseRepository OrbPurchases { get; }
         public IOrbGiftRepository OrbGifts { get; }
+        public IParentalLinkRepository ParentalLinks { get; }
+        public IBadgeDefinitionRepository BadgeDefinitions { get; }
+        public IUserBadgeRepository UserBadges { get; }
+        public IUserActivityStatsRepository UserActivityStats { get; }
 
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
@@ -45,7 +49,11 @@ namespace peeposredemption.Infrastructure
             IOrbTransactionRepository orbTransactions,
             IUserLoginStreakRepository userLoginStreaks,
             IOrbPurchaseRepository orbPurchases,
-            IOrbGiftRepository orbGifts)
+            IOrbGiftRepository orbGifts,
+            IParentalLinkRepository parentalLinks,
+            IBadgeDefinitionRepository badgeDefinitions,
+            IUserBadgeRepository userBadges,
+            IUserActivityStatsRepository userActivityStats)
         {
             _db = db;
             Users = users;
@@ -66,6 +74,10 @@ namespace peeposredemption.Infrastructure
             UserLoginStreaks = userLoginStreaks;
             OrbPurchases = orbPurchases;
             OrbGifts = orbGifts;
+            ParentalLinks = parentalLinks;
+            BadgeDefinitions = badgeDefinitions;
+            UserBadges = userBadges;
+            UserActivityStats = userActivityStats;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

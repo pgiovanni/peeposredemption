@@ -25,6 +25,10 @@ namespace peeposredemption.Domain.Interfaces
         IUserLoginStreakRepository UserLoginStreaks { get; }
         IOrbPurchaseRepository OrbPurchases { get; }
         IOrbGiftRepository OrbGifts { get; }
+        IParentalLinkRepository ParentalLinks { get; }
+        IBadgeDefinitionRepository BadgeDefinitions { get; }
+        IUserBadgeRepository UserBadges { get; }
+        IUserActivityStatsRepository UserActivityStats { get; }
         Task<int> SaveChangesAsync();
     }
 

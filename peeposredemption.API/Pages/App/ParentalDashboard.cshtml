@@ -1,0 +1,85 @@
+@page
+@model peeposredemption.API.Pages.App.ParentalDashboardModel
+@{
+    ViewData["Title"] = "Parental Dashboard";
+}
+
+<div class="app-shell">
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>Parental Dashboard</span>
+        </div>
+        <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Parental Dashboard</span>
+        </div>
+
+        <div class="wallet-container">
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="wallet-empty" style="color: #f44; border: 1px solid #f44; padding: 12px; border-radius: 8px; margin-bottom: 16px;">@Model.ErrorMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+            {
+                <div class="wallet-success" style="margin-bottom: 16px;">@Model.SuccessMessage</div>
+            }
+
+            <h3 class="wallet-section-title">Link a Child's Account</h3>
+            <form method="post" asp-page-handler="Claim" style="display: flex; gap: 8px; margin-bottom: 24px;">
+                <input type="text" asp-for="ClaimCode" placeholder="Enter 8-character link code" maxlength="8" style="text-transform: uppercase; letter-spacing: 0.2em; flex: 1;" />
+                <button type="submit">Claim Code</button>
+            </form>
+
+            @if (Model.Children.Any())
+            {
+                <h3 class="wallet-section-title">Linked Children</h3>
+                @foreach (var child in Model.Children)
+                {
+                    <div class="wallet-balance-card" style="margin-bottom: 16px;">
+                        <div class="wallet-balance-label">@child.ChildUsername</div>
+                        <div style="font-size: 0.9rem; color: #aaa; margin-bottom: 12px;">
+                            Servers: @child.ServerCount &bull; Friends: @child.FriendCount
+                        </div>
+
+                        <form method="post" asp-page-handler="UpdateControls" style="margin-bottom: 8px;">
+                            <input type="hidden" name="linkId" value="@child.LinkId" />
+
+                            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+                                <input type="checkbox" name="accountFrozen" value="true" @(child.AccountFrozen ? "checked" : "") />
+                                <span>Freeze Account</span>
+                                <span style="font-size: 0.8rem; color: #aaa;">(blocks messages, joining servers, friend requests)</span>
+                            </label>
+
+                            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer;">
+                                <input type="checkbox" name="dmFriendsOnly" value="true" @(child.DmFriendsOnly ? "checked" : "") />
+                                <span>DMs Friends Only</span>
+                                <span style="font-size: 0.8rem; color: #aaa;">(child can only DM existing friends)</span>
+                            </label>
+
+                            <button type="submit">Save Controls</button>
+                        </form>
+
+                        <form method="post" asp-page-handler="Revoke" style="margin-top: 8px;">
+                            <input type="hidden" name="linkId" value="@child.LinkId" />
+                            <button type="submit" class="btn-danger" onclick="return confirm('Revoke this parental link? All restrictions will be removed.');">Revoke Link</button>
+                        </form>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="wallet-empty">
+                    No children linked yet. Ask your child to generate a link code from their Settings, then enter it above.
+                </div>
+            }
+        </div>
+    </div>
+</div>
