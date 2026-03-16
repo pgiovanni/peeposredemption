@@ -74,26 +74,9 @@
             <partial name="_NotifDropdown" />
         </div>
         <div id="messages" class="messages-container">
-            @{
-                DateTime? lastDate = null;
-                Guid? lastAuthorId = null;
-                DateTime? lastMsgTime = null;
-            }
             @foreach (var msg in Model.Messages)
             {
-                var msgDate = msg.SentAt.Date;
-                var isNewDateBlock = lastDate == null || lastDate != msgDate;
-                if (isNewDateBlock)
-                {
-                    <div class="date-separator">
-                        <span>@msg.SentAt.ToString("dddd, MMMM d, yyyy")</span>
-                    </div>
-                    lastDate = msgDate;
-                }
-                var isGrouped = !isNewDateBlock && lastAuthorId == msg.AuthorId && lastMsgTime.HasValue && (msg.SentAt - lastMsgTime.Value).TotalMinutes < 5;
-                lastAuthorId = msg.AuthorId;
-                lastMsgTime = msg.SentAt;
-                <div class="message @(msg.IsDeleted ? "deleted" : "") @(isGrouped ? "message-grouped" : "")" data-id="@msg.Id" data-author-id="@msg.AuthorId" data-author-name="@msg.AuthorUsername" data-sent="@msg.SentAt.ToString("o")">
+                <div class="message @(msg.IsDeleted ? "deleted" : "")" data-id="@msg.Id" data-author-id="@msg.AuthorId" data-author-name="@msg.AuthorUsername" data-sent="@msg.SentAt.ToString("o")">
                     <a href="/App/Profile?userId=@msg.AuthorId" class="message-avatar-link">
                         @if (!string.IsNullOrEmpty(msg.AuthorAvatarUrl))
                         {
@@ -169,9 +152,42 @@
     </script>
     <script src="~/js/chat.js"></script>
     <script>
-        document.querySelectorAll('.message-time[data-time]').forEach(el => {
-            el.textContent = new Date(el.dataset.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        });
+        // Format times and insert date separators using client local time
+        (function() {
+            const container = document.getElementById('messages');
+            if (!container) return;
+            const msgs = Array.from(container.querySelectorAll('.message[data-sent]'));
+            let lastDateKey = null;
+            let lastAuthorId = null;
+            let lastMsgTime = null;
+            msgs.forEach(el => {
+                const sent = new Date(el.dataset.sent);
+                const key = getDateKey(el.dataset.sent);
+                // Insert date separator before this message if date changed
+                if (key !== lastDateKey) {
+                    const sep = document.createElement('div');
+                    sep.className = 'date-separator';
+                    sep.dataset.dateKey = key;
+                    sep.innerHTML = `<span>${getDateLabel(el.dataset.sent)}</span>`;
+                    container.insertBefore(sep, el);
+                    lastDateKey = key;
+                    lastAuthorId = null;
+                    lastMsgTime = null;
+                }
+                // Message grouping
+                const authorId = el.dataset.authorId;
+                if (lastAuthorId === authorId && lastMsgTime && (sent - lastMsgTime) < 5 * 60 * 1000) {
+                    el.classList.add('message-grouped');
+                }
+                lastAuthorId = authorId;
+                lastMsgTime = sent;
+                // Format time
+                const timeEl = el.querySelector('.message-time');
+                if (timeEl && timeEl.dataset.time) {
+                    timeEl.textContent = new Date(timeEl.dataset.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+            });
+        })();
         document.getElementById('add-channel-toggle').addEventListener('click', () => {
             document.getElementById('add-channel-section').classList.toggle('hidden');
         });

@@ -405,10 +405,10 @@ button { cursor: pointer; font-family: inherit; }
 .messages-container::-webkit-scrollbar-thumb { background: #1e1f22; border-radius: 4px; }
 
 .message {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 0 8px;
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    grid-template-rows: auto auto auto;
+    column-gap: 12px;
     padding: 4px 8px;
     border-radius: 4px;
 }
@@ -419,7 +419,7 @@ button { cursor: pointer; font-family: inherit; }
     font-size: 13px;
     font-weight: 600;
     color: #f2f3f5;
-    margin-bottom: 2px;
+    margin-bottom: 0;
 }
 
 .message.mine .message-author { color: #5865f2; }
@@ -2053,11 +2053,9 @@ img.emoji {
     .embedded-gif { max-width: 100%; }
 
     /* Smaller avatars on mobile */
-    .message-avatar { width: 24px; height: 24px; }
+    .message { grid-template-columns: 28px 1fr; column-gap: 8px; }
+    .message-avatar { width: 28px; height: 28px; }
     .message-avatar-fallback { font-size: 11px; }
-    .message-content, .message-time { padding-left: 32px; }
-    .message-grouped .message-content,
-    .message-grouped .message-time { padding-left: 32px; }
 
     /* Orb shop cards: stack vertically */
     .shop-grid {
@@ -2334,13 +2332,16 @@ img.emoji {
 
 /* ===== MESSAGE AVATARS ===== */
 .message-avatar-link {
-    flex-shrink: 0;
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: start;
+    padding-top: 2px;
     cursor: pointer;
     text-decoration: none;
 }
 .message-avatar {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
 }
@@ -2351,10 +2352,10 @@ img.emoji {
     background: #5865f2;
     color: #fff;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 15px;
 }
 .message-author {
-    flex: 1;
+    grid-column: 2;
     min-width: 0;
 }
 .author-link {
@@ -2365,18 +2366,19 @@ img.emoji {
 .author-link:hover {
     text-decoration: underline;
 }
-.message-content, .message-time {
-    width: 100%;
-    padding-left: 44px;
+.message-content {
+    grid-column: 2;
+}
+.message-time {
+    grid-column: 2;
 }
 
 /* ===== MESSAGE GROUPING ===== */
-.message-grouped { padding-top: 1px; }
+.message-grouped { padding-top: 0; }
 .message-grouped .message-avatar-link,
 .message-grouped .message-author,
 .message-grouped .message-time { display: none; }
-.message-grouped .message-content,
-.message-grouped .message-time { padding-left: 44px; }
+.message-grouped .message-content { grid-column: 2; }
 
 /* ===== RIGHT-CLICK CONTEXT MENU ===== */
 .context-menu {
