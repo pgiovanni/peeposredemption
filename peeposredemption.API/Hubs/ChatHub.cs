@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using peeposredemption.Application.Features.Game.Commands;
 using peeposredemption.Application.Features.Messages.Commands;
 using peeposredemption.Application.Features.Moderation.Commands;
 using peeposredemption.Application.Features.Orbs.Commands;
@@ -25,46 +26,84 @@ namespace peeposredemption.API.Hubs
         private string CurrentUsername =>
             Context.User!.FindFirst(ClaimTypes.Name)!.Value;
 
+        private async Task<string> GetDisplayNameAsync()
+        {
+            var user = await _uow.Users.GetByIdAsync(CurrentUserId);
+            return user?.DisplayOrUsername ?? CurrentUsername;
+        }
+
         public async Task JoinChannel(Guid serverId, Guid channelId) =>
             await Groups.AddToGroupAsync(Context.ConnectionId, $"channel:{channelId}");
 
         public async Task SendChannelMessage(Guid channelId, string content)
         {
+            // Slash command interception for RPG game system
+            if (content.StartsWith("/"))
+            {
+                var config = await _uow.GameChannelConfigs.GetByChannelIdAsync(channelId);
+                if (config is not { GameBotMuted: true })
+                {
+                    var result = await _mediator.Send(new ProcessGameCommandRequest(
+                        CurrentUserId, CurrentUsername, channelId, content));
+                    if (result.Handled)
+                    {
+                        foreach (var response in result.Responses)
+                        {
+                            if (response.BroadcastToChannel)
+                                await Clients.Group($"channel:{channelId}")
+                                    .SendAsync("ReceiveGameMessage", new { type = response.Type, payload = response.Payload });
+                            else
+                                await Clients.Caller
+                                    .SendAsync("ReceiveGameMessage", new { type = response.Type, payload = response.Payload });
+                        }
+                        return;
+                    }
+                }
+            }
+
+            var displayName = await GetDisplayNameAsync();
+
             var dto = await _mediator.Send(
-                new SendMessageCommand(channelId, CurrentUserId, CurrentUsername, content));
+                new SendMessageCommand(channelId, CurrentUserId, displayName, content));
             await Clients.Group($"channel:{channelId}")
                 .SendAsync("ReceiveChannelMessage", dto);
 
-            // Award orbs for message activity (fire-and-forget, don't block chat)
-            _ = _mediator.Send(new RecordMessageOrbRewardCommand(CurrentUserId));
+            // Award orbs for message activity
+            await _mediator.Send(new RecordMessageOrbRewardCommand(CurrentUserId));
 
             // Detect @everyone and individual @mentions, send notifications
             var channel = await _uow.Channels.GetByIdAsync(channelId);
             if (channel != null)
             {
-                if (Regex.IsMatch(content, @"@everyone\b", RegexOptions.IgnoreCase))
+                var hasEveryone = Regex.IsMatch(content, @"@everyone\b", RegexOptions.IgnoreCase);
+                if (hasEveryone)
                 {
-                    // Notify all server members except the sender
-                    var allMembers = await _uow.Servers.GetServerMembersAsync(channel.ServerId);
-                    foreach (var member in allMembers)
+                    // Only server owner can use @everyone
+                    var senderRole = await _uow.Servers.GetMemberRoleAsync(channel.ServerId, CurrentUserId);
+                    if (senderRole != null && senderRole.Value == ServerRole.Owner)
                     {
-                        if (member.UserId == CurrentUserId) continue;
-                        var notification = new Notification
+                        var allMembers = await _uow.Servers.GetServerMembersAsync(channel.ServerId);
+                        foreach (var member in allMembers)
                         {
-                            UserId = member.UserId,
-                            FromUserId = CurrentUserId,
-                            Type = NotificationType.Ping,
-                            Content = $"{CurrentUsername} pinged @everyone in #{channel.Name}",
-                            ChannelId = channelId,
-                            ServerId = channel.ServerId
-                        };
-                        await _uow.Notifications.AddAsync(notification);
-                        await _uow.SaveChangesAsync();
-                        await Clients.User(member.UserId.ToString())
-                            .SendAsync("ReceiveNotification", new { notification.Content, notification.Id, ServerId = channel.ServerId });
+                            if (member.UserId == CurrentUserId) continue;
+                            var notification = new Notification
+                            {
+                                UserId = member.UserId,
+                                FromUserId = CurrentUserId,
+                                Type = NotificationType.Ping,
+                                Content = $"{displayName} pinged @everyone in #{channel.Name}",
+                                ChannelId = channelId,
+                                ServerId = channel.ServerId
+                            };
+                            await _uow.Notifications.AddAsync(notification);
+                            await _uow.SaveChangesAsync();
+                            await Clients.User(member.UserId.ToString())
+                                .SendAsync("ReceiveNotification", new { notification.Content, notification.Id, ServerId = channel.ServerId });
+                        }
                     }
                 }
-                else
+
+                if (!hasEveryone)
                 {
                     var mentions = Regex.Matches(content, @"@([a-zA-Z0-9_]+)")
                         .Select(m => m.Groups[1].Value)
@@ -72,7 +111,6 @@ namespace peeposredemption.API.Hubs
 
                     foreach (var username in mentions)
                     {
-                        if (string.Equals(username, CurrentUsername, StringComparison.OrdinalIgnoreCase)) continue;
                         var mentionedUser = await _uow.Users.GetByUsernameAsync(username);
                         if (mentionedUser == null) continue;
 
@@ -81,7 +119,7 @@ namespace peeposredemption.API.Hubs
                             UserId = mentionedUser.Id,
                             FromUserId = CurrentUserId,
                             Type = NotificationType.Ping,
-                            Content = $"{CurrentUsername} mentioned you in #{channel.Name}",
+                            Content = $"{displayName} mentioned you in #{channel.Name}",
                             ChannelId = channelId,
                             ServerId = channel.ServerId
                         };
@@ -98,7 +136,8 @@ namespace peeposredemption.API.Hubs
         {
             var dto = await _mediator.Send(
                 new SendDirectMessageCommand(CurrentUserId, recipientId, content));
-            var payload = new { dto.SenderId, dto.Content, dto.SentAt };
+            var senderDisplay = await GetDisplayNameAsync();
+            var payload = new { dto.SenderId, SenderUsername = senderDisplay, dto.Content, dto.SentAt };
             await Clients.User(recipientId.ToString()).SendAsync("ReceiveDirectMessage", payload);
             await Clients.Caller.SendAsync("ReceiveDirectMessage", payload);
         }
@@ -118,12 +157,13 @@ namespace peeposredemption.API.Hubs
                     CurrentUserId, recipientId, amount, channelId, channel?.ServerId, message));
 
                 var recipient = await _uow.Users.GetByIdAsync(recipientId);
+                var senderDisplay = await GetDisplayNameAsync();
                 var payload = new
                 {
                     GiftId = result.GiftId,
-                    SenderUsername = CurrentUsername,
+                    SenderUsername = senderDisplay,
                     SenderId = CurrentUserId,
-                    RecipientUsername = recipient?.Username ?? "Unknown",
+                    RecipientUsername = recipient?.DisplayOrUsername ?? "Unknown",
                     RecipientId = recipientId,
                     Amount = amount,
                     Message = message

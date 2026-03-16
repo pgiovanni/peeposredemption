@@ -1,6 +1,6 @@
 ﻿namespace peeposredemption.Domain.Entities
 {
-    public enum ServerRole { Member = 0, Moderator = 1, Owner = 2 }
+    public enum ServerRole { Member = 0, Moderator = 1, Admin = 2, Owner = 3 }
 
     public class ServerMember
     {
@@ -9,6 +9,8 @@
         public string? Nickname { get; set; }
         public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
         public ServerRole Role { get; set; } = ServerRole.Member;
+        public bool IsMuted { get; set; }
+        public DateTime? MutedUntil { get; set; }
         public User User { get; set; }
         public Server Server { get; set; }
     }

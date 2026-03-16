@@ -6,5 +6,6 @@ namespace peeposredemption.Application.Services
         Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content);
         Task SendNewUserNotificationAsync(string username, string email);
         Task SendReferralPurchaseNotificationAsync(string marketerUsername, string buyerUsername, long amountCents);
+        Task SendArtistSubmissionNotificationAsync(string displayName, string email, string portfolioUrl);
     }
 }

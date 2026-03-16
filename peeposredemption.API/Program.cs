@@ -272,6 +272,55 @@ app.MapPost("/api/orbs/gift", async (HttpContext ctx, IMediator mediator, peepos
     catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
 }).RequireAuthorization();
 
+// Moderation API endpoints
+app.MapPost("/api/moderation/kick", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var body = await ctx.Request.ReadFromJsonAsync<ModerationActionRequest>();
+    if (body == null) return Results.BadRequest();
+    try
+    {
+        await mediator.Send(new peeposredemption.Application.Features.Moderation.Commands.KickMemberCommand(
+            Guid.Parse(body.ServerId), Guid.Parse(uid), Guid.Parse(body.TargetUserId)));
+        return Results.Ok();
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization();
+
+app.MapPost("/api/moderation/ban", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var body = await ctx.Request.ReadFromJsonAsync<ModerationActionRequest>();
+    if (body == null) return Results.BadRequest();
+    try
+    {
+        await mediator.Send(new peeposredemption.Application.Features.Moderation.Commands.BanMemberCommand(
+            Guid.Parse(body.ServerId), Guid.Parse(uid), Guid.Parse(body.TargetUserId)));
+        return Results.Ok();
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization();
+
+app.MapPost("/api/moderation/mute", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var body = await ctx.Request.ReadFromJsonAsync<MuteActionRequest>();
+    if (body == null) return Results.BadRequest();
+    try
+    {
+        await mediator.Send(new peeposredemption.Application.Features.Moderation.Commands.MuteUserCommand(
+            Guid.Parse(body.ServerId), Guid.Parse(uid), Guid.Parse(body.TargetUserId), body.DurationMinutes));
+        return Results.Ok();
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization();
+
 // Stripe webhook — must read raw body, no antiforgery
 app.MapPost("/webhooks/stripe", async (HttpRequest req, IMediator mediator) =>
 {
@@ -287,6 +336,33 @@ app.MapPost("/webhooks/stripe", async (HttpRequest req, IMediator mediator) =>
     catch (UnauthorizedAccessException) { return Results.BadRequest(); }
     catch { return Results.Ok(); } // Don't expose internal errors to Stripe
 }).AllowAnonymous().DisableAntiforgery();
+
+// Notification endpoints
+app.MapGet("/api/notifications", async (HttpContext ctx, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var notifications = await uow.Notifications.GetRecentAsync(Guid.Parse(uid));
+    return Results.Ok(notifications.Select(n => new
+    {
+        n.Id,
+        n.Content,
+        n.IsRead,
+        n.ServerId,
+        n.ChannelId,
+        n.CreatedAt,
+        FromUsername = n.FromUser?.Username
+    }));
+}).RequireAuthorization();
+
+app.MapPost("/api/notifications/read", async (HttpContext ctx, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    await uow.Notifications.MarkAllReadAsync(Guid.Parse(uid));
+    await uow.SaveChangesAsync();
+    return Results.Ok();
+}).RequireAuthorization();
 
 // Badge endpoints
 app.MapGet("/api/badges/progress", async (HttpContext ctx, IMediator mediator) =>
@@ -352,6 +428,7 @@ using (var scope = app.Services.CreateScope())
     var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
     await mediator.Send(new peeposredemption.Application.Features.Badges.Commands.SeedBadgeDefinitionsCommand());
     await mediator.Send(new peeposredemption.Application.Features.Artists.Commands.SeedArtistsCommand());
+    await mediator.Send(new peeposredemption.Application.Features.Game.Commands.SeedGameDataCommand());
 }
 
 app.Run();
@@ -359,3 +436,5 @@ app.Run();
 record OrbPurchaseRequest(int Tier);
 record OrbGiftRequest(string ChannelId, string RecipientUsername, long Amount, string? Message);
 record ArtistPayoutRequest(Guid ArtistId, long AmountCents, string? Reference);
+record ModerationActionRequest(string ServerId, string TargetUserId);
+record MuteActionRequest(string ServerId, string TargetUserId, int DurationMinutes = 10);

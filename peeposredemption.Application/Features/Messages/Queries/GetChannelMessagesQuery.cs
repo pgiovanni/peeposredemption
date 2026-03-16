@@ -22,8 +22,8 @@ namespace peeposredemption.Application.Features.Messages.Queries
             var messages = await _uow.Messages
                 .GetChannelMessagesAsync(q.ChannelId, q.Page, q.PageSize);
             return messages
-                .Select(m => new MessageDto(m.Id, m.AuthorId, m.Author.Username,
-                    m.IsDeleted ? "[message deleted]" : m.Content, m.SentAt, m.IsDeleted))
+                .Select(m => new MessageDto(m.Id, m.AuthorId, m.Author.DisplayOrUsername,
+                    m.IsDeleted ? "[message deleted]" : m.Content, m.SentAt, m.IsDeleted, m.Author.AvatarUrl))
                 .ToList();
         }
     }

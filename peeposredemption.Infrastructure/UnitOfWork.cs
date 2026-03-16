@@ -37,6 +37,20 @@ namespace peeposredemption.Infrastructure
         public IArtItemRepository ArtItems { get; }
         public IArtistCommissionRepository ArtistCommissions { get; }
         public IArtistPayoutRepository ArtistPayouts { get; }
+        public IArtistSubmissionRepository ArtistSubmissions { get; }
+
+        // Game system
+        public IPlayerCharacterRepository PlayerCharacters { get; }
+        public IItemDefinitionRepository ItemDefinitions { get; }
+        public IPlayerInventoryItemRepository PlayerInventoryItems { get; }
+        public IMonsterDefinitionRepository MonsterDefinitions { get; }
+        public IMonsterLootEntryRepository MonsterLootEntries { get; }
+        public ICombatSessionRepository CombatSessions { get; }
+        public IPlayerSkillRepository PlayerSkills { get; }
+        public IGameChannelConfigRepository GameChannelConfigs { get; }
+        public ICraftingRecipeRepository CraftingRecipes { get; }
+        public IMarketplaceListingRepository MarketplaceListings { get; }
+        public ITradeOfferRepository TradeOffers { get; }
 
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
@@ -61,7 +75,19 @@ namespace peeposredemption.Infrastructure
             IArtistRepository artists,
             IArtItemRepository artItems,
             IArtistCommissionRepository artistCommissions,
-            IArtistPayoutRepository artistPayouts)
+            IArtistPayoutRepository artistPayouts,
+            IArtistSubmissionRepository artistSubmissions,
+            IPlayerCharacterRepository playerCharacters,
+            IItemDefinitionRepository itemDefinitions,
+            IPlayerInventoryItemRepository playerInventoryItems,
+            IMonsterDefinitionRepository monsterDefinitions,
+            IMonsterLootEntryRepository monsterLootEntries,
+            ICombatSessionRepository combatSessions,
+            IPlayerSkillRepository playerSkills,
+            IGameChannelConfigRepository gameChannelConfigs,
+            ICraftingRecipeRepository craftingRecipes,
+            IMarketplaceListingRepository marketplaceListings,
+            ITradeOfferRepository tradeOffers)
         {
             _db = db;
             Users = users;
@@ -90,6 +116,18 @@ namespace peeposredemption.Infrastructure
             ArtItems = artItems;
             ArtistCommissions = artistCommissions;
             ArtistPayouts = artistPayouts;
+            ArtistSubmissions = artistSubmissions;
+            PlayerCharacters = playerCharacters;
+            ItemDefinitions = itemDefinitions;
+            PlayerInventoryItems = playerInventoryItems;
+            MonsterDefinitions = monsterDefinitions;
+            MonsterLootEntries = monsterLootEntries;
+            CombatSessions = combatSessions;
+            PlayerSkills = playerSkills;
+            GameChannelConfigs = gameChannelConfigs;
+            CraftingRecipes = craftingRecipes;
+            MarketplaceListings = marketplaceListings;
+            TradeOffers = tradeOffers;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

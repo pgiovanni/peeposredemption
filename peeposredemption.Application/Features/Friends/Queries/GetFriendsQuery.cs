@@ -14,10 +14,14 @@ public class GetFriendsQueryHandler : IRequestHandler<GetFriendsQuery, List<User
     public async Task<List<UserDto>> Handle(GetFriendsQuery query, CancellationToken ct)
     {
         var accepted = await _uow.FriendRequests.GetAcceptedAsync(query.UserId);
+        var lastMsgTimes = await _uow.DirectMessages.GetLastMessageTimePerFriendAsync(query.UserId);
+
         return accepted.Select(r =>
         {
             var friend = r.SenderId == query.UserId ? r.Receiver : r.Sender;
-            return new UserDto(friend.Id, friend.Username, friend.AvatarUrl);
-        }).ToList();
+            return new UserDto(friend.Id, friend.Username, friend.AvatarUrl, friend.DisplayName);
+        })
+        .OrderByDescending(f => lastMsgTimes.GetValueOrDefault(f.Id, DateTime.MinValue))
+        .ToList();
     }
 }

@@ -45,6 +45,38 @@ namespace peeposredemption.Infrastructure.Services
             return $"{_publicUrl}/{key}";
         }
 
+        public async Task<string> UploadArtistSampleAsync(string key, Stream imageStream, string contentType)
+        {
+            var request = new PutObjectRequest
+            {
+                BucketName = _bucketName,
+                Key = key,
+                InputStream = imageStream,
+                ContentType = contentType,
+                CannedACL = S3CannedACL.PublicRead,
+                UseChunkEncoding = false
+            };
+
+            await _s3.PutObjectAsync(request);
+            return $"{_publicUrl}/{key}";
+        }
+
+        public async Task<string> UploadProfileImageAsync(string key, Stream imageStream, string contentType)
+        {
+            var request = new PutObjectRequest
+            {
+                BucketName = _bucketName,
+                Key = key,
+                InputStream = imageStream,
+                ContentType = contentType,
+                CannedACL = S3CannedACL.PublicRead,
+                UseChunkEncoding = false
+            };
+
+            await _s3.PutObjectAsync(request);
+            return $"{_publicUrl}/{key}";
+        }
+
         public async Task DeleteEmojiAsync(string key)
         {
             var request = new DeleteObjectRequest

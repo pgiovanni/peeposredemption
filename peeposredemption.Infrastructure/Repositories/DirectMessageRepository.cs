@@ -51,6 +51,16 @@ namespace peeposredemption.Infrastructure.Repositories
                 .ToListAsync();
             foreach (var dm in unread) dm.IsRead = true;
         }
+
+        public async Task<Dictionary<Guid, DateTime>> GetLastMessageTimePerFriendAsync(Guid userId)
+        {
+            var rows = await _db.DirectMessages
+                .Where(dm => dm.SenderId == userId || dm.RecipientId == userId)
+                .GroupBy(dm => dm.SenderId == userId ? dm.RecipientId : dm.SenderId)
+                .Select(g => new { FriendId = g.Key, LastTime = g.Max(dm => dm.SentAt) })
+                .ToListAsync();
+            return rows.ToDictionary(r => r.FriendId, r => r.LastTime);
+        }
     }
 
 }

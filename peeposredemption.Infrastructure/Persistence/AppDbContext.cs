@@ -37,6 +37,21 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<ArtItem> ArtItems { get; set; }
         public DbSet<ArtistCommission> ArtistCommissions { get; set; }
         public DbSet<ArtistPayout> ArtistPayouts { get; set; }
+        public DbSet<ArtistSubmission> ArtistSubmissions { get; set; }
+
+        // Game system
+        public DbSet<PlayerCharacter> PlayerCharacters { get; set; }
+        public DbSet<ItemDefinition> ItemDefinitions { get; set; }
+        public DbSet<PlayerInventoryItem> PlayerInventoryItems { get; set; }
+        public DbSet<MonsterDefinition> MonsterDefinitions { get; set; }
+        public DbSet<MonsterLootEntry> MonsterLootEntries { get; set; }
+        public DbSet<CombatSession> CombatSessions { get; set; }
+        public DbSet<PlayerSkill> PlayerSkills { get; set; }
+        public DbSet<GameChannelConfig> GameChannelConfigs { get; set; }
+        public DbSet<TradeOffer> TradeOffers { get; set; }
+        public DbSet<CraftingRecipe> CraftingRecipes { get; set; }
+        public DbSet<CraftingRecipeIngredient> CraftingRecipeIngredients { get; set; }
+        public DbSet<MarketplaceListing> MarketplaceListings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -315,6 +330,150 @@ namespace peeposredemption.Infrastructure.Persistence
                 .WithMany()
                 .HasForeignKey(p => p.ArtistId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ArtistSubmission
+            modelBuilder.Entity<ArtistSubmission>()
+                .HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ArtistSubmission>()
+                .HasIndex(s => new { s.UserId, s.Status });
+
+            // ── Game System ────────────────────────────────────────────
+
+            // PlayerCharacter — one per user
+            modelBuilder.Entity<PlayerCharacter>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PlayerCharacter>()
+                .HasIndex(p => p.UserId)
+                .IsUnique();
+
+            // ItemDefinition — unique name
+            modelBuilder.Entity<ItemDefinition>()
+                .HasIndex(i => i.Name)
+                .IsUnique();
+
+            // PlayerInventoryItem
+            modelBuilder.Entity<PlayerInventoryItem>()
+                .HasOne(i => i.Player)
+                .WithMany(p => p.Inventory)
+                .HasForeignKey(i => i.PlayerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PlayerInventoryItem>()
+                .HasOne(i => i.ItemDefinition)
+                .WithMany()
+                .HasForeignKey(i => i.ItemDefinitionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // MonsterLootEntry
+            modelBuilder.Entity<MonsterLootEntry>()
+                .HasOne(l => l.MonsterDefinition)
+                .WithMany(m => m.LootTable)
+                .HasForeignKey(l => l.MonsterDefinitionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<MonsterLootEntry>()
+                .HasOne(l => l.ItemDefinition)
+                .WithMany()
+                .HasForeignKey(l => l.ItemDefinitionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // CombatSession
+            modelBuilder.Entity<CombatSession>()
+                .HasOne(c => c.Player)
+                .WithMany(p => p.CombatSessions)
+                .HasForeignKey(c => c.PlayerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CombatSession>()
+                .HasOne(c => c.MonsterDefinition)
+                .WithMany()
+                .HasForeignKey(c => c.MonsterDefinitionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // PlayerSkill — unique (PlayerId, SkillType)
+            modelBuilder.Entity<PlayerSkill>()
+                .HasOne(s => s.Player)
+                .WithMany(p => p.Skills)
+                .HasForeignKey(s => s.PlayerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PlayerSkill>()
+                .HasIndex(s => new { s.PlayerId, s.SkillType })
+                .IsUnique();
+
+            // GameChannelConfig — unique per channel
+            modelBuilder.Entity<GameChannelConfig>()
+                .HasOne(g => g.Channel)
+                .WithMany()
+                .HasForeignKey(g => g.ChannelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<GameChannelConfig>()
+                .HasIndex(g => g.ChannelId)
+                .IsUnique();
+
+            // TradeOffer
+            modelBuilder.Entity<TradeOffer>()
+                .HasOne(t => t.Initiator)
+                .WithMany()
+                .HasForeignKey(t => t.InitiatorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TradeOffer>()
+                .HasOne(t => t.Recipient)
+                .WithMany()
+                .HasForeignKey(t => t.RecipientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // CraftingRecipe
+            modelBuilder.Entity<CraftingRecipe>()
+                .HasOne(r => r.OutputItem)
+                .WithMany()
+                .HasForeignKey(r => r.OutputItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // CraftingRecipeIngredient
+            modelBuilder.Entity<CraftingRecipeIngredient>()
+                .HasOne(i => i.Recipe)
+                .WithMany(r => r.Ingredients)
+                .HasForeignKey(i => i.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CraftingRecipeIngredient>()
+                .HasOne(i => i.ItemDefinition)
+                .WithMany()
+                .HasForeignKey(i => i.ItemDefinitionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // MarketplaceListing
+            modelBuilder.Entity<MarketplaceListing>()
+                .HasOne(l => l.Seller)
+                .WithMany()
+                .HasForeignKey(l => l.SellerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MarketplaceListing>()
+                .HasOne(l => l.Buyer)
+                .WithMany()
+                .HasForeignKey(l => l.BuyerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MarketplaceListing>()
+                .HasOne(l => l.ItemDefinition)
+                .WithMany()
+                .HasForeignKey(l => l.ItemDefinitionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MarketplaceListing>()
+                .HasIndex(l => new { l.Status, l.ExpiresAt });
         }
 
         // Converts PascalCase to snake_case

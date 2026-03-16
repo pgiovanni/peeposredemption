@@ -8,9 +8,17 @@
 <div class="app-shell">
     <div class="sidebar">
         <div class="sidebar-header">
-            <span>Server Settings</span>
+            <span>@(Model.ServerName ?? "Server") Settings</span>
         </div>
-        <a href="javascript:history.back()" class="dm-item">&#x2190; Back to Server</a>
+        <a href="javascript:history.back()" class="channel-item">&larr; Back to Server</a>
+        <div class="sidebar-section-header">SETTINGS</div>
+        <a href="#members" class="channel-item settings-nav active" data-tab="members">Members</a>
+        <a href="#emojis" class="channel-item settings-nav" data-tab="emojis">Emojis</a>
+        @if (Model.CurrentUserRole == ServerRole.Owner)
+        {
+            <a href="#server" class="channel-item settings-nav" data-tab="server">Server</a>
+        }
+        <a href="#audit" class="channel-item settings-nav" data-tab="audit">Audit Log</a>
     </div>
 
     <div class="sidebar-backdrop"></div>
@@ -21,148 +29,196 @@
             <span>Server Settings</span>
         </div>
 
-        @if (Model.StatusMessage != null)
-        {
-            <div class="alert-success">@Model.StatusMessage</div>
-        }
-        @if (TempData["Error"] != null)
-        {
-            <div class="alert-error">@TempData["Error"]</div>
-        }
-
-        <!-- Emojis -->
-        <section class="settings-section">
-            <h3 class="settings-heading">
-                EMOJIS — @Model.Emojis.Count / @Model.EmojiLimit
-                @if (Model.ServerStorageTier == StorageTier.Standard)
-                {
-                    <span class="badge-standard">STANDARD</span>
-                }
-                else if (Model.ServerStorageTier == StorageTier.Boosted)
-                {
-                    <span class="badge-boosted">BOOSTED</span>
-                }
-            </h3>
-
-            @if (Model.Emojis.Any())
+        <div class="settings-body">
+            @if (Model.StatusMessage != null)
             {
-                <div class="emoji-gallery">
-                    @foreach (var emoji in Model.Emojis)
+                <div class="alert-success">@Model.StatusMessage</div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert-error">@TempData["Error"]</div>
+            }
+
+            <!-- Members Tab (default) -->
+            <div class="settings-tab active" id="tab-members">
+                <section class="settings-section">
+                    <h3 class="settings-heading">MEMBERS — @Model.Members.Count</h3>
+                    @foreach (var m in Model.Members)
                     {
-                        <div class="emoji-item">
-                            <img src="@emoji.ImageUrl" alt="@emoji.Name" class="emoji-preview" />
-                            <span class="emoji-name">:@emoji.Name:</span>
-                            @if (Model.CurrentUserRole >= ServerRole.Moderator)
+                        <div class="member-row">
+                            <div class="friend-avatar">@m.Username.Substring(0, 1).ToUpper()</div>
+                            <span class="member-name">@m.Username</span>
+                            <span class="member-role role-@m.Role.ToString().ToLower()">@m.Role</span>
+                            @if (Model.CurrentUserRole == ServerRole.Owner && m.Role != ServerRole.Owner)
                             {
-                                <form method="post" asp-page-handler="DeleteEmoji" style="display:inline">
+                                <form method="post" asp-page-handler="Kick" style="display:inline">
                                     <input type="hidden" name="serverId" value="@Model.ServerId" />
-                                    <input type="hidden" name="emojiId" value="@emoji.Id" />
-                                    <button type="submit" class="icon-btn emoji-delete-btn" title="Delete emoji">✕</button>
+                                    <input type="hidden" name="targetUserId" value="@m.UserId" />
+                                    <button type="submit" class="btn-danger btn-sm">Kick</button>
+                                </form>
+                                <form method="post" asp-page-handler="Ban" style="display:inline">
+                                    <input type="hidden" name="serverId" value="@Model.ServerId" />
+                                    <input type="hidden" name="targetUserId" value="@m.UserId" />
+                                    <button type="submit" class="btn-danger btn-sm">Ban</button>
                                 </form>
                             }
                         </div>
                     }
-                </div>
-            }
-            else
-            {
-                <div class="sidebar-empty">No custom emojis yet.</div>
-            }
+                </section>
+            </div>
 
-            @if (Model.CurrentUserRole >= ServerRole.Moderator && Model.Emojis.Count < Model.EmojiLimit)
-            {
-                <form method="post" asp-page-handler="UploadEmoji" enctype="multipart/form-data" class="emoji-upload-form">
-                    <input type="hidden" name="serverId" value="@Model.ServerId" />
-                    <input type="text" name="emojiName" placeholder="emoji_name" required pattern="[a-z0-9_]{2,32}"
-                           title="2-32 lowercase letters, numbers, or underscores" autocomplete="off" />
-                    <input type="file" name="emojiFile" accept="image/png,image/gif,image/webp" required />
-                    <button type="submit" class="btn-primary btn-sm">Upload Emoji</button>
-                </form>
-                <div class="emoji-hint">PNG, GIF, or WebP · Max 256KB · Name: lowercase letters, numbers, underscores</div>
-            }
-            else if (Model.CurrentUserRole >= ServerRole.Moderator && Model.Emojis.Count >= Model.EmojiLimit)
-            {
-                <div class="emoji-hint">Emoji limit reached (@Model.EmojiLimit).</div>
-            }
-
-            @if (Model.CurrentUserRole == ServerRole.Owner && Model.ServerStorageTier < StorageTier.Boosted)
-            {
-                <div class="upgrade-options">
-                    @if (Model.ServerStorageTier < StorageTier.Standard)
-                    {
-                        <form method="post" asp-page-handler="BuyBoost" class="boost-form">
-                            <input type="hidden" name="serverId" value="@Model.ServerId" />
-                            <input type="hidden" name="targetTier" value="@((int)StorageTier.Standard)" />
-                            <button type="submit" class="btn-boost btn-boost-standard">⚡ Standard — $1.99 <span class="tier-detail">150 emojis · one-time</span></button>
-                        </form>
-                    }
-                    <form method="post" asp-page-handler="BuyBoost" class="boost-form">
-                        <input type="hidden" name="serverId" value="@Model.ServerId" />
-                        <input type="hidden" name="targetTier" value="@((int)StorageTier.Boosted)" />
-                        <button type="submit" class="btn-boost btn-boost-pro">🚀 Boosted — $4.99 <span class="tier-detail">500 emojis · one-time</span></button>
-                    </form>
-                </div>
-            }
-        </section>
-
-        <!-- Members -->
-        <section class="settings-section">
-            <h3 class="settings-heading">MEMBERS — @Model.Members.Count</h3>
-            @foreach (var m in Model.Members)
-            {
-                <div class="member-row">
-                    <div class="friend-avatar">@m.Username.Substring(0, 1).ToUpper()</div>
-                    <span class="member-name">@m.Username</span>
-                    <span class="member-role role-@m.Role.ToString().ToLower()">@m.Role</span>
-                    @if (Model.CurrentUserRole == ServerRole.Owner && m.Role != ServerRole.Owner)
-                    {
-                        <form method="post" asp-page-handler="Kick" style="display:inline">
-                            <input type="hidden" name="serverId" value="@Model.ServerId" />
-                            <input type="hidden" name="targetUserId" value="@m.UserId" />
-                            <button type="submit" class="btn-danger btn-sm">Kick</button>
-                        </form>
-                        <form method="post" asp-page-handler="Ban" style="display:inline">
-                            <input type="hidden" name="serverId" value="@Model.ServerId" />
-                            <input type="hidden" name="targetUserId" value="@m.UserId" />
-                            <button type="submit" class="btn-danger btn-sm">Ban</button>
-                        </form>
-                    }
-                </div>
-            }
-        </section>
-
-        <!-- Audit Log -->
-        <section class="settings-section">
-            <h3 class="settings-heading">AUDIT LOG</h3>
-            @if (!Model.AuditLog.Any())
-            {
-                <div class="sidebar-empty">No moderation actions yet.</div>
-            }
-            else
-            {
-                <table class="audit-table">
-                    <thead>
-                        <tr>
-                            <th>When</th>
-                            <th>Moderator</th>
-                            <th>Action</th>
-                            <th>Target</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var entry in Model.AuditLog)
+            <!-- Emojis Tab -->
+            <div class="settings-tab" id="tab-emojis">
+                <section class="settings-section">
+                    <h3 class="settings-heading">
+                        EMOJIS — @Model.Emojis.Count / @Model.EmojiLimit
+                        @if (Model.ServerStorageTier == StorageTier.Standard)
                         {
-                            <tr>
-                                <td class="audit-time">@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                                <td>@entry.Moderator.Username</td>
-                                <td class="audit-action">@entry.Action</td>
-                                <td>@entry.TargetUser.Username</td>
-                            </tr>
+                            <span class="badge-standard">STANDARD</span>
                         }
-                    </tbody>
-                </table>
-            }
-        </section>
+                        else if (Model.ServerStorageTier == StorageTier.Boosted)
+                        {
+                            <span class="badge-boosted">BOOSTED</span>
+                        }
+                    </h3>
 
+                    @if (Model.Emojis.Any())
+                    {
+                        <div class="emoji-gallery">
+                            @foreach (var emoji in Model.Emojis)
+                            {
+                                <div class="emoji-item">
+                                    <img src="@emoji.ImageUrl" alt="@emoji.Name" class="emoji-preview" />
+                                    <span class="emoji-name">:@emoji.Name:</span>
+                                    @if (Model.CurrentUserRole >= ServerRole.Moderator)
+                                    {
+                                        <form method="post" asp-page-handler="DeleteEmoji" style="display:inline">
+                                            <input type="hidden" name="serverId" value="@Model.ServerId" />
+                                            <input type="hidden" name="emojiId" value="@emoji.Id" />
+                                            <button type="submit" class="icon-btn emoji-delete-btn" title="Delete emoji">✕</button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="sidebar-empty">No custom emojis yet.</div>
+                    }
+
+                    @if (Model.CurrentUserRole >= ServerRole.Moderator && Model.Emojis.Count < Model.EmojiLimit)
+                    {
+                        <form method="post" asp-page-handler="UploadEmoji" enctype="multipart/form-data" class="emoji-upload-form">
+                            <input type="hidden" name="serverId" value="@Model.ServerId" />
+                            <input type="text" name="emojiName" placeholder="emoji_name" required pattern="[a-z0-9_]{2,32}"
+                                   title="2-32 lowercase letters, numbers, or underscores" autocomplete="off" />
+                            <input type="file" name="emojiFile" accept="image/png,image/gif,image/webp" required />
+                            <button type="submit" class="btn-primary btn-sm">Upload Emoji</button>
+                        </form>
+                        <div class="emoji-hint">PNG, GIF, or WebP · Max 256KB · Name: lowercase letters, numbers, underscores</div>
+                    }
+                    else if (Model.CurrentUserRole >= ServerRole.Moderator && Model.Emojis.Count >= Model.EmojiLimit)
+                    {
+                        <div class="emoji-hint">Emoji limit reached (@Model.EmojiLimit).</div>
+                    }
+
+                    @if (Model.ServerStorageTier < StorageTier.Boosted)
+                    {
+                        <div class="upgrade-options">
+                            @if (Model.ServerStorageTier < StorageTier.Standard)
+                            {
+                                <form method="post" asp-page-handler="BuyBoost" class="boost-form">
+                                    <input type="hidden" name="serverId" value="@Model.ServerId" />
+                                    <input type="hidden" name="targetTier" value="@((int)StorageTier.Standard)" />
+                                    <button type="submit" class="btn-boost btn-boost-standard">⚡ Standard — $1.99 <span class="tier-detail">150 emojis · one-time</span></button>
+                                </form>
+                            }
+                            <form method="post" asp-page-handler="BuyBoost" class="boost-form">
+                                <input type="hidden" name="serverId" value="@Model.ServerId" />
+                                <input type="hidden" name="targetTier" value="@((int)StorageTier.Boosted)" />
+                                <button type="submit" class="btn-boost btn-boost-pro">🚀 Boosted — $4.99 <span class="tier-detail">500 emojis · one-time</span></button>
+                            </form>
+                        </div>
+                    }
+                </section>
+            </div>
+
+            <!-- Server Tab (Owner only) -->
+            @if (Model.CurrentUserRole == ServerRole.Owner)
+            {
+                <div class="settings-tab" id="tab-server">
+                    <section class="settings-section">
+                        <h3 class="settings-heading">SERVER ICON</h3>
+                        <div class="server-icon-preview">
+                            @if (Model.ServerIconUrl != null)
+                            {
+                                <img src="@Model.ServerIconUrl" alt="Server icon" class="server-icon-img" id="icon-preview-img" />
+                            }
+                            else
+                            {
+                                <div class="server-icon-fallback" id="icon-preview-fallback">@Model.ServerName?.Substring(0, 1).ToUpper()</div>
+                            }
+                        </div>
+                        <form method="post" asp-page-handler="UploadIcon" enctype="multipart/form-data" class="server-icon-upload-form">
+                            <input type="hidden" name="serverId" value="@Model.ServerId" />
+                            <input type="file" name="iconFile" accept="image/png,image/jpeg,image/webp,image/gif" required id="iconFileInput" />
+                            <button type="submit" class="btn-primary btn-sm">Upload Icon</button>
+                        </form>
+                        <div class="emoji-hint">PNG, JPEG, WebP, or GIF · Max 15MB · Recommended: 128x128</div>
+                    </section>
+                </div>
+            }
+
+            <!-- Audit Log Tab -->
+            <div class="settings-tab" id="tab-audit">
+                <section class="settings-section">
+                    <h3 class="settings-heading">AUDIT LOG</h3>
+                    @if (!Model.AuditLog.Any())
+                    {
+                        <div class="sidebar-empty">No moderation actions yet.</div>
+                    }
+                    else
+                    {
+                        <table class="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>When</th>
+                                    <th>Moderator</th>
+                                    <th>Action</th>
+                                    <th>Target</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in Model.AuditLog)
+                                {
+                                    <tr>
+                                        <td class="audit-time">@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td>@entry.Moderator.Username</td>
+                                        <td class="audit-action">@entry.Action</td>
+                                        <td>@entry.TargetUser.Username</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </section>
+            </div>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    document.querySelectorAll('.settings-nav').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const tab = this.dataset.tab;
+            document.querySelectorAll('.settings-nav').forEach(n => n.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+        });
+    });
+</script>
+}
