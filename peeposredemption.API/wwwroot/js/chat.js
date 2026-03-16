@@ -139,7 +139,7 @@ function getDateLabel(dateStr) {
 
 function getDateKey(dateStr) {
     const d = new Date(dateStr);
-    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
 function ensureDateSeparator(dateStr) {
