@@ -21,7 +21,7 @@ namespace peeposredemption.Application.Features.Moderation.Queries
 
             var members = await _uow.Servers.GetServerMembersAsync(q.ServerId);
             return members
-                .Select(sm => new ServerMemberDto(sm.UserId, sm.User.Username, sm.Nickname, sm.Role))
+                .Select(sm => new ServerMemberDto(sm.UserId, sm.User.DisplayOrUsername, sm.Nickname ?? sm.User.DisplayName, sm.Role))
                 .ToList();
         }
     }

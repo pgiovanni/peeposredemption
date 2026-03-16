@@ -6,6 +6,7 @@
     <title>@ViewData["Title"] - Torvex</title>
     <link rel="icon" type="image/x-icon" href="~/favicon.ico" />
     <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/css/game.css" />
     <meta name="jwt" content="@Context.Request.Cookies["jwt"]" />
     <meta name="gif-key" content="@(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(Context.RequestServices)["Klipy:ApiKey"])" />
 </head>
@@ -40,6 +41,9 @@
                 const dx = e.changedTouches[0].clientX - touchStartX;
                 if (dx < -60 && shell.classList.contains('sidebar-open')) {
                     shell.classList.remove('sidebar-open');
+                }
+                if (dx > 50 && touchStartX < 50 && !shell.classList.contains('sidebar-open')) {
+                    shell.classList.add('sidebar-open');
                 }
             }, { passive: true });
         });

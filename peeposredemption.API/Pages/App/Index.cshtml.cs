@@ -35,6 +35,8 @@ public class IndexModel : PageModel
     public long OrbBalance { get; set; }
     public int CurrentStreak { get; set; }
     public bool ClaimedToday { get; set; }
+    public string? CurrentUserAvatarUrl { get; set; }
+    public string CurrentUserDisplayName { get; set; } = "";
 
     public async Task<IActionResult> OnGetAsync(Guid? friendId)
     {
@@ -49,7 +51,7 @@ public class IndexModel : PageModel
             var friendUser = await _uow.Users.GetByIdAsync(friendId.Value);
             if (friendUser != null)
             {
-                ActiveFriend = new UserDto(friendUser.Id, friendUser.Username, friendUser.AvatarUrl);
+                ActiveFriend = new UserDto(friendUser.Id, friendUser.Username, friendUser.AvatarUrl, friendUser.DisplayName);
                 var dms = await _uow.DirectMessages.GetConversationAsync(userId.Value, friendId.Value, 1, 50);
                 DmMessages = dms.Select(dm => new DmViewModel
                 {
@@ -134,6 +136,8 @@ public class IndexModel : PageModel
         // Load orb data
         var currentUser = await _uow.Users.GetByIdAsync(userId);
         OrbBalance = currentUser?.OrbBalance ?? 0;
+        CurrentUserAvatarUrl = currentUser?.AvatarUrl;
+        CurrentUserDisplayName = currentUser?.DisplayOrUsername ?? "";
         var streak = await _uow.UserLoginStreaks.GetByUserIdAsync(userId);
         CurrentStreak = streak?.CurrentStreak ?? 0;
         var today = DateTime.UtcNow.Date;

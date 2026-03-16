@@ -59,6 +59,22 @@ namespace peeposredemption.Application.Services
             await _resend.EmailSendAsync(message);
         }
 
+        public async Task SendArtistSubmissionNotificationAsync(string displayName, string email, string portfolioUrl)
+        {
+            var message = new EmailMessage
+            {
+                From = $"PeePo's Redemption <{_fromAddress}>",
+                To = { _adminEmail },
+                Subject = $"[Torvex] New artist application — {displayName}",
+                HtmlBody = $"<p>A new artist application has been submitted.</p>" +
+                           $"<p><strong>Name:</strong> {System.Net.WebUtility.HtmlEncode(displayName)}<br/>" +
+                           $"<strong>Email:</strong> {System.Net.WebUtility.HtmlEncode(email)}<br/>" +
+                           $"<strong>Portfolio:</strong> <a href=\"{System.Net.WebUtility.HtmlEncode(portfolioUrl)}\">{System.Net.WebUtility.HtmlEncode(portfolioUrl)}</a></p>" +
+                           $"<p>Review at <a href=\"https://torvex.app/App/ArtistSubmissions\">Artist Submissions</a>.</p>"
+            };
+            await _resend.EmailSendAsync(message);
+        }
+
         public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
         {
             var message = new EmailMessage

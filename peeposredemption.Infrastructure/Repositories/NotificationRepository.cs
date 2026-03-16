@@ -23,6 +23,14 @@ namespace peeposredemption.Infrastructure.Repositories
             return rows.ToDictionary(r => r.ServerId, r => r.Count);
         }
 
+        public async Task<List<Notification>> GetRecentAsync(Guid userId, int count = 25) =>
+            await _db.Notifications
+                .Where(n => n.UserId == userId)
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(count)
+                .Include(n => n.FromUser)
+                .ToListAsync();
+
         public async Task AddAsync(Notification notification) =>
             await _db.Notifications.AddAsync(notification);
 

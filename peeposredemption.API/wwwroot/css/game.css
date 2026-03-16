@@ -1,0 +1,321 @@
+/* ── RPG Game Messages ─────────────────────────────────────────── */
+
+.game-message {
+    background: #1a1a2e;
+    border: 1px solid #16213e;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 8px 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #e0e0e0;
+    position: relative;
+}
+
+.game-message::before {
+    content: '🎮 RPG Bot';
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #7c3aed;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.game-message .game-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.game-message .game-section {
+    margin: 6px 0;
+}
+
+.game-message .game-label {
+    color: #a0a0b0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.game-message .game-value {
+    color: #fff;
+    font-weight: 600;
+}
+
+/* ── HP / MP Bars ─────────────────────────────────────────────── */
+
+.hp-bar, .mp-bar {
+    height: 16px;
+    background: #2a2a3e;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 4px 0;
+    position: relative;
+}
+
+.hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    border-radius: 8px;
+    transition: width 0.4s ease;
+}
+
+.hp-fill.low { background: linear-gradient(90deg, #ef4444, #dc2626); }
+.hp-fill.medium { background: linear-gradient(90deg, #f59e0b, #d97706); }
+
+.mp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+    border-radius: 8px;
+    transition: width 0.4s ease;
+}
+
+.bar-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* ── Stat Grid ────────────────────────────────────────────────── */
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px 12px;
+    margin: 8px 0;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+
+.stat-name { color: #a0a0b0; }
+.stat-val { color: #fff; font-weight: 600; }
+.stat-bonus { color: #22c55e; font-size: 0.75rem; }
+
+/* ── Combat ───────────────────────────────────────────────────── */
+
+.combat-arena {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #2a2a3e;
+    margin-bottom: 8px;
+}
+
+.combatant {
+    text-align: center;
+    flex: 1;
+}
+
+.combatant-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.combatant-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.combat-vs {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #ef4444;
+    padding: 0 16px;
+}
+
+.combat-log {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+}
+
+.combat-log li {
+    padding: 3px 0;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #1a1a2e;
+}
+
+.combat-log li:last-child { border-bottom: none; }
+
+/* ── Action Buttons ───────────────────────────────────────────── */
+
+.game-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.game-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #3a3a5e;
+    background: #2a2a3e;
+    color: #e0e0e0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.game-btn:hover {
+    background: #3a3a5e;
+    border-color: #7c3aed;
+    color: #fff;
+}
+
+/* ── Rarity Colors ────────────────────────────────────────────── */
+
+.rarity-common { color: #9d9d9d; }
+.rarity-uncommon { color: #1eff00; }
+.rarity-rare { color: #0070ff; }
+.rarity-epic { color: #a335ee; }
+.rarity-legendary { color: #ff8000; }
+
+/* ── Inventory ────────────────────────────────────────────────── */
+
+.inv-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.inv-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #1a1a2e;
+}
+
+.inv-item:last-child { border-bottom: none; }
+
+.inv-item .equipped-badge {
+    background: #7c3aed;
+    color: #fff;
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+}
+
+/* ── Leaderboard ──────────────────────────────────────────────── */
+
+.lb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.lb-table th {
+    text-align: left;
+    color: #a0a0b0;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-bottom: 1px solid #2a2a3e;
+}
+
+.lb-table td {
+    padding: 4px 8px;
+}
+
+.lb-table tr:nth-child(odd) td {
+    background: rgba(255,255,255,0.02);
+}
+
+/* ── Help ─────────────────────────────────────────────────────── */
+
+.help-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 12px;
+    font-size: 0.85rem;
+}
+
+.help-cmd {
+    color: #7c3aed;
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.help-desc {
+    color: #a0a0b0;
+}
+
+/* ── Level Up Animation ───────────────────────────────────────── */
+
+.level-up {
+    text-align: center;
+    padding: 12px;
+    background: linear-gradient(135deg, #7c3aed22, #f59e0b22);
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    margin: 8px 0;
+    animation: levelPulse 0.6s ease;
+}
+
+.level-up-text {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #f59e0b;
+}
+
+@keyframes levelPulse {
+    0% { transform: scale(0.9); opacity: 0; }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── Error Messages ───────────────────────────────────────────── */
+
+.game-message.game-error {
+    border-color: #ef4444;
+}
+
+.game-message.game-error::before {
+    color: #ef4444;
+}
+
+/* ── Gather / Craft Results ───────────────────────────────────── */
+
+.gather-result, .craft-result {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+.gather-icon, .craft-icon {
+    font-size: 1.5rem;
+}
+
+/* ── Market ───────────────────────────────────────────────────── */
+
+.market-listing {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #1a1a2e;
+}
+
+.market-price {
+    color: #f59e0b;
+    font-weight: 600;
+}

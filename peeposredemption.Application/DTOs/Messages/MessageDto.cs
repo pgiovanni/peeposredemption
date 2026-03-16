@@ -4,5 +4,5 @@ using System.Text;
 
 namespace peeposredemption.Application.DTOs.Messages
 {
-    public record MessageDto(Guid Id, Guid AuthorId, string AuthorUsername, string Content, DateTime SentAt, bool IsDeleted = false);
+    public record MessageDto(Guid Id, Guid AuthorId, string AuthorUsername, string Content, DateTime SentAt, bool IsDeleted = false, string? AuthorAvatarUrl = null);
 }

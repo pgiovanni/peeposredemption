@@ -14,8 +14,8 @@ namespace peeposredemption.Application.Features.Moderation.Commands
         public async Task<bool> Handle(KickMemberCommand cmd, CancellationToken ct)
         {
             var requesterRole = await _uow.Servers.GetMemberRoleAsync(cmd.ServerId, cmd.RequesterId);
-            if (requesterRole != ServerRole.Owner)
-                throw new UnauthorizedAccessException("Only the server owner can kick members.");
+            if (requesterRole < ServerRole.Admin)
+                throw new UnauthorizedAccessException("Only admins and the server owner can kick members.");
 
             if (cmd.TargetUserId == cmd.RequesterId)
                 throw new InvalidOperationException("You cannot kick yourself.");

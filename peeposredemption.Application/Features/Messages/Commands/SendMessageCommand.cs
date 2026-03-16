@@ -31,6 +31,25 @@ namespace peeposredemption.Application.Features.Messages.Commands
             if (parentalLink is { AccountFrozen: true })
                 throw new InvalidOperationException("Your account is frozen by parental controls.");
 
+            // Mute enforcement
+            var channel = await _uow.Channels.GetByIdAsync(cmd.ChannelId);
+            if (channel != null)
+            {
+                var member = await _uow.Servers.GetMemberAsync(channel.ServerId, cmd.AuthorId);
+                if (member is { IsMuted: true })
+                {
+                    if (member.MutedUntil.HasValue && member.MutedUntil.Value <= DateTime.UtcNow)
+                    {
+                        member.IsMuted = false;
+                        member.MutedUntil = null;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("You are muted in this server.");
+                    }
+                }
+            }
+
             if (_scanner.ContainsMaliciousLink(cmd.Content))
             {
                 _ = _email.SendMaliciousLinkAlertAsync(cmd.AuthorUsername, cmd.ChannelId, cmd.Content);
@@ -45,7 +64,8 @@ namespace peeposredemption.Application.Features.Messages.Commands
             };
             await _uow.Messages.AddAsync(message);
             await _uow.SaveChangesAsync();
-            return new MessageDto(message.Id, message.AuthorId, cmd.AuthorUsername, message.Content, message.SentAt);
+            var author = await _uow.Users.GetByIdAsync(cmd.AuthorId);
+            return new MessageDto(message.Id, message.AuthorId, cmd.AuthorUsername, message.Content, message.SentAt, false, author?.AvatarUrl);
         }
     }
 

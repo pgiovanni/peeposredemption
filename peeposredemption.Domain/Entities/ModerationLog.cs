@@ -1,6 +1,6 @@
 namespace peeposredemption.Domain.Entities
 {
-    public enum ModerationAction { Kick = 0, Ban = 1, DeleteMessage = 2, DeleteChannel = 3 }
+    public enum ModerationAction { Kick = 0, Ban = 1, DeleteMessage = 2, DeleteChannel = 3, Mute = 4 }
 
     public class ModerationLog
     {

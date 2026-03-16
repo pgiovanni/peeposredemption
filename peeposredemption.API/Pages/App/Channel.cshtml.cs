@@ -23,6 +23,15 @@ public class ChannelModel : PageModel
     public ChannelModel(IMediator mediator, IUnitOfWork uow) { _mediator = mediator; _uow = uow; }
 
     public List<string> MemberUsernames { get; set; } = new();
+    public List<MemberInfo> MemberData { get; set; } = new();
+    public Guid CurrentUserId { get; set; }
+
+    public class MemberInfo
+    {
+        public Guid Id { get; set; }
+        public string Username { get; set; } = "";
+        public string? AvatarUrl { get; set; }
+    }
 
     public ServerListViewModel ServerList { get; set; } = new();
     public Guid ChannelId { get; set; }
@@ -93,6 +102,8 @@ public class ChannelModel : PageModel
         // Member usernames for @mention autocomplete
         var members = await _uow.Servers.GetServerMembersAsync(serverId);
         MemberUsernames = members.Select(m => m.User.Username).ToList();
+        MemberData = members.Select(m => new MemberInfo { Id = m.UserId, Username = m.User.Username, AvatarUrl = m.User.AvatarUrl }).ToList();
+        CurrentUserId = userId;
 
         // Load orb balance
         var currentUser = await _uow.Users.GetByIdAsync(userId);

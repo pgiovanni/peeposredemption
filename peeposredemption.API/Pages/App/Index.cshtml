@@ -71,8 +71,15 @@
                 var dmUnread = Model.ServerList.DmUnreadCounts.GetValueOrDefault(friend.Id, 0);
                 <a href="/App/Index?friendId=@friend.Id"
                    class="dm-item @(Model.ActiveFriendId == friend.Id ? "active" : "")">
-                    <div class="friend-avatar">@friend.Username.Substring(0, 1).ToUpper()</div>
-                    <span>@friend.Username</span>
+                    @if (!string.IsNullOrEmpty(friend.AvatarUrl))
+                    {
+                        <img src="@friend.AvatarUrl" alt="@friend.DisplayOrUsername" class="friend-avatar" />
+                    }
+                    else
+                    {
+                        <div class="friend-avatar">@friend.DisplayOrUsername.Substring(0, 1).ToUpper()</div>
+                    }
+                    <span>@friend.DisplayOrUsername</span>
                     @if (dmUnread > 0)
                     {
                         <span class="notif-badge">@(dmUnread > 9 ? "9+" : dmUnread.ToString())</span>
@@ -95,14 +102,37 @@
         {
             <div class="content-header">
                 <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
-                <div class="friend-avatar">@Model.ActiveFriend.Username.Substring(0, 1).ToUpper()</div>
-                <span>@Model.ActiveFriend.Username</span>
+                <div class="friend-avatar">@Model.ActiveFriend.DisplayOrUsername.Substring(0, 1).ToUpper()</div>
+                <span>@Model.ActiveFriend.DisplayOrUsername</span>
+                <span style="margin-left:auto"></span>
+                <partial name="_NotifDropdown" />
             </div>
             <div id="messages" class="messages-container">
+                @{
+                    bool? lastDmIsMine = null;
+                    DateTime? lastDmTime = null;
+                }
                 @foreach (var msg in Model.DmMessages)
                 {
-                    <div class="message @(msg.IsMine ? "mine" : "theirs")">
-                        <div class="message-author">@(msg.IsMine ? "You" : Model.ActiveFriend.Username)</div>
+                    var dmGrouped = lastDmIsMine == msg.IsMine && lastDmTime.HasValue && (msg.SentAt - lastDmTime.Value).TotalMinutes < 5;
+                    lastDmIsMine = msg.IsMine;
+                    lastDmTime = msg.SentAt;
+                    <div class="message @(msg.IsMine ? "mine" : "theirs") @(dmGrouped ? "message-grouped" : "")">
+                        @{
+                            var dmAvatarUrl = msg.IsMine ? Model.CurrentUserAvatarUrl : Model.ActiveFriend.AvatarUrl;
+                            var dmDisplayName = msg.IsMine ? "You" : Model.ActiveFriend.DisplayOrUsername;
+                        }
+                        <div class="message-avatar-link">
+                            @if (!string.IsNullOrEmpty(dmAvatarUrl))
+                            {
+                                <img src="@dmAvatarUrl" alt="@dmDisplayName" class="message-avatar" />
+                            }
+                            else
+                            {
+                                <div class="message-avatar message-avatar-fallback">@dmDisplayName.Substring(0, 1).ToUpper()</div>
+                            }
+                        </div>
+                        <div class="message-author">@dmDisplayName</div>
                         <div class="message-content">@msg.Content</div>
                         <div class="message-time">@msg.SentAt.ToString("HH:mm")</div>
                     </div>
@@ -111,7 +141,7 @@
             <div id="typing-indicator" class="typing-indicator"></div>
             <div class="message-input-area">
                 <form id="dm-form">
-                    <input id="dm-input" type="text" placeholder="Message @Model.ActiveFriend.Username..." autocomplete="off" />
+                    <input id="dm-input" type="text" placeholder="Message @Model.ActiveFriend.DisplayOrUsername..." autocomplete="off" />
                     <button type="submit">Send</button>
                 </form>
             </div>
@@ -121,6 +151,8 @@
             <div class="content-header mobile-only-header">
                 <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
                 <span>Home</span>
+                <span style="margin-left:auto"></span>
+                <partial name="_NotifDropdown" />
             </div>
             <div class="welcome-screen">
                 <div class="welcome-icon">👋</div>
@@ -158,8 +190,10 @@
     {
         <script>
             const recipientId = '@Model.ActiveFriend.Id';
-            const recipientName = '@Model.ActiveFriend.Username';
+            const recipientName = '@Model.ActiveFriend.DisplayOrUsername';
             const currentUserId = '@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value';
+            const currentUserAvatarUrl = '@(Model.CurrentUserAvatarUrl ?? "")';
+            const recipientAvatarUrl = '@(Model.ActiveFriend.AvatarUrl ?? "")';
         </script>
         <script src="~/js/chat.js"></script>
     }

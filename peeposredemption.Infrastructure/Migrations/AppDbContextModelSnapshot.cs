@@ -226,6 +226,62 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.ToTable("artist_payouts");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.ArtistSubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("text")
+                        .HasColumnName("message");
+
+                    b.Property<string>("PortfolioUrl")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("portfolio_url");
+
+                    b.Property<string>("SampleImageKeys")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("sample_image_keys");
+
+                    b.Property<string>("SampleImageUrls")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("sample_image_urls");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_artist_submissions");
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("artist_submissions");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.BadgeDefinition", b =>
                 {
                     b.Property<Guid>("Id")
@@ -348,6 +404,157 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.ToTable("channels");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.CombatSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ChannelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("channel_id");
+
+                    b.Property<string>("CombatLog")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("combat_log");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<bool>("IsPlayerTurn")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_player_turn");
+
+                    b.Property<DateTime>("LastTurnAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_turn_at");
+
+                    b.Property<int>("MonsterCurrentHp")
+                        .HasColumnType("integer")
+                        .HasColumnName("monster_current_hp");
+
+                    b.Property<Guid>("MonsterDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("monster_definition_id");
+
+                    b.Property<int>("MonsterMaxHp")
+                        .HasColumnType("integer")
+                        .HasColumnName("monster_max_hp");
+
+                    b.Property<bool>("PlayerDefending")
+                        .HasColumnType("boolean")
+                        .HasColumnName("player_defending");
+
+                    b.Property<int>("PlayerHpAtStart")
+                        .HasColumnType("integer")
+                        .HasColumnName("player_hp_at_start");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("player_id");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<int>("TurnNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("turn_number");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_combat_sessions");
+
+                    b.HasIndex("MonsterDefinitionId");
+
+                    b.HasIndex("PlayerId");
+
+                    b.ToTable("combat_sessions");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.CraftingRecipe", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("BaseSuccessRate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("base_success_rate");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<long>("OrbCost")
+                        .HasColumnType("bigint")
+                        .HasColumnName("orb_cost");
+
+                    b.Property<Guid>("OutputItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("output_item_id");
+
+                    b.Property<int>("OutputQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("output_quantity");
+
+                    b.Property<int>("RequiredSkill")
+                        .HasColumnType("integer")
+                        .HasColumnName("required_skill");
+
+                    b.Property<int>("RequiredSkillLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("required_skill_level");
+
+                    b.Property<long>("XpReward")
+                        .HasColumnType("bigint")
+                        .HasColumnName("xp_reward");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_crafting_recipes");
+
+                    b.HasIndex("OutputItemId");
+
+                    b.ToTable("crafting_recipes");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.CraftingRecipeIngredient", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ItemDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_definition_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipe_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_crafting_recipe_ingredients");
+
+                    b.HasIndex("ItemDefinitionId");
+
+                    b.HasIndex("RecipeId");
+
+                    b.ToTable("crafting_recipe_ingredients");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.DirectMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -417,6 +624,210 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("SenderId");
 
                     b.ToTable("friend_requests");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.GameChannelConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ChannelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("channel_id");
+
+                    b.Property<bool>("GameBotMuted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("game_bot_muted");
+
+                    b.Property<DateTime?>("MutedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("muted_at");
+
+                    b.Property<Guid?>("MutedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("muted_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_game_channel_configs");
+
+                    b.HasIndex("ChannelId")
+                        .IsUnique();
+
+                    b.ToTable("game_channel_configs");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.ItemDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("BonusDEF")
+                        .HasColumnType("integer")
+                        .HasColumnName("bonus_d_e_f");
+
+                    b.Property<int>("BonusDEX")
+                        .HasColumnType("integer")
+                        .HasColumnName("bonus_d_e_x");
+
+                    b.Property<int>("BonusHP")
+                        .HasColumnType("integer")
+                        .HasColumnName("bonus_h_p");
+
+                    b.Property<int>("BonusINT")
+                        .HasColumnType("integer")
+                        .HasColumnName("bonus_i_n_t");
+
+                    b.Property<int>("BonusLUK")
+                        .HasColumnType("integer")
+                        .HasColumnName("bonus_l_u_k");
+
+                    b.Property<int>("BonusMP")
+                        .HasColumnType("integer")
+                        .HasColumnName("bonus_m_p");
+
+                    b.Property<int>("BonusSTR")
+                        .HasColumnType("integer")
+                        .HasColumnName("bonus_s_t_r");
+
+                    b.Property<int>("BonusVIT")
+                        .HasColumnType("integer")
+                        .HasColumnName("bonus_v_i_t");
+
+                    b.Property<long>("BuyPrice")
+                        .HasColumnType("bigint")
+                        .HasColumnName("buy_price");
+
+                    b.Property<int?>("ClassReq")
+                        .HasColumnType("integer")
+                        .HasColumnName("class_req");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<int>("Element")
+                        .HasColumnType("integer")
+                        .HasColumnName("element");
+
+                    b.Property<int?>("EquipSlot")
+                        .HasColumnType("integer")
+                        .HasColumnName("equip_slot");
+
+                    b.Property<int>("HealAmount")
+                        .HasColumnType("integer")
+                        .HasColumnName("heal_amount");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("icon");
+
+                    b.Property<bool>("IsStackable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_stackable");
+
+                    b.Property<int>("LevelReq")
+                        .HasColumnType("integer")
+                        .HasColumnName("level_req");
+
+                    b.Property<int>("ManaRestoreAmount")
+                        .HasColumnType("integer")
+                        .HasColumnName("mana_restore_amount");
+
+                    b.Property<int>("MaxDamage")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_damage");
+
+                    b.Property<int>("MinDamage")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_damage");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Rarity")
+                        .HasColumnType("integer")
+                        .HasColumnName("rarity");
+
+                    b.Property<long>("SellPrice")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sell_price");
+
+                    b.Property<int>("SubType")
+                        .HasColumnType("integer")
+                        .HasColumnName("sub_type");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_item_definitions");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("item_definitions");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.MarketplaceListing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("BuyerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("buyer_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("ItemDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_definition_id");
+
+                    b.Property<long>("PricePerUnit")
+                        .HasColumnType("bigint")
+                        .HasColumnName("price_per_unit");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("SellerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("seller_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_marketplace_listings");
+
+                    b.HasIndex("BuyerId");
+
+                    b.HasIndex("ItemDefinitionId");
+
+                    b.HasIndex("SellerId");
+
+                    b.HasIndex("Status", "ExpiresAt");
+
+                    b.ToTable("marketplace_listings");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Message", b =>
@@ -510,6 +921,124 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("TargetUserId");
 
                     b.ToTable("moderation_logs");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.MonsterDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("DEF")
+                        .HasColumnType("integer")
+                        .HasColumnName("d_e_f");
+
+                    b.Property<int>("DEX")
+                        .HasColumnType("integer")
+                        .HasColumnName("d_e_x");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<int>("Element")
+                        .HasColumnType("integer")
+                        .HasColumnName("element");
+
+                    b.Property<int>("INT")
+                        .HasColumnType("integer")
+                        .HasColumnName("i_n_t");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("icon");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("level");
+
+                    b.Property<int>("MaxDamage")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_damage");
+
+                    b.Property<int>("MaxHp")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_hp");
+
+                    b.Property<int>("MinDamage")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_damage");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<long>("OrbRewardMax")
+                        .HasColumnType("bigint")
+                        .HasColumnName("orb_reward_max");
+
+                    b.Property<long>("OrbRewardMin")
+                        .HasColumnType("bigint")
+                        .HasColumnName("orb_reward_min");
+
+                    b.Property<int>("STR")
+                        .HasColumnType("integer")
+                        .HasColumnName("s_t_r");
+
+                    b.Property<long>("XpReward")
+                        .HasColumnType("bigint")
+                        .HasColumnName("xp_reward");
+
+                    b.Property<string>("Zone")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("zone");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_monster_definitions");
+
+                    b.ToTable("monster_definitions");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.MonsterLootEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("DropChance")
+                        .HasColumnType("numeric")
+                        .HasColumnName("drop_chance");
+
+                    b.Property<Guid>("ItemDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_definition_id");
+
+                    b.Property<int>("MaxQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_quantity");
+
+                    b.Property<int>("MinQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_quantity");
+
+                    b.Property<Guid>("MonsterDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("monster_definition_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_monster_loot_entries");
+
+                    b.HasIndex("ItemDefinitionId");
+
+                    b.HasIndex("MonsterDefinitionId");
+
+                    b.ToTable("monster_loot_entries");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Notification", b =>
@@ -738,6 +1267,184 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("ParentUserId");
 
                     b.ToTable("parental_links");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.PlayerCharacter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CharacterName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("character_name");
+
+                    b.Property<int>("Class")
+                        .HasColumnType("integer")
+                        .HasColumnName("class");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("CurrentHp")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_hp");
+
+                    b.Property<int>("CurrentMp")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_mp");
+
+                    b.Property<int>("DEF")
+                        .HasColumnType("integer")
+                        .HasColumnName("d_e_f");
+
+                    b.Property<int>("DEX")
+                        .HasColumnType("integer")
+                        .HasColumnName("d_e_x");
+
+                    b.Property<int>("INT")
+                        .HasColumnType("integer")
+                        .HasColumnName("i_n_t");
+
+                    b.Property<int>("LUK")
+                        .HasColumnType("integer")
+                        .HasColumnName("l_u_k");
+
+                    b.Property<DateTime?>("LastGatherAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_gather_at");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("level");
+
+                    b.Property<int>("MaxHp")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_hp");
+
+                    b.Property<int>("MaxMp")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_mp");
+
+                    b.Property<int>("STR")
+                        .HasColumnType("integer")
+                        .HasColumnName("s_t_r");
+
+                    b.Property<int>("TotalDeaths")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_deaths");
+
+                    b.Property<int>("TotalMonstersKilled")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_monsters_killed");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("VIT")
+                        .HasColumnType("integer")
+                        .HasColumnName("v_i_t");
+
+                    b.Property<long>("XP")
+                        .HasColumnType("bigint")
+                        .HasColumnName("x_p");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_player_characters");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("player_characters");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.PlayerInventoryItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("EnchantBonus")
+                        .HasColumnType("integer")
+                        .HasColumnName("enchant_bonus");
+
+                    b.Property<int?>("EnchantElement")
+                        .HasColumnType("integer")
+                        .HasColumnName("enchant_element");
+
+                    b.Property<string>("EnchantName")
+                        .HasColumnType("text")
+                        .HasColumnName("enchant_name");
+
+                    b.Property<int?>("EquippedSlot")
+                        .HasColumnType("integer")
+                        .HasColumnName("equipped_slot");
+
+                    b.Property<bool>("IsEquipped")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_equipped");
+
+                    b.Property<Guid>("ItemDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_definition_id");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("player_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantity");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_player_inventory_items");
+
+                    b.HasIndex("ItemDefinitionId");
+
+                    b.HasIndex("PlayerId");
+
+                    b.ToTable("player_inventory_items");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.PlayerSkill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer")
+                        .HasColumnName("level");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("player_id");
+
+                    b.Property<int>("SkillType")
+                        .HasColumnType("integer")
+                        .HasColumnName("skill_type");
+
+                    b.Property<long>("XP")
+                        .HasColumnType("bigint")
+                        .HasColumnName("x_p");
+
+                    b.Property<long>("XpToNextLevel")
+                        .HasColumnType("bigint")
+                        .HasColumnName("xp_to_next_level");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_player_skills");
+
+                    b.HasIndex("PlayerId", "SkillType")
+                        .IsUnique();
+
+                    b.ToTable("player_skills");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ReferralCode", b =>
@@ -978,9 +1685,17 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("server_id");
 
+                    b.Property<bool>("IsMuted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_muted");
+
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("joined_at");
+
+                    b.Property<DateTime?>("MutedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("muted_until");
 
                     b.Property<string>("Nickname")
                         .HasColumnType("text")
@@ -1033,6 +1748,65 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.ToTable("storage_upgrade_purchases");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.TradeOffer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ChannelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("channel_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("InitiatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("initiator_id");
+
+                    b.Property<string>("InitiatorItems")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("initiator_items");
+
+                    b.Property<long>("InitiatorOrbs")
+                        .HasColumnType("bigint")
+                        .HasColumnName("initiator_orbs");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_id");
+
+                    b.Property<string>("RecipientItems")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("recipient_items");
+
+                    b.Property<long>("RecipientOrbs")
+                        .HasColumnType("bigint")
+                        .HasColumnName("recipient_orbs");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_trade_offers");
+
+                    b.HasIndex("InitiatorId");
+
+                    b.HasIndex("RecipientId");
+
+                    b.ToTable("trade_offers");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1044,6 +1818,14 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("avatar_url");
 
+                    b.Property<string>("BannerUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("banner_url");
+
+                    b.Property<string>("Bio")
+                        .HasColumnType("text")
+                        .HasColumnName("bio");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -1051,6 +1833,10 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date_of_birth");
+
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text")
+                        .HasColumnName("display_name");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -1073,6 +1859,14 @@ namespace peeposredemption.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("ProfileBackgroundColor")
+                        .HasColumnType("text")
+                        .HasColumnName("profile_background_color");
+
+                    b.Property<string>("Pronouns")
+                        .HasColumnType("text")
+                        .HasColumnName("pronouns");
 
                     b.Property<Guid?>("ReferredByCodeId")
                         .HasColumnType("uuid")
@@ -1279,6 +2073,18 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("Artist");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.ArtistSubmission", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_artist_submissions__users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.BannedMember", b =>
                 {
                     b.HasOne("peeposredemption.Domain.Entities.User", "BannedBy")
@@ -1321,6 +2127,60 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("Server");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.CombatSession", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.MonsterDefinition", "MonsterDefinition")
+                        .WithMany()
+                        .HasForeignKey("MonsterDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_combat_sessions__monster_definitions_monster_definition_id");
+
+                    b.HasOne("peeposredemption.Domain.Entities.PlayerCharacter", "Player")
+                        .WithMany("CombatSessions")
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_combat_sessions__player_characters_player_id");
+
+                    b.Navigation("MonsterDefinition");
+
+                    b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.CraftingRecipe", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.ItemDefinition", "OutputItem")
+                        .WithMany()
+                        .HasForeignKey("OutputItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_crafting_recipes__item_definitions_output_item_id");
+
+                    b.Navigation("OutputItem");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.CraftingRecipeIngredient", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.ItemDefinition", "ItemDefinition")
+                        .WithMany()
+                        .HasForeignKey("ItemDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_crafting_recipe_ingredients__item_definitions_item_definition~");
+
+                    b.HasOne("peeposredemption.Domain.Entities.CraftingRecipe", "Recipe")
+                        .WithMany("Ingredients")
+                        .HasForeignKey("RecipeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_crafting_recipe_ingredients_crafting_recipes_recipe_id");
+
+                    b.Navigation("ItemDefinition");
+
+                    b.Navigation("Recipe");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.DirectMessage", b =>
                 {
                     b.HasOne("peeposredemption.Domain.Entities.User", "Recipient")
@@ -1359,6 +2219,47 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("Receiver");
 
                     b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.GameChannelConfig", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.Channel", "Channel")
+                        .WithMany()
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_game_channel_configs_channels_channel_id");
+
+                    b.Navigation("Channel");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.MarketplaceListing", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.PlayerCharacter", "Buyer")
+                        .WithMany()
+                        .HasForeignKey("BuyerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("f_k_marketplace_listings__player_characters_buyer_id");
+
+                    b.HasOne("peeposredemption.Domain.Entities.ItemDefinition", "ItemDefinition")
+                        .WithMany()
+                        .HasForeignKey("ItemDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_marketplace_listings_item_definitions_item_definition_id");
+
+                    b.HasOne("peeposredemption.Domain.Entities.PlayerCharacter", "Seller")
+                        .WithMany()
+                        .HasForeignKey("SellerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_marketplace_listings__player_characters_seller_id");
+
+                    b.Navigation("Buyer");
+
+                    b.Navigation("ItemDefinition");
+
+                    b.Navigation("Seller");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Message", b =>
@@ -1410,6 +2311,27 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("Server");
 
                     b.Navigation("TargetUser");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.MonsterLootEntry", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.ItemDefinition", "ItemDefinition")
+                        .WithMany()
+                        .HasForeignKey("ItemDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_monster_loot_entries_item_definitions_item_definition_id");
+
+                    b.HasOne("peeposredemption.Domain.Entities.MonsterDefinition", "MonsterDefinition")
+                        .WithMany("LootTable")
+                        .HasForeignKey("MonsterDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_monster_loot_entries_monster_definitions_monster_definition~");
+
+                    b.Navigation("ItemDefinition");
+
+                    b.Navigation("MonsterDefinition");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.Notification", b =>
@@ -1494,6 +2416,51 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("Child");
 
                     b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.PlayerCharacter", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_player_characters__users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.PlayerInventoryItem", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.ItemDefinition", "ItemDefinition")
+                        .WithMany()
+                        .HasForeignKey("ItemDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_player_inventory_items_item_definitions_item_definition_id");
+
+                    b.HasOne("peeposredemption.Domain.Entities.PlayerCharacter", "Player")
+                        .WithMany("Inventory")
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_player_inventory_items_player_characters_player_id");
+
+                    b.Navigation("ItemDefinition");
+
+                    b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.PlayerSkill", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.PlayerCharacter", "Player")
+                        .WithMany("Skills")
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_player_skills_player_characters_player_id");
+
+                    b.Navigation("Player");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ReferralCode", b =>
@@ -1628,6 +2595,27 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("Server");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.TradeOffer", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.PlayerCharacter", "Initiator")
+                        .WithMany()
+                        .HasForeignKey("InitiatorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_trade_offers_player_characters_initiator_id");
+
+                    b.HasOne("peeposredemption.Domain.Entities.PlayerCharacter", "Recipient")
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_trade_offers_player_characters_recipient_id");
+
+                    b.Navigation("Initiator");
+
+                    b.Navigation("Recipient");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.UserActivityStats", b =>
                 {
                     b.HasOne("peeposredemption.Domain.Entities.User", "User")
@@ -1676,6 +2664,25 @@ namespace peeposredemption.Infrastructure.Migrations
             modelBuilder.Entity("peeposredemption.Domain.Entities.Channel", b =>
                 {
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.CraftingRecipe", b =>
+                {
+                    b.Navigation("Ingredients");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.MonsterDefinition", b =>
+                {
+                    b.Navigation("LootTable");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.PlayerCharacter", b =>
+                {
+                    b.Navigation("CombatSessions");
+
+                    b.Navigation("Inventory");
+
+                    b.Navigation("Skills");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ReferralCode", b =>

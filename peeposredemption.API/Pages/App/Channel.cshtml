@@ -46,13 +46,13 @@
                     <span class="channel-hash">#</span>
                     <span>@ch.Name</span>
                 </a>
-                @if (Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator && ch.Name != "general")
+                @if (Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator)
                 {
-                    <form method="post" asp-page-handler="DeleteChannel" class="channel-delete-form">
-                        <input type="hidden" name="channelId" value="@ch.Id" />
-                        <input type="hidden" name="serverId" value="@Model.ServerId" />
-                        <button type="submit" class="icon-btn channel-delete-btn" title="Delete channel">✕</button>
-                    </form>
+                    <a href="/App/ChannelSettings?channelId=@ch.Id&serverId=@Model.ServerId" class="icon-btn channel-gear-btn" title="Channel Settings">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/>
+                        </svg>
+                    </a>
                 }
             </div>
         }
@@ -71,29 +71,42 @@
                 <span id="orb-count">@Model.OrbBalance</span>
             </a>
             <button id="notif-mute-toggle" class="icon-btn" title="Toggle notification sound">🔔</button>
+            <partial name="_NotifDropdown" />
         </div>
         <div id="messages" class="messages-container">
             @{
                 DateTime? lastDate = null;
+                Guid? lastAuthorId = null;
+                DateTime? lastMsgTime = null;
             }
             @foreach (var msg in Model.Messages)
             {
                 var msgDate = msg.SentAt.Date;
-                if (lastDate == null || lastDate != msgDate)
+                var isNewDateBlock = lastDate == null || lastDate != msgDate;
+                if (isNewDateBlock)
                 {
                     <div class="date-separator">
                         <span>@msg.SentAt.ToString("dddd, MMMM d, yyyy")</span>
                     </div>
                     lastDate = msgDate;
                 }
-                <div class="message @(msg.IsDeleted ? "deleted" : "")" data-id="@msg.Id">
-                    <div class="message-author">@msg.AuthorUsername</div>
+                var isGrouped = !isNewDateBlock && lastAuthorId == msg.AuthorId && lastMsgTime.HasValue && (msg.SentAt - lastMsgTime.Value).TotalMinutes < 5;
+                lastAuthorId = msg.AuthorId;
+                lastMsgTime = msg.SentAt;
+                <div class="message @(msg.IsDeleted ? "deleted" : "") @(isGrouped ? "message-grouped" : "")" data-id="@msg.Id" data-author-id="@msg.AuthorId" data-author-name="@msg.AuthorUsername" data-sent="@msg.SentAt.ToString("o")">
+                    <a href="/App/Profile?userId=@msg.AuthorId" class="message-avatar-link">
+                        @if (!string.IsNullOrEmpty(msg.AuthorAvatarUrl))
+                        {
+                            <img src="@msg.AuthorAvatarUrl" alt="@msg.AuthorUsername" class="message-avatar" />
+                        }
+                        else
+                        {
+                            <div class="message-avatar message-avatar-fallback">@msg.AuthorUsername.Substring(0, 1).ToUpper()</div>
+                        }
+                    </a>
+                    <div class="message-author"><a href="/App/Profile?userId=@msg.AuthorId" class="author-link">@msg.AuthorUsername</a></div>
                     <div class="message-content">@msg.Content</div>
                     <div class="message-time" data-time="@msg.SentAt.ToString("o")"></div>
-                    @if (Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator && !msg.IsDeleted)
-                    {
-                        <button class="icon-btn msg-delete-btn" data-msg-id="@msg.Id" title="Delete message">🗑</button>
-                    }
                 </div>
             }
         </div>
@@ -114,9 +127,9 @@
                 <div class="gift-modal-balance">Your balance: <span class="orb-icon"></span> <span id="gift-modal-balance">@Model.OrbBalance</span></div>
                 <label>To:</label>
                 <select id="gift-recipient" class="gift-input">
-                    @foreach (var username in Model.MemberUsernames)
+                    @foreach (var member in Model.MemberData)
                     {
-                        <option value="@username">@username</option>
+                        <option value="@member.Username" data-user-id="@member.Id">@member.Username</option>
                     }
                 </select>
                 <label>Amount:</label>
@@ -150,6 +163,9 @@
         const serverId = '@Model.ServerId';
         const canDeleteMessages = @((Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator).ToString().ToLower());
         const memberUsernames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberUsernames));
+        const memberData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberData));
+        const currentUserRole = @((int)Model.CurrentUserRole);
+        const currentUserId = '@Model.CurrentUserId';
     </script>
     <script src="~/js/chat.js"></script>
     <script>

@@ -4,5 +4,7 @@ namespace peeposredemption.Application.Services
     {
         Task<string> UploadEmojiAsync(string key, Stream imageStream, string contentType);
         Task DeleteEmojiAsync(string key);
+        Task<string> UploadArtistSampleAsync(string key, Stream imageStream, string contentType);
+        Task<string> UploadProfileImageAsync(string key, Stream imageStream, string contentType);
     }
 }

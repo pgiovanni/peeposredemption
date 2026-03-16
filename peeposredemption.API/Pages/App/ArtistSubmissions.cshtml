@@ -1,0 +1,171 @@
+@page
+@model peeposredemption.API.Pages.App.ArtistSubmissionsModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Admin — Artist Submissions";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Index" class="icon-btn" title="Back">&#x2190;</a>
+            <span>Artist Submissions</span>
+        </div>
+    </div>
+
+    <div class="content-area settings-page" style="overflow-y:auto">
+        <section class="settings-section" style="padding:1.5rem">
+            <h3 class="settings-heading">ARTIST SUBMISSIONS</h3>
+
+            @if (!string.IsNullOrEmpty(Model.StatusMessage))
+            {
+                <div style="background:#3ba55c;color:white;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem">
+                    @Model.StatusMessage
+                </div>
+            }
+
+            <div class="referral-stats" style="margin-bottom:1.5rem">
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Submissions.Count</div>
+                    <div class="referral-stat-label">Total</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Submissions.Count(s => s.Status == peeposredemption.Domain.Entities.SubmissionStatus.Pending)</div>
+                    <div class="referral-stat-label">Pending</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Submissions.Count(s => s.Status == peeposredemption.Domain.Entities.SubmissionStatus.Approved)</div>
+                    <div class="referral-stat-label">Approved</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Submissions.Count(s => s.Status == peeposredemption.Domain.Entities.SubmissionStatus.Rejected)</div>
+                    <div class="referral-stat-label">Rejected</div>
+                </div>
+            </div>
+
+            @if (!Model.Submissions.Any())
+            {
+                <div class="sidebar-empty">No artist submissions yet.</div>
+            }
+            else
+            {
+                @foreach (var sub in Model.Submissions)
+                {
+                    var urls = JsonSerializer.Deserialize<List<string>>(sub.SampleImageUrls) ?? new();
+                    var statusColor = sub.Status switch
+                    {
+                        peeposredemption.Domain.Entities.SubmissionStatus.Pending => "#faa61a",
+                        peeposredemption.Domain.Entities.SubmissionStatus.Approved => "#3ba55c",
+                        peeposredemption.Domain.Entities.SubmissionStatus.Rejected => "#f04747",
+                        _ => "#b5bac1"
+                    };
+
+                    <div class="sub-card">
+                        <div class="sub-card-header">
+                            <div>
+                                <strong style="font-size:1.05rem">@sub.DisplayName</strong>
+                                @if (sub.User != null)
+                                {
+                                    <span style="color:var(--text-muted,#b5bac1);margin-left:8px">@@@sub.User.Username</span>
+                                }
+                                <span class="sub-status-badge" style="background:@statusColor">@sub.Status</span>
+                            </div>
+                            <div style="color:var(--text-muted,#b5bac1);font-size:0.8rem">
+                                @sub.SubmittedAt.ToString("MMM d, yyyy h:mm tt") UTC
+                            </div>
+                        </div>
+
+                        <div class="sub-card-details">
+                            <div><strong>Email:</strong> <a href="mailto:@sub.Email" style="color:#5865f2">@sub.Email</a></div>
+                            <div><strong>Portfolio:</strong> <a href="@sub.PortfolioUrl" target="_blank" style="color:#5865f2">@sub.PortfolioUrl</a></div>
+                            @if (!string.IsNullOrEmpty(sub.Message))
+                            {
+                                <div style="margin-top:8px"><strong>Message:</strong> @sub.Message</div>
+                            }
+                        </div>
+
+                        @if (urls.Any())
+                        {
+                            <div class="sub-card-samples">
+                                @foreach (var url in urls)
+                                {
+                                    <a href="@url" target="_blank">
+                                        <img src="@url" alt="Sample artwork" />
+                                    </a>
+                                }
+                            </div>
+                        }
+
+                        @if (sub.Status == peeposredemption.Domain.Entities.SubmissionStatus.Pending)
+                        {
+                            <div class="sub-card-actions">
+                                <form method="post" asp-page-handler="Approve" style="display:inline">
+                                    <input type="hidden" name="submissionId" value="@sub.Id" />
+                                    <button type="submit" class="btn-primary btn-sm" style="background:#3ba55c">Approve</button>
+                                </form>
+                                <form method="post" asp-page-handler="Reject" style="display:inline;margin-left:8px">
+                                    <input type="hidden" name="submissionId" value="@sub.Id" />
+                                    <button type="submit" class="btn-primary btn-sm" style="background:#f04747">Reject</button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </section>
+    </div>
+</div>
+
+<style>
+    .sub-card {
+        background: #2b2d31;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        border: 1px solid #3f4147;
+    }
+    .sub-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .sub-status-badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: white;
+        margin-left: 10px;
+        vertical-align: middle;
+    }
+    .sub-card-details {
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+    .sub-card-samples {
+        display: flex;
+        gap: 12px;
+        margin-top: 12px;
+        flex-wrap: wrap;
+    }
+    .sub-card-samples img {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid #3f4147;
+        transition: border-color 0.15s;
+    }
+    .sub-card-samples img:hover {
+        border-color: #5865f2;
+    }
+    .sub-card-actions {
+        margin-top: 1rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #3f4147;
+    }
+</style>

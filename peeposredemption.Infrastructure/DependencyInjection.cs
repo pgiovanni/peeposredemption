@@ -47,6 +47,21 @@ namespace peeposredemption.Infrastructure
             services.AddScoped<IArtItemRepository, ArtItemRepository>();
             services.AddScoped<IArtistCommissionRepository, ArtistCommissionRepository>();
             services.AddScoped<IArtistPayoutRepository, ArtistPayoutRepository>();
+            services.AddScoped<IArtistSubmissionRepository, ArtistSubmissionRepository>();
+
+            // Game system
+            services.AddScoped<IPlayerCharacterRepository, PlayerCharacterRepository>();
+            services.AddScoped<IItemDefinitionRepository, ItemDefinitionRepository>();
+            services.AddScoped<IPlayerInventoryItemRepository, PlayerInventoryItemRepository>();
+            services.AddScoped<IMonsterDefinitionRepository, MonsterDefinitionRepository>();
+            services.AddScoped<IMonsterLootEntryRepository, MonsterLootEntryRepository>();
+            services.AddScoped<ICombatSessionRepository, CombatSessionRepository>();
+            services.AddScoped<IPlayerSkillRepository, PlayerSkillRepository>();
+            services.AddScoped<IGameChannelConfigRepository, GameChannelConfigRepository>();
+            services.AddScoped<ICraftingRecipeRepository, CraftingRecipeRepository>();
+            services.AddScoped<IMarketplaceListingRepository, MarketplaceListingRepository>();
+            services.AddScoped<ITradeOfferRepository, TradeOfferRepository>();
+
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             services.AddScoped<IR2StorageService, R2StorageService>();

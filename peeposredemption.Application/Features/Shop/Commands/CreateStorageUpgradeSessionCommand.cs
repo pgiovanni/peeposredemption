@@ -28,8 +28,8 @@ namespace peeposredemption.Application.Features.Shop.Commands
                 ?? throw new KeyNotFoundException("Server not found.");
 
             var role = await _uow.Servers.GetMemberRoleAsync(cmd.ServerId, cmd.RequestingUserId);
-            if (role != ServerRole.Owner)
-                throw new UnauthorizedAccessException("Only the server owner can purchase a boost.");
+            if (role == null)
+                throw new UnauthorizedAccessException("You must be a member of this server to purchase a boost.");
 
             if (server.StorageTier >= cmd.TargetTier)
                 throw new InvalidOperationException($"This server is already on the {StorageLimits.GetLabel(server.StorageTier)} tier or higher.");

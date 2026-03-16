@@ -1,0 +1,203 @@
+@page
+@model peeposredemption.API.Pages.App.ArtistApplyModel
+@{
+    ViewData["Title"] = "Apply as Artist";
+}
+
+<div class="app-shell">
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>Artist Application</span>
+        </div>
+        <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Apply as Artist</span>
+        </div>
+
+        <div class="settings-page" style="padding:1.5rem;overflow-y:auto;height:calc(100% - 48px)">
+            @if (Model.SubmitSuccess)
+            {
+                <div class="artist-apply-success">
+                    <h2>Application Submitted!</h2>
+                    <p>Thank you for applying to be an artist on Torvex. We'll review your submission and get back to you soon.</p>
+                    <a href="/App/Index" class="btn-primary" style="display:inline-block;margin-top:1rem;text-decoration:none">Back to Home</a>
+                </div>
+            }
+            else if (Model.AlreadyApplied)
+            {
+                <div class="artist-apply-success">
+                    <h2>Already Applied</h2>
+                    <p>You already have a pending or approved artist application. We'll reach out to you soon!</p>
+                    <a href="/App/Index" class="btn-primary" style="display:inline-block;margin-top:1rem;text-decoration:none">Back to Home</a>
+                </div>
+            }
+            else
+            {
+                <section class="settings-section">
+                    <h3 class="settings-heading">BECOME A TORVEX ARTIST</h3>
+                    <p style="color:var(--text-muted,#b5bac1);margin-bottom:1.5rem">
+                        We're looking for talented artists to create cosmetic items for Torvex — profile borders, banners, badge icons, and more.
+                        Artists earn a 50/50 revenue split on every item sold. Fill out the form below with your details and sample work.
+                    </p>
+
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div style="background:#f04747;color:white;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem">
+                            @Model.ErrorMessage
+                        </div>
+                    }
+
+                    <form method="post" enctype="multipart/form-data">
+                        <div class="artist-form-group">
+                            <label class="artist-form-label">Display Name *</label>
+                            <input type="text" name="displayName" required maxlength="50" placeholder="Your artist name"
+                                   class="artist-form-input" />
+                        </div>
+
+                        <div class="artist-form-group">
+                            <label class="artist-form-label">Email *</label>
+                            <input type="email" name="email" required maxlength="200" placeholder="your@email.com"
+                                   class="artist-form-input" />
+                        </div>
+
+                        <div class="artist-form-group">
+                            <label class="artist-form-label">Portfolio URL *</label>
+                            <input type="url" name="portfolioUrl" required maxlength="500"
+                                   placeholder="https://your-portfolio.com" class="artist-form-input" />
+                        </div>
+
+                        <div class="artist-form-group">
+                            <label class="artist-form-label">About Your Style</label>
+                            <textarea name="message" maxlength="500" rows="4" placeholder="Brief intro about your art style, experience, and what you'd like to create for Torvex..."
+                                      class="artist-form-input artist-form-textarea"></textarea>
+                            <div style="color:var(--text-muted,#b5bac1);font-size:0.8rem;margin-top:4px">Max 500 characters</div>
+                        </div>
+
+                        <div class="artist-form-group">
+                            <label class="artist-form-label">Sample Artwork * <span style="font-weight:400;color:var(--text-muted,#b5bac1)">(up to 3 images, PNG/JPG/WebP, max 2MB each)</span></label>
+                            <input type="file" name="sampleFiles" accept="image/png,image/jpeg,image/webp"
+                                   multiple class="artist-form-input artist-file-input" id="sampleFilesInput" />
+                            <div id="filePreview" class="artist-file-preview"></div>
+                        </div>
+
+                        <button type="submit" class="btn-primary" style="padding:0.6rem 2rem;font-size:1rem;margin-top:0.5rem">
+                            Submit Application
+                        </button>
+                    </form>
+                </section>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .artist-apply-success {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+    .artist-apply-success h2 {
+        color: #3ba55c;
+        margin-bottom: 0.75rem;
+    }
+    .artist-apply-success p {
+        color: var(--text-muted, #b5bac1);
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    .artist-form-group {
+        margin-bottom: 1.25rem;
+    }
+    .artist-form-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+    }
+    .artist-form-input {
+        width: 100%;
+        max-width: 500px;
+        padding: 0.6rem 0.75rem;
+        background: #1e1f22;
+        border: 1px solid #3f4147;
+        border-radius: 6px;
+        color: #dcddde;
+        font-size: 0.95rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+    .artist-form-input:focus {
+        border-color: #5865f2;
+    }
+    .artist-form-textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+    .artist-file-input {
+        padding: 0.5rem;
+        cursor: pointer;
+    }
+    .artist-file-input::file-selector-button {
+        background: #5865f2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.4rem 1rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        margin-right: 0.75rem;
+    }
+    .artist-file-input::file-selector-button:hover {
+        background: #4752c4;
+    }
+    .artist-file-preview {
+        display: flex;
+        gap: 12px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+    .artist-file-preview img {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid #3f4147;
+    }
+</style>
+
+@section Scripts {
+<script>
+document.getElementById('sampleFilesInput').addEventListener('change', function(e) {
+    const preview = document.getElementById('filePreview');
+    preview.innerHTML = '';
+
+    const files = Array.from(e.target.files).slice(0, 3);
+
+    if (e.target.files.length > 3) {
+        alert('Maximum 3 files allowed. Only the first 3 will be uploaded.');
+        const dt = new DataTransfer();
+        files.forEach(f => dt.items.add(f));
+        e.target.files = dt.files;
+    }
+
+    for (const file of files) {
+        if (file.size > 2 * 1024 * 1024) {
+            alert(`"${file.name}" exceeds 2MB limit.`);
+            continue;
+        }
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.onload = () => URL.revokeObjectURL(img.src);
+        preview.appendChild(img);
+    }
+});
+</script>
+}

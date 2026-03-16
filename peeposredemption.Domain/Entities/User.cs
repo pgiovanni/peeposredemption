@@ -7,6 +7,11 @@ public class User
     public string Email { get; set; }
     public string PasswordHash { get; set; }
     public string? AvatarUrl { get; set; }
+    public string? DisplayName { get; set; }
+    public string? Bio { get; set; }
+    public string? Pronouns { get; set; }
+    public string? BannerUrl { get; set; }
+    public string? ProfileBackgroundColor { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool EmailConfirmed {  get; set; }
     public string? EmailConfirmationtoken { get; set; }
@@ -18,6 +23,8 @@ public class User
     public bool IsMinor => DateOfBirth.HasValue
         && DateOfBirth.Value.AddYears(18) > DateTime.UtcNow
         && DateOfBirth.Value.AddYears(13) <= DateTime.UtcNow;
+
+    public string DisplayOrUsername => DisplayName ?? Username;
 
     public ICollection<ServerMember> ServerMemberships { get; set; }
     public ICollection<Message> Messages { get; set; }

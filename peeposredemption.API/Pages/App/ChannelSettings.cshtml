@@ -1,0 +1,151 @@
+@page
+@model peeposredemption.API.Pages.App.ChannelSettingsModel
+@using peeposredemption.Domain.Entities
+@{
+    ViewData["Title"] = $"#{Model.ChannelName} Settings";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>#@Model.ChannelName</span>
+        </div>
+        <a href="/App/Channel?channelId=@Model.ChannelId&serverId=@Model.ServerId" class="channel-item">&larr; Back to Channel</a>
+        <div class="sidebar-section-header">SETTINGS</div>
+        <a href="#overview" class="channel-item settings-nav active" data-tab="overview">Overview</a>
+        <a href="#permissions" class="channel-item settings-nav" data-tab="permissions">Permissions</a>
+        @if (!Model.IsGeneral)
+        {
+            <a href="#danger" class="channel-item settings-nav" data-tab="danger">Danger Zone</a>
+        }
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Channel Settings</span>
+        </div>
+
+        <div class="settings-body">
+            @if (Model.StatusMessage != null)
+            {
+                <div class="alert-success">@Model.StatusMessage</div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert-error">@TempData["Error"]</div>
+            }
+
+            <!-- Overview Tab (default) -->
+            <div class="settings-tab active" id="tab-overview">
+                <section class="settings-section">
+                    <h3 class="settings-heading">CHANNEL NAME</h3>
+                    @if (!Model.IsGeneral)
+                    {
+                        <form method="post" asp-page-handler="Rename" class="channel-rename-form">
+                            <input type="hidden" name="channelId" value="@Model.ChannelId" />
+                            <input type="hidden" name="serverId" value="@Model.ServerId" />
+                            <input type="text" name="newName" value="@Model.ChannelName" maxlength="100"
+                                   autocomplete="off" class="settings-input" />
+                            <button type="submit" class="btn-primary btn-sm">Rename</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="settings-value">#@Model.ChannelName</div>
+                        <div class="emoji-hint">The general channel cannot be renamed.</div>
+                    }
+                </section>
+
+                <section class="settings-section">
+                    <h3 class="settings-heading">GAME BOT</h3>
+                    <p class="settings-description">
+                        When enabled, members can use slash commands (like <code>/fight</code>, <code>/craft</code>, <code>/trade</code>)
+                        in this channel to play the RPG game.
+                    </p>
+                    <form method="post" asp-page-handler="ToggleGameBot">
+                        <input type="hidden" name="channelId" value="@Model.ChannelId" />
+                        <input type="hidden" name="serverId" value="@Model.ServerId" />
+                        <div class="settings-toggle-row">
+                            <span>Game Bot</span>
+                            <span class="settings-status @(Model.GameBotMuted ? "status-off" : "status-on")">
+                                @(Model.GameBotMuted ? "Disabled" : "Enabled")
+                            </span>
+                            <button type="submit" class="btn-sm @(Model.GameBotMuted ? "btn-primary" : "btn-cancel")">
+                                @(Model.GameBotMuted ? "Enable" : "Disable")
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Permissions Tab -->
+            <div class="settings-tab" id="tab-permissions">
+                <section class="settings-section">
+                    <h3 class="settings-heading">CHANNEL PERMISSIONS</h3>
+                    <p class="settings-description">
+                        Channel permissions control who can view and interact with this channel.
+                    </p>
+                    <div class="permissions-grid">
+                        <div class="permission-row">
+                            <span class="permission-name">Send Messages</span>
+                            <span class="member-role role-member">All Members</span>
+                        </div>
+                        <div class="permission-row">
+                            <span class="permission-name">Delete Messages</span>
+                            <span class="member-role role-moderator">Moderator+</span>
+                        </div>
+                        <div class="permission-row">
+                            <span class="permission-name">Manage Channel</span>
+                            <span class="member-role role-moderator">Moderator+</span>
+                        </div>
+                        <div class="permission-row">
+                            <span class="permission-name">Delete Channel</span>
+                            <span class="member-role role-moderator">Moderator+</span>
+                        </div>
+                        <div class="permission-row">
+                            <span class="permission-name">@@everyone Pings</span>
+                            <span class="member-role role-owner">Owner Only</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Danger Zone Tab -->
+            @if (!Model.IsGeneral)
+            {
+                <div class="settings-tab" id="tab-danger">
+                    <section class="settings-section settings-danger">
+                        <h3 class="settings-heading">DANGER ZONE</h3>
+                        <p class="settings-description">
+                            Deleting a channel removes all messages permanently. This cannot be undone.
+                        </p>
+                        <form method="post" asp-page-handler="Delete"
+                              onsubmit="return confirm('Are you sure you want to delete #@Model.ChannelName? All messages will be lost.')">
+                            <input type="hidden" name="channelId" value="@Model.ChannelId" />
+                            <input type="hidden" name="serverId" value="@Model.ServerId" />
+                            <button type="submit" class="btn-danger">Delete Channel</button>
+                        </form>
+                    </section>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.querySelectorAll('.settings-nav').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const tab = this.dataset.tab;
+            document.querySelectorAll('.settings-nav').forEach(n => n.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+        });
+    });
+</script>
+}

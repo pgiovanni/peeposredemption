@@ -33,6 +33,21 @@ namespace peeposredemption.Domain.Interfaces
         IArtItemRepository ArtItems { get; }
         IArtistCommissionRepository ArtistCommissions { get; }
         IArtistPayoutRepository ArtistPayouts { get; }
+        IArtistSubmissionRepository ArtistSubmissions { get; }
+
+        // Game system
+        IPlayerCharacterRepository PlayerCharacters { get; }
+        IItemDefinitionRepository ItemDefinitions { get; }
+        IPlayerInventoryItemRepository PlayerInventoryItems { get; }
+        IMonsterDefinitionRepository MonsterDefinitions { get; }
+        IMonsterLootEntryRepository MonsterLootEntries { get; }
+        ICombatSessionRepository CombatSessions { get; }
+        IPlayerSkillRepository PlayerSkills { get; }
+        IGameChannelConfigRepository GameChannelConfigs { get; }
+        ICraftingRecipeRepository CraftingRecipes { get; }
+        IMarketplaceListingRepository MarketplaceListings { get; }
+        ITradeOfferRepository TradeOffers { get; }
+
         Task<int> SaveChangesAsync();
     }
 
