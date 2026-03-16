@@ -117,13 +117,14 @@ function createMessageEl(author, content, time, isMine = false, id = null, autho
     contentEl.className = "message-content";
     contentEl.textContent = content;
 
-    const timeEl = document.createElement("div");
+    const timeEl = document.createElement("span");
     timeEl.className = "message-time";
     timeEl.textContent = time;
+    authorEl.appendChild(document.createTextNode(' '));
+    authorEl.appendChild(timeEl);
 
     div.appendChild(authorEl);
     div.appendChild(contentEl);
-    div.appendChild(timeEl);
 
     return div;
 }

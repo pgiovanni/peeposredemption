@@ -87,9 +87,8 @@
                             <div class="message-avatar message-avatar-fallback">@msg.AuthorUsername.Substring(0, 1).ToUpper()</div>
                         }
                     </a>
-                    <div class="message-author"><a href="/App/Profile?userId=@msg.AuthorId" class="author-link">@msg.AuthorUsername</a></div>
+                    <div class="message-author"><a href="/App/Profile?userId=@msg.AuthorId" class="author-link">@msg.AuthorUsername</a> <span class="message-time" data-time="@msg.SentAt.ToString("o")"></span></div>
                     <div class="message-content">@msg.Content</div>
-                    <div class="message-time" data-time="@msg.SentAt.ToString("o")"></div>
                 </div>
             }
         </div>
