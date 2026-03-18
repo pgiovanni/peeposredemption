@@ -1,0 +1,132 @@
+@page
+@model peeposredemption.API.Pages.App.MfaSetupModel
+@{
+    ViewData["Title"] = "Two-Factor Authentication";
+}
+
+<div class="app-shell">
+
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">Security</div>
+        <a href="/App/Profile" class="channel-item">Back to Profile</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Two-Factor Authentication</span>
+        </div>
+
+        <div class="profile-container" style="max-width: 520px;">
+
+            @if (Model.ErrorMessage != null)
+            {
+                <div class="form-error">@Model.ErrorMessage</div>
+            }
+            @if (Model.SuccessMessage != null)
+            {
+                <div class="form-success">@Model.SuccessMessage</div>
+            }
+
+            @* ── Recovery codes shown after successful setup ── *@
+            @if (Model.RecoveryCodes != null)
+            {
+                <div class="mfa-section">
+                    <h3 style="color: #fff; margin-bottom: 8px;">Save Your Recovery Codes</h3>
+                    <p style="color: #ed4245; font-size: 13px; margin-bottom: 12px;">
+                        These codes can be used to access your account if you lose your authenticator.
+                        Each code can only be used once. Save them somewhere safe!
+                    </p>
+                    <div class="mfa-recovery-codes">
+                        @foreach (var code in Model.RecoveryCodes)
+                        {
+                            <code class="mfa-recovery-code">@code</code>
+                        }
+                    </div>
+                    <button type="button" class="btn-primary" style="margin-top: 12px;" onclick="copyRecoveryCodes()">
+                        Copy All Codes
+                    </button>
+                    <a href="/App/Profile" class="btn-cancel" style="margin-top: 8px; display: inline-block; margin-left: 8px;">Done</a>
+                </div>
+            }
+            @* ── MFA not enabled: show setup ── *@
+            else if (!Model.IsMfaEnabled)
+            {
+                <div class="mfa-section">
+                    <h3 style="color: #fff; margin-bottom: 8px;">Set Up Authenticator</h3>
+                    <p style="color: #949ba4; font-size: 13px; margin-bottom: 16px;">
+                        Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                    </p>
+
+                    @if (Model.QrCodeBase64 != null)
+                    {
+                        <div style="text-align: center; margin-bottom: 16px;">
+                            <img src="data:image/png;base64,@Model.QrCodeBase64" alt="QR Code"
+                                 style="width: 200px; height: 200px; border-radius: 8px; background: #fff; padding: 8px;" />
+                        </div>
+                    }
+
+                    <div class="form-group">
+                        <label>Manual Entry Key</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <code style="background: #1e1f22; padding: 8px 12px; border-radius: 4px; color: #fff; font-size: 13px;
+                                         word-break: break-all; flex: 1;">@Model.Secret</code>
+                            <button type="button" class="btn-cancel btn-sm" onclick="navigator.clipboard.writeText('@Model.Secret')">
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+
+                    <form method="post" asp-page-handler="Enable">
+                        <input type="hidden" asp-for="SetupSecret" value="@Model.Secret" />
+                        <div class="form-group">
+                            <label>Verification Code</label>
+                            <input asp-for="SetupCode" type="text" inputmode="numeric" pattern="[0-9]{6}"
+                                   maxlength="6" placeholder="000000" autocomplete="one-time-code" autofocus />
+                            <span class="form-hint">Enter the 6-digit code from your authenticator app</span>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Enable Two-Factor Authentication</button>
+                    </form>
+                </div>
+            }
+            @* ── MFA enabled: show disable option ── *@
+            else
+            {
+                <div class="mfa-section">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                        <span style="color: #3ba55d; font-size: 20px;">&#10003;</span>
+                        <h3 style="color: #fff; margin: 0;">Two-Factor Authentication is Enabled</h3>
+                    </div>
+                    <p style="color: #949ba4; font-size: 13px; margin-bottom: 16px;">
+                        Your account is protected with an authenticator app. To disable 2FA, enter a verification code below.
+                    </p>
+
+                    <form method="post" asp-page-handler="Disable">
+                        <div class="form-group">
+                            <label>Verification Code</label>
+                            <input asp-for="DisableCode" type="text" inputmode="numeric"
+                                   maxlength="11" placeholder="000000 or recovery code" autocomplete="one-time-code" />
+                        </div>
+                        <button type="submit" class="btn-primary" style="background: #ed4245; width: 100%;">Disable Two-Factor Authentication</button>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function copyRecoveryCodes() {
+    const codes = document.querySelectorAll('.mfa-recovery-code');
+    const text = Array.from(codes).map(c => c.textContent).join('\n');
+    navigator.clipboard.writeText(text);
+    event.target.textContent = 'Copied!';
+    setTimeout(() => event.target.textContent = 'Copy All Codes', 2000);
+}
+</script>
+}
