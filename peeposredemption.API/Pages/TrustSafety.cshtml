@@ -1,0 +1,101 @@
+@page
+@model peeposredemption.API.Pages.TrustSafetyModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Trust & Safety";
+    ViewData["OgTitle"] = "Trust & Safety — Torvex";
+    ViewData["Description"] = "Torvex Trust & Safety — report harassment, abuse, underage users, or any safety concern. Issues involving minors are our highest priority.";
+}
+
+<div class="trust-page">
+    <div class="trust-header">
+        <h1>Trust & Safety</h1>
+        <p>Your safety is our top priority. Issues involving minors are treated with the highest urgency.</p>
+        <a href="mailto:pgiovanni1234@gmail.com?subject=Trust%20%26%20Safety%20Report" class="btn-report">Report an Issue</a>
+    </div>
+
+    <div class="trust-section">
+        <h2>What to report</h2>
+        <div class="trust-grid">
+            <div class="trust-card">
+                <span class="trust-card-icon">🚫</span>
+                <h3>Harassment & Bullying</h3>
+                <p>Repeated unwanted contact, threats, intimidation, or targeted abuse directed at any user.</p>
+            </div>
+            <div class="trust-card">
+                <span class="trust-card-icon">👶</span>
+                <h3>Underage Users</h3>
+                <p>If you believe someone under 13 is using the platform, report it immediately. We will investigate and remove the account.</p>
+            </div>
+            <div class="trust-card">
+                <span class="trust-card-icon">⚠️</span>
+                <h3>Inappropriate Content</h3>
+                <p>Explicit, violent, or otherwise inappropriate content — especially anything involving or targeting minors.</p>
+            </div>
+            <div class="trust-card">
+                <span class="trust-card-icon">🔒</span>
+                <h3>Threats & Endangerment</h3>
+                <p>Threats of violence, self-harm, doxxing, or any behavior that puts someone's safety at risk.</p>
+            </div>
+            <div class="trust-card">
+                <span class="trust-card-icon">🕵️</span>
+                <h3>Impersonation & Scams</h3>
+                <p>Accounts pretending to be someone else, phishing attempts, or scams targeting users.</p>
+            </div>
+            <div class="trust-card">
+                <span class="trust-card-icon">🚨</span>
+                <h3>Ban Evasion</h3>
+                <p>Users creating new accounts to get around a ban. Our anti-alt system detects most cases, but you can report suspected evasion.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="trust-section">
+        <h2>How we handle reports</h2>
+        <div class="trust-process">
+            <div class="trust-step">
+                <div class="trust-step-num">1</div>
+                <div>
+                    <h3>You report</h3>
+                    <p>Send us an email with details about the issue — who's involved, what happened, and any screenshots or message links you have.</p>
+                </div>
+            </div>
+            <div class="trust-step">
+                <div class="trust-step-num">2</div>
+                <div>
+                    <h3>We investigate</h3>
+                    <p>Our team reviews the report, checks message logs, and gathers context. Reports involving minors are escalated immediately.</p>
+                </div>
+            </div>
+            <div class="trust-step">
+                <div class="trust-step-num">3</div>
+                <div>
+                    <h3>We take action</h3>
+                    <p>Depending on severity, actions include warnings, mutes, kicks, permanent bans, and IP/device bans. We may also report illegal activity to law enforcement.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="trust-section">
+        <h2>Our commitment</h2>
+        <ul class="trust-commitments">
+            <li>Users must be <strong>at least 13 years old</strong> to use Torvex. Accounts found to belong to users under 13 are deleted immediately.</li>
+            <li>We employ <strong>IP bans, device bans, and browser fingerprinting</strong> to prevent banned users from returning.</li>
+            <li><strong>VPN and Tor detection</strong> helps us flag suspicious account creation.</li>
+            <li>Server moderators and admins have tools to <strong>mute, kick, and ban</strong> disruptive users.</li>
+            <li>An <strong>IP grabber link scanner</strong> blocks known malicious links automatically.</li>
+            <li>All reports are treated <strong>confidentially</strong>. We never reveal who filed a report.</li>
+        </ul>
+    </div>
+
+    <div class="trust-section">
+        <h2>Parental controls</h2>
+        <p>Users under 18 are flagged as minors. We are building a parental linking system that will allow parents to monitor and restrict their child's activity on the platform. For questions about child safety, contact us directly.</p>
+    </div>
+
+    <div class="trust-report-footer">
+        <p>If you or someone you know is in immediate danger, contact your local emergency services.</p>
+        <a href="mailto:pgiovanni1234@gmail.com?subject=Trust%20%26%20Safety%20Report" class="btn-report">Report an Issue</a>
+    </div>
+</div>
