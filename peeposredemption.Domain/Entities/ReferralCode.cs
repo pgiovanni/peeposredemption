@@ -6,6 +6,8 @@ public class ReferralCode
     public Guid OwnerId { get; set; }
     public string Code { get; set; } = Guid.NewGuid().ToString("N")[..10];
     public string? Label { get; set; }
+    public int LinkCopies { get; set; }
+    public int LinkClicks { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public User Owner { get; set; }

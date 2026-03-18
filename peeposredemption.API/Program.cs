@@ -150,7 +150,6 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapRazorPages();
 app.MapHub<ChatHub>("/hubs/chat");
-app.MapGet("/", () => Results.Redirect("/Auth/Login"));
 
 // Token refresh endpoint
 app.MapPost("/api/auth/refresh", async (HttpRequest req, IMediator mediator) =>
@@ -286,6 +285,29 @@ app.MapPost("/api/orbs/gift", async (HttpContext ctx, IMediator mediator, peepos
     catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
 }).RequireAuthorization();
 
+// Referral link tracking
+app.MapPost("/api/referral/track-copy", async (HttpContext ctx, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var code = await uow.Referrals.GetCodeByOwnerIdAsync(Guid.Parse(uid));
+    if (code == null) return Results.NotFound();
+    code.LinkCopies++;
+    await uow.SaveChangesAsync();
+    return Results.Ok();
+}).RequireAuthorization();
+
+app.MapPost("/api/referral/track-click", async (HttpContext ctx, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    var body = await ctx.Request.ReadFromJsonAsync<ReferralClickRequest>();
+    if (body == null || string.IsNullOrWhiteSpace(body.Code)) return Results.BadRequest();
+    var code = await uow.Referrals.GetCodeByStringAsync(body.Code);
+    if (code == null) return Results.NotFound();
+    code.LinkClicks++;
+    await uow.SaveChangesAsync();
+    return Results.Ok();
+}).AllowAnonymous();
+
 // Moderation API endpoints
 app.MapPost("/api/moderation/kick", async (HttpContext ctx, IMediator mediator) =>
 {
@@ -312,6 +334,22 @@ app.MapPost("/api/moderation/ban", async (HttpContext ctx, IMediator mediator) =
     try
     {
         await mediator.Send(new peeposredemption.Application.Features.Moderation.Commands.BanMemberCommand(
+            Guid.Parse(body.ServerId), Guid.Parse(uid), Guid.Parse(body.TargetUserId)));
+        return Results.Ok();
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization();
+
+app.MapPost("/api/moderation/unban", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var body = await ctx.Request.ReadFromJsonAsync<ModerationActionRequest>();
+    if (body == null) return Results.BadRequest();
+    try
+    {
+        await mediator.Send(new peeposredemption.Application.Features.Moderation.Commands.UnbanMemberCommand(
             Guid.Parse(body.ServerId), Guid.Parse(uid), Guid.Parse(body.TargetUserId)));
         return Results.Ok();
     }
@@ -621,3 +659,4 @@ record ToggleSuspiciousRequest(Guid TargetUserId, bool IsSuspicious);
 record MfaVerifyRequest(string MfaPendingToken, string Code);
 record MfaConfirmRequest(string Secret, string Code);
 record MfaDisableRequest(string Code);
+record ReferralClickRequest(string Code);

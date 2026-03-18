@@ -38,11 +38,12 @@ namespace peeposredemption.Application.Features.Shop.Commands
             var cancelUrl = $"{cmd.ReturnBaseUrl}/App/ServerSettings?serverId={cmd.ServerId}";
 
             var result = await _stripe.CreateStorageUpgradeSessionAsync(
-                cmd.ServerId, server.Name, cmd.TargetTier, successUrl, cancelUrl);
+                cmd.ServerId, cmd.RequestingUserId, server.Name, cmd.TargetTier, successUrl, cancelUrl);
 
             await _uow.StorageUpgrades.AddAsync(new StorageUpgradePurchase
             {
                 ServerId = cmd.ServerId,
+                UserId = cmd.RequestingUserId,
                 StripeSessionId = result.SessionId,
                 TargetTier = cmd.TargetTier,
                 Status = PurchaseStatus.Pending

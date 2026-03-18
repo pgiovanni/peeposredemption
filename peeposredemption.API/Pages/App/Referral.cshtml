@@ -40,6 +40,14 @@
             <h3 class="settings-heading">STATS</h3>
             <div class="referral-stats">
                 <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.MyCode.LinkCopies</div>
+                    <div class="referral-stat-label">Link Copies</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.MyCode.LinkClicks</div>
+                    <div class="referral-stat-label">Link Clicks</div>
+                </div>
+                <div class="referral-stat">
                     <div class="referral-stat-value">@Model.Signups</div>
                     <div class="referral-stat-label">Signups</div>
                 </div>
@@ -86,6 +94,7 @@
     </div>
 </div>
 
+@section Scripts {
 <script>
 function copyRefLink() {
     var input = document.getElementById('refLink');
@@ -94,5 +103,13 @@ function copyRefLink() {
     var copied = document.getElementById('refCopied');
     copied.style.display = 'block';
     setTimeout(function() { copied.style.display = 'none'; }, 2000);
+
+    // Track the copy
+    var jwt = document.querySelector('meta[name="jwt"]')?.content;
+    fetch('/api/referral/track-copy', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + jwt }
+    }).catch(function() {});
 }
 </script>
+}

@@ -77,6 +77,14 @@
                 <div class="voice-sidebar-participants" data-voice-channel="@ch.Id"></div>
             }
         }
+        <div class="sidebar-footer">
+            <a href="/App/Profile" title="Edit Profile">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+                Profile
+            </a>
+        </div>
     </div>
 
     <div class="sidebar-backdrop"></div>
@@ -104,6 +112,15 @@
             </a>
             <button id="notif-mute-toggle" class="icon-btn" title="Toggle notification sound">🔔</button>
             <partial name="_NotifDropdown" />
+            @{
+                var config = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+                var adminEmail = config["Email:AdminEmail"] ?? "";
+                var userEmail = HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+                if (!string.IsNullOrEmpty(adminEmail) && string.Equals(userEmail, adminEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    <a href="/App/Admin/SecurityAdmin" class="icon-btn" title="Site Admin" style="font-size:1rem;text-decoration:none">🛡️</a>
+                }
+            }
         </div>
 
         @if (Model.ChannelType == 1)
@@ -222,6 +239,7 @@
         const memberData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberData));
         const currentUserRole = @((int)Model.CurrentUserRole);
         const currentUserId = '@Model.CurrentUserId';
+        const currentUsername = '@Model.CurrentUsername';
     </script>
     <script src="~/js/chat.js" asp-append-version="true"></script>
     @if (Model.ChannelType == 1)
@@ -272,6 +290,8 @@
                     timeEl.textContent = new Date(timeEl.dataset.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 }
             });
+            // Highlight messages that mention the current user
+            highlightServerRenderedMentions();
         })();
         document.getElementById('add-channel-toggle').addEventListener('click', () => {
             document.getElementById('add-channel-section').classList.toggle('hidden');
@@ -508,7 +528,8 @@
                 return;
             }
             const query = val.slice(atIdx + 1).toLowerCase();
-            const matches = memberUsernames.filter(u => u.toLowerCase().startsWith(query) && query.length >= 0);
+            const allMentions = ['everyone', ...memberUsernames];
+            const matches = allMentions.filter(u => u.toLowerCase().startsWith(query) && query.length >= 0);
             if (!matches.length || query.includes(' ')) {
                 mentionList.classList.add('hidden');
                 return;

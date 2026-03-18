@@ -103,7 +103,8 @@ button { cursor: pointer; font-family: inherit; }
     background: #2b2d31;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .sidebar-header {
@@ -496,6 +497,82 @@ button { cursor: pointer; font-family: inherit; }
 .welcome-screen h2 { color: #f2f3f5; font-size: 24px; }
 .welcome-screen p { font-size: 15px; max-width: 400px; }
 
+/* ===== GETTING STARTED TIPS ===== */
+.getting-started-tips {
+    margin-top: 24px;
+    width: 100%;
+    max-width: 440px;
+}
+.getting-started-tips h3 {
+    color: #b5bac1;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+.tip-cards { display: flex; flex-direction: column; gap: 8px; }
+.tip-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: #2b2d31;
+    border-radius: 8px;
+    padding: 12px 14px;
+    text-align: left;
+}
+.tip-card-notice { background: rgba(250, 168, 26, 0.06); }
+.tip-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.tip-icon-green { background: rgba(59, 165, 92, 0.15); color: #3ba55c; }
+.tip-icon-blue { background: rgba(88, 101, 242, 0.15); color: #5865f2; }
+.tip-icon-purple { background: rgba(155, 89, 182, 0.15); color: #9b59b6; }
+.tip-icon-yellow { background: rgba(250, 168, 26, 0.15); color: #faa81a; }
+.tip-text { font-size: 13px; color: #b5bac1; line-height: 1.4; }
+.tip-text strong { display: block; color: #f2f3f5; font-size: 14px; margin-bottom: 2px; }
+.tip-inline-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+.tip-inline-green { background: rgba(59, 165, 92, 0.2); color: #3ba55c; }
+.tip-inline-blue { background: rgba(88, 101, 242, 0.2); color: #5865f2; }
+
+/* Add Friends CTA button on welcome screen */
+.btn-add-friend-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #3ba55c;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 14px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+.btn-add-friend-cta:hover {
+    background: #2d8b4a;
+    transform: scale(1.02);
+}
+.btn-add-friend-cta:active {
+    transform: scale(0.98);
+}
+
 /* ===== BUTTONS ===== */
 .icon-btn {
     background: none;
@@ -611,12 +688,18 @@ button { cursor: pointer; font-family: inherit; }
 .hidden { display: none !important; }
 
 /* ===== AUTH PAGES (Login/Register) ===== */
+html:has(body.auth-page) {
+    overflow: auto;
+    height: auto;
+}
+
 body.auth-page {
     overflow: auto;
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    height: auto;
 }
 
 .auth-container {
@@ -2400,6 +2483,48 @@ img.emoji {
 .message-grouped .message-avatar-link,
 .message-grouped .message-author { display: none; }
 .message-grouped .message-content { grid-column: 2; }
+
+/* ===== MENTION HIGHLIGHTING ===== */
+.message.message-mentioned {
+    background: rgba(250, 168, 26, 0.08);
+    border-left: 3px solid #faa81a;
+    padding-left: 13px;
+}
+.message.message-mentioned:hover { background: rgba(250, 168, 26, 0.12); }
+.mention-text {
+    background: rgba(88, 101, 242, 0.3);
+    color: #dee0fc;
+    border-radius: 3px;
+    padding: 0 2px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.mention-text:hover {
+    background: #5865f2;
+    color: #fff;
+}
+
+/* ===== SIDEBAR FOOTER ===== */
+.sidebar-footer {
+    margin-top: auto;
+    padding: 8px 10px;
+    border-top: 1px solid #3f4147;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sidebar-footer a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #b5bac1;
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+}
+.sidebar-footer a:hover { background: #35373c; color: #f2f3f5; }
+.sidebar-footer svg { flex-shrink: 0; }
 
 /* ===== RIGHT-CLICK CONTEXT MENU ===== */
 .context-menu {
