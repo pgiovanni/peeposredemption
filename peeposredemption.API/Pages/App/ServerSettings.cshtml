@@ -13,6 +13,7 @@
         <a href="javascript:history.back()" class="channel-item">&larr; Back to Server</a>
         <div class="sidebar-section-header">SETTINGS</div>
         <a href="#members" class="channel-item settings-nav active" data-tab="members">Members</a>
+        <a href="#banned" class="channel-item settings-nav" data-tab="banned">Banned (@Model.BannedMembers.Count)</a>
         <a href="#emojis" class="channel-item settings-nav" data-tab="emojis">Emojis</a>
         @if (Model.CurrentUserRole == ServerRole.Owner)
         {
@@ -63,6 +64,39 @@
                                 </form>
                             }
                         </div>
+                    }
+                </section>
+            </div>
+
+            <!-- Banned Members Tab -->
+            <div class="settings-tab" id="tab-banned">
+                <section class="settings-section">
+                    <h3 class="settings-heading">BANNED MEMBERS — @Model.BannedMembers.Count</h3>
+                    @if (Model.BannedMembers.Any())
+                    {
+                        @foreach (var ban in Model.BannedMembers)
+                        {
+                            <div class="member-row">
+                                <div class="friend-avatar">@ban.User.Username.Substring(0, 1).ToUpper()</div>
+                                <span class="member-name">@ban.User.Username</span>
+                                <span class="member-role" style="color:#72767d;font-size:12px">
+                                    Banned <span class="local-time" data-utc="@ban.BannedAt.ToString("o")"></span>
+                                    by @ban.BannedBy.Username
+                                </span>
+                                @if (Model.CurrentUserRole >= ServerRole.Admin)
+                                {
+                                    <form method="post" asp-page-handler="Unban" style="display:inline;margin-left:auto">
+                                        <input type="hidden" name="serverId" value="@Model.ServerId" />
+                                        <input type="hidden" name="targetUserId" value="@ban.UserId" />
+                                        <button type="submit" class="btn-primary btn-sm">Unban</button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="sidebar-empty">No banned members.</div>
                     }
                 </section>
             </div>
@@ -219,6 +253,12 @@
             document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
         });
+    });
+
+    // Render local times for banned members
+    document.querySelectorAll('.local-time').forEach(el => {
+        const d = new Date(el.dataset.utc);
+        el.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     });
 </script>
 }
