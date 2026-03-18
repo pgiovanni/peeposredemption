@@ -43,6 +43,7 @@ public class ChannelModel : PageModel
     public string? InviteLink { get; set; }
     public ServerRole CurrentUserRole { get; set; } = ServerRole.Member;
     public long OrbBalance { get; set; }
+    public int ChannelType { get; set; }
 
     public async Task<IActionResult> OnGetAsync(Guid channelId, Guid serverId)
     {
@@ -88,6 +89,7 @@ public class ChannelModel : PageModel
         Channels = await _mediator.Send(new GetServerChannelsQuery(serverId));
         var activeChannel = Channels.FirstOrDefault(c => c.Id == channelId);
         ChannelName = activeChannel?.Name ?? "";
+        ChannelType = activeChannel?.Type ?? 0;
 
         // Load messages
         Messages = await _mediator.Send(new GetChannelMessagesQuery(channelId));
@@ -112,14 +114,15 @@ public class ChannelModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostCreateChannelAsync(Guid serverId, string name)
+    public async Task<IActionResult> OnPostCreateChannelAsync(Guid serverId, string name, int channelType = 0)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userIdClaim == null) return RedirectToPage("/Auth/Login");
         var userId = Guid.Parse(userIdClaim);
         try
         {
-            var channel = await _mediator.Send(new CreateChannelCommand(serverId, name, userId));
+            var type = (Domain.Entities.ChannelType)channelType;
+            var channel = await _mediator.Send(new CreateChannelCommand(serverId, name, userId, type));
             return RedirectToPage(new { channelId = channel.Id, serverId });
         }
         catch (UnauthorizedAccessException) { return Forbid(); }

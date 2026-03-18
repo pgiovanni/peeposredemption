@@ -34,7 +34,13 @@
         <div id="add-channel-section" class="hidden">
             <form method="post" asp-page-handler="CreateChannel" class="add-friend-form">
                 <input type="hidden" name="serverId" value="@Model.ServerId" />
-                <input type="text" name="name" placeholder="new-channel" required maxlength="100" autocomplete="off" />
+                <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+                    <input type="text" name="name" placeholder="new-channel" required maxlength="100" autocomplete="off" style="flex:1" />
+                    <select name="channelType" class="channel-type-select">
+                        <option value="0">Text</option>
+                        <option value="1">Voice</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn-primary btn-sm">Create</button>
             </form>
         </div>
@@ -43,7 +49,18 @@
             <div class="channel-row">
                 <a href="/App/Channel?channelId=@ch.Id&serverId=@Model.ServerId"
                    class="channel-item @(ch.Id == Model.ChannelId ? "active" : "")">
-                    <span class="channel-hash">#</span>
+                    @if (ch.Type == 1)
+                    {
+                        <span class="channel-hash" title="Voice Channel">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                            </svg>
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="channel-hash">#</span>
+                    }
                     <span>@ch.Name</span>
                 </a>
                 @if (Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator)
@@ -55,16 +72,31 @@
                     </a>
                 }
             </div>
+            @if (ch.Type == 1)
+            {
+                <div class="voice-sidebar-participants" data-voice-channel="@ch.Id"></div>
+            }
         }
     </div>
 
     <div class="sidebar-backdrop"></div>
 
-    <!-- Col 3: Messages -->
+    <!-- Col 3: Content -->
     <div class="content-area">
         <div class="content-header">
             <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
-            <span class="channel-hash">#</span>
+            @if (Model.ChannelType == 1)
+            {
+                <span class="channel-hash">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle">
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                    </svg>
+                </span>
+            }
+            else
+            {
+                <span class="channel-hash">#</span>
+            }
             <span>@Model.ChannelName</span>
             <a href="/App/Wallet" class="orb-balance" title="View Wallet" style="margin-left:auto">
                 <span class="orb-icon"></span>
@@ -73,65 +105,106 @@
             <button id="notif-mute-toggle" class="icon-btn" title="Toggle notification sound">🔔</button>
             <partial name="_NotifDropdown" />
         </div>
-        <div id="messages" class="messages-container">
-            @foreach (var msg in Model.Messages)
-            {
-                <div class="message @(msg.IsDeleted ? "deleted" : "")" data-id="@msg.Id" data-author-id="@msg.AuthorId" data-author-name="@msg.AuthorUsername" data-sent="@msg.SentAt.ToString("o")">
-                    <a href="/App/Profile?userId=@msg.AuthorId" class="message-avatar-link">
-                        @if (!string.IsNullOrEmpty(msg.AuthorAvatarUrl))
-                        {
-                            <img src="@msg.AuthorAvatarUrl" alt="@msg.AuthorUsername" class="message-avatar" />
-                        }
-                        else
-                        {
-                            <div class="message-avatar message-avatar-fallback">@msg.AuthorUsername.Substring(0, 1).ToUpper()</div>
-                        }
-                    </a>
-                    <div class="message-author"><a href="/App/Profile?userId=@msg.AuthorId" class="author-link">@msg.AuthorUsername</a> <span class="message-time" data-time="@msg.SentAt.ToString("o")"></span></div>
-                    <div class="message-content">@msg.Content</div>
+
+        @if (Model.ChannelType == 1)
+        {
+            <!-- Voice Room -->
+            <div class="voice-room" id="voice-room">
+                <div class="voice-grid" id="voice-grid">
+                    <!-- Video tiles injected by voice.js -->
                 </div>
-            }
-        </div>
-        <div id="typing-indicator" class="typing-indicator"></div>
-        <div class="message-input-area">
-            <div id="mention-list" class="mention-list hidden"></div>
-            <div id="emoji-picker" class="emoji-picker hidden"></div>
-            <div id="gif-picker" class="gif-picker hidden">
-                <div class="gif-picker-header">
-                    <input type="text" id="gif-search" class="emoji-search" placeholder="Search GIFs..." />
-                </div>
-                <div id="gif-grid" class="gif-grid"></div>
-                <div class="gif-attribution">Powered by KLIPY</div>
-            </div>
-            <!-- Gift modal -->
-            <div id="gift-modal" class="gift-modal hidden">
-                <div class="gift-modal-header">Send Orbs</div>
-                <div class="gift-modal-balance">Your balance: <span class="orb-icon"></span> <span id="gift-modal-balance">@Model.OrbBalance</span></div>
-                <label>To:</label>
-                <select id="gift-recipient" class="gift-input">
-                    @foreach (var member in Model.MemberData)
-                    {
-                        <option value="@member.Username" data-user-id="@member.Id">@member.Username</option>
-                    }
-                </select>
-                <label>Amount:</label>
-                <input type="number" id="gift-amount" class="gift-input" min="1" placeholder="Amount" />
-                <label>Message (optional):</label>
-                <input type="text" id="gift-message" class="gift-input" placeholder="Nice work!" maxlength="100" autocomplete="off" />
-                <div id="gift-error" class="gift-error hidden"></div>
-                <div class="gift-modal-actions">
-                    <button id="gift-cancel" class="btn-secondary btn-sm">Cancel</button>
-                    <button id="gift-send" class="btn-primary btn-sm">Send Gift</button>
+                <div class="voice-controls" id="voice-controls">
+                    <button class="vc-btn" id="vc-mute" title="Mute">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
+                        </svg>
+                    </button>
+                    <button class="vc-btn" id="vc-deafen" title="Deafen">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 1c-4.97 0-9 4.03-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7c0-4.97-4.03-9-9-9z"/>
+                        </svg>
+                    </button>
+                    <button class="vc-btn" id="vc-camera" title="Camera">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                        </svg>
+                    </button>
+                    <button class="vc-btn" id="vc-screen" title="Share Screen">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/>
+                        </svg>
+                    </button>
+                    <button class="vc-btn vc-btn-danger" id="vc-disconnect" title="Disconnect">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
-            <form id="message-form">
-                <button type="button" id="emoji-picker-toggle" class="icon-btn emoji-picker-btn" title="Emojis">😀</button>
-                <button type="button" id="gif-picker-toggle" class="icon-btn emoji-picker-btn" title="GIFs">GIF</button>
-                <button type="button" id="gift-toggle" class="icon-btn emoji-picker-btn" title="Gift Orbs">&#x1F381;</button>
-                <input id="message-input" type="text" placeholder="Message #@Model.ChannelName..." autocomplete="off" />
-                <button type="submit">Send</button>
-            </form>
-        </div>
+        }
+        else
+        {
+            <!-- Text Channel Messages -->
+            <div id="messages" class="messages-container">
+                @foreach (var msg in Model.Messages)
+                {
+                    <div class="message @(msg.IsDeleted ? "deleted" : "")" data-id="@msg.Id" data-author-id="@msg.AuthorId" data-author-name="@msg.AuthorUsername" data-sent="@msg.SentAt.ToString("o")">
+                        <a href="/App/Profile?userId=@msg.AuthorId" class="message-avatar-link">
+                            @if (!string.IsNullOrEmpty(msg.AuthorAvatarUrl))
+                            {
+                                <img src="@msg.AuthorAvatarUrl" alt="@msg.AuthorUsername" class="message-avatar" />
+                            }
+                            else
+                            {
+                                <div class="message-avatar message-avatar-fallback">@msg.AuthorUsername.Substring(0, 1).ToUpper()</div>
+                            }
+                        </a>
+                        <div class="message-author"><a href="/App/Profile?userId=@msg.AuthorId" class="author-link">@msg.AuthorUsername</a> <span class="message-time" data-time="@msg.SentAt.ToString("o")"></span></div>
+                        <div class="message-content">@msg.Content</div>
+                    </div>
+                }
+            </div>
+            <div id="typing-indicator" class="typing-indicator"></div>
+            <div class="message-input-area">
+                <div id="mention-list" class="mention-list hidden"></div>
+                <div id="emoji-picker" class="emoji-picker hidden"></div>
+                <div id="gif-picker" class="gif-picker hidden">
+                    <div class="gif-picker-header">
+                        <input type="text" id="gif-search" class="emoji-search" placeholder="Search GIFs..." />
+                    </div>
+                    <div id="gif-grid" class="gif-grid"></div>
+                    <div class="gif-attribution">Powered by KLIPY</div>
+                </div>
+                <!-- Gift modal -->
+                <div id="gift-modal" class="gift-modal hidden">
+                    <div class="gift-modal-header">Send Orbs</div>
+                    <div class="gift-modal-balance">Your balance: <span class="orb-icon"></span> <span id="gift-modal-balance">@Model.OrbBalance</span></div>
+                    <label>To:</label>
+                    <select id="gift-recipient" class="gift-input">
+                        @foreach (var member in Model.MemberData)
+                        {
+                            <option value="@member.Username" data-user-id="@member.Id">@member.Username</option>
+                        }
+                    </select>
+                    <label>Amount:</label>
+                    <input type="number" id="gift-amount" class="gift-input" min="1" placeholder="Amount" />
+                    <label>Message (optional):</label>
+                    <input type="text" id="gift-message" class="gift-input" placeholder="Nice work!" maxlength="100" autocomplete="off" />
+                    <div id="gift-error" class="gift-error hidden"></div>
+                    <div class="gift-modal-actions">
+                        <button id="gift-cancel" class="btn-secondary btn-sm">Cancel</button>
+                        <button id="gift-send" class="btn-primary btn-sm">Send Gift</button>
+                    </div>
+                </div>
+                <form id="message-form">
+                    <button type="button" id="emoji-picker-toggle" class="icon-btn emoji-picker-btn" title="Emojis">😀</button>
+                    <button type="button" id="gif-picker-toggle" class="icon-btn emoji-picker-btn" title="GIFs">GIF</button>
+                    <button type="button" id="gift-toggle" class="icon-btn emoji-picker-btn" title="Gift Orbs">&#x1F381;</button>
+                    <input id="message-input" type="text" placeholder="Message #@Model.ChannelName..." autocomplete="off" />
+                    <button type="submit">Send</button>
+                </form>
+            </div>
+        }
     </div>
 
     <!-- Gift animation container -->
@@ -143,14 +216,27 @@
     <script>
         const channelId = '@Model.ChannelId';
         const serverId = '@Model.ServerId';
+        const isVoiceChannel = @(Model.ChannelType == 1 ? "true" : "false");
         const canDeleteMessages = @((Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator).ToString().ToLower());
         const memberUsernames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberUsernames));
         const memberData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberData));
         const currentUserRole = @((int)Model.CurrentUserRole);
         const currentUserId = '@Model.CurrentUserId';
     </script>
-    <script src="~/js/chat.js"></script>
+    <script src="~/js/chat.js" asp-append-version="true"></script>
+    @if (Model.ChannelType == 1)
+    {
+        <script src="~/js/voice.js" asp-append-version="true"></script>
+    }
     <script>
+        if (isVoiceChannel) {
+            // Voice channels only need the add-channel-toggle and VoiceChannelState sidebar handler
+            document.getElementById('add-channel-toggle').addEventListener('click', () => {
+                document.getElementById('add-channel-section').classList.toggle('hidden');
+            });
+            // VoiceChannelState sidebar updates handled by voice.js + chat.js
+        }
+        if (!isVoiceChannel) {
         // Format times and insert date separators using client local time
         (function() {
             const container = document.getElementById('messages');
@@ -695,6 +781,8 @@
                 osc.stop(ctx.currentTime + 0.3);
             } catch {}
         }
+
+        } // end if (!isVoiceChannel)
 
         // ── Notification mute toggle ───────────────────────────
         const muteBtn = document.getElementById('notif-mute-toggle');

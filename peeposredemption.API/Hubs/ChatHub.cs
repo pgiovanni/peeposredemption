@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using peeposredemption.API.Infrastructure;
 using peeposredemption.Application.Features.Game.Commands;
 using peeposredemption.Application.Features.Messages.Commands;
 using peeposredemption.Application.Features.Moderation.Commands;
@@ -18,7 +19,13 @@ namespace peeposredemption.API.Hubs
     {
         private readonly IMediator _mediator;
         private readonly IUnitOfWork _uow;
-        public ChatHub(IMediator mediator, IUnitOfWork uow) { _mediator = mediator; _uow = uow; }
+        private readonly VoiceStateTracker _voiceTracker;
+        public ChatHub(IMediator mediator, IUnitOfWork uow, VoiceStateTracker voiceTracker)
+        {
+            _mediator = mediator;
+            _uow = uow;
+            _voiceTracker = voiceTracker;
+        }
 
         private Guid CurrentUserId =>
             Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
@@ -192,6 +199,110 @@ namespace peeposredemption.API.Hubs
         public async Task TypingInDm(Guid recipientId) =>
             await Clients.User(recipientId.ToString())
                 .SendAsync("UserTypingDm", CurrentUserId);
+
+        // ── Voice Channel Methods ─────────────────────────────────
+
+        public async Task JoinVoiceChannel(Guid channelId)
+        {
+            var channel = await _uow.Channels.GetByIdAsync(channelId);
+            if (channel == null || channel.Type != ChannelType.Voice)
+                throw new HubException("Not a voice channel.");
+
+            var user = await _uow.Users.GetByIdAsync(CurrentUserId);
+            var displayName = user?.DisplayOrUsername ?? CurrentUsername;
+            var avatarUrl = user?.AvatarUrl;
+
+            var (success, participants) = _voiceTracker.TryJoin(
+                channelId, CurrentUserId, displayName, avatarUrl, Context.ConnectionId);
+
+            if (!success)
+                throw new HubException("Voice channel is full (max 6).");
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"voice:{channelId}");
+
+            // Tell everyone else in the channel
+            await Clients.OthersInGroup($"voice:{channelId}")
+                .SendAsync("VoiceUserJoined", new
+                {
+                    UserId = CurrentUserId,
+                    DisplayName = displayName,
+                    AvatarUrl = avatarUrl,
+                    IsMuted = false,
+                    IsDeafened = false,
+                    IsCameraOn = false
+                });
+
+            // Return full participant list to caller
+            await Clients.Caller.SendAsync("VoiceParticipantList", participants.Select(p => new
+            {
+                p.UserId, p.DisplayName, p.AvatarUrl, p.IsMuted, p.IsDeafened, p.IsCameraOn
+            }));
+
+            // Broadcast updated sidebar count to the text channel group too
+            await Clients.Group($"channel:{channelId}")
+                .SendAsync("VoiceChannelState", new { ChannelId = channelId, Participants = participants.Select(p => new { p.UserId, p.DisplayName, p.AvatarUrl }) });
+        }
+
+        public async Task LeaveVoiceChannel(Guid channelId)
+        {
+            var removed = _voiceTracker.Leave(channelId, CurrentUserId);
+            if (removed == null) return;
+
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"voice:{channelId}");
+            await Clients.Group($"voice:{channelId}")
+                .SendAsync("VoiceUserLeft", new { UserId = CurrentUserId });
+
+            // Update sidebar
+            var remaining = _voiceTracker.GetParticipants(channelId);
+            await Clients.Group($"channel:{channelId}")
+                .SendAsync("VoiceChannelState", new { ChannelId = channelId, Participants = remaining.Select(p => new { p.UserId, p.DisplayName, p.AvatarUrl }) });
+        }
+
+        public async Task SendWebRtcOffer(string targetUserId, string sdp)
+        {
+            await Clients.User(targetUserId)
+                .SendAsync("ReceiveWebRtcOffer", new { FromUserId = CurrentUserId.ToString(), Sdp = sdp });
+        }
+
+        public async Task SendWebRtcAnswer(string targetUserId, string sdp)
+        {
+            await Clients.User(targetUserId)
+                .SendAsync("ReceiveWebRtcAnswer", new { FromUserId = CurrentUserId.ToString(), Sdp = sdp });
+        }
+
+        public async Task SendIceCandidate(string targetUserId, string candidate)
+        {
+            await Clients.User(targetUserId)
+                .SendAsync("ReceiveIceCandidate", new { FromUserId = CurrentUserId.ToString(), Candidate = candidate });
+        }
+
+        public async Task UpdateVoiceState(Guid channelId, bool? muted, bool? deafened, bool? cameraOn)
+        {
+            _voiceTracker.UpdateState(channelId, CurrentUserId, muted, deafened, cameraOn);
+            await Clients.OthersInGroup($"voice:{channelId}")
+                .SendAsync("VoiceStateChanged", new
+                {
+                    UserId = CurrentUserId,
+                    IsMuted = muted,
+                    IsDeafened = deafened,
+                    IsCameraOn = cameraOn
+                });
+        }
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            var removed = _voiceTracker.LeaveByConnectionId(Context.ConnectionId);
+            foreach (var (channelId, participant) in removed)
+            {
+                await Clients.Group($"voice:{channelId}")
+                    .SendAsync("VoiceUserLeft", new { participant.UserId });
+
+                var remaining = _voiceTracker.GetParticipants(channelId);
+                await Clients.Group($"channel:{channelId}")
+                    .SendAsync("VoiceChannelState", new { ChannelId = channelId, Participants = remaining.Select(p => new { p.UserId, p.DisplayName, p.AvatarUrl }) });
+            }
+            await base.OnDisconnectedAsync(exception);
+        }
     }
 
 }

@@ -44,9 +44,11 @@ if (builder.Environment.IsDevelopment())
 }
 else
 {
+    var resendApiKey = builder.Configuration["Email:ResendApiKey"]
+        ?? throw new InvalidOperationException(
+            "Email:ResendApiKey is missing from configuration. Emails will not work.");
     builder.Services.AddHttpClient<ResendClient>();
-    builder.Services.Configure<ResendClientOptions>(o =>
-        o.ApiToken = builder.Configuration["Resend:ApiKey"]);
+    builder.Services.Configure<ResendClientOptions>(o => o.ApiToken = resendApiKey);
     builder.Services.AddTransient<IResend, ResendClient>();
     builder.Services.AddScoped<IEmailService, EmailService>();
 }
@@ -55,6 +57,14 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<LinkScannerService>();
 builder.Services.AddSingleton<ILinkScannerService>(sp => sp.GetRequiredService<LinkScannerService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<LinkScannerService>());
+
+// VPN/Tor detection
+builder.Services.AddSingleton<VpnDetectionService>();
+builder.Services.AddSingleton<IVpnDetectionService>(sp => sp.GetRequiredService<VpnDetectionService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<VpnDetectionService>());
+
+builder.Services.AddSingleton<VoiceStateTracker>();
+builder.Services.AddMemoryCache();
 
 // JWT Authentication
 builder.Services
@@ -90,6 +100,10 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
+// Anti-alt security middleware
+app.UseMiddleware<IpBanMiddleware>();
+app.UseMiddleware<DeviceIdMiddleware>();
+
 app.Use(async (context, next) =>
 {
     var token = context.Request.Cookies["jwt"];
@@ -109,12 +123,12 @@ app.Use(async (context, next) =>
             var result = await mediator.Send(
                 new RefreshTokenCommand(context.Request.Cookies["refreshToken"]!));
 
-            context.Response.Cookies.Append("jwt", result.Token, new CookieOptions
+            context.Response.Cookies.Append("jwt", result.Token!, new CookieOptions
             {
                 HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
                 MaxAge = TimeSpan.FromMinutes(15)
             });
-            context.Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
+            context.Response.Cookies.Append("refreshToken", result.RefreshToken!, new CookieOptions
             {
                 HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
                 MaxAge = TimeSpan.FromDays(30)
@@ -149,12 +163,12 @@ app.MapPost("/api/auth/refresh", async (HttpRequest req, IMediator mediator) =>
     {
         var result = await mediator.Send(new RefreshTokenCommand(refreshToken));
 
-        req.HttpContext.Response.Cookies.Append("jwt", result.Token, new CookieOptions
+        req.HttpContext.Response.Cookies.Append("jwt", result.Token!, new CookieOptions
         {
             HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
             MaxAge = TimeSpan.FromMinutes(15)
         });
-        req.HttpContext.Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
+        req.HttpContext.Response.Cookies.Append("refreshToken", result.RefreshToken!, new CookieOptions
         {
             HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
             MaxAge = TimeSpan.FromDays(30)
@@ -422,6 +436,168 @@ app.MapPost("/api/admin/artists/payout", async (HttpContext ctx, IMediator media
     }
 }).RequireAuthorization();
 
+// Security — fingerprint submission
+app.MapPost("/api/security/fingerprint", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var body = await ctx.Request.ReadFromJsonAsync<FingerprintRequest>();
+    if (body == null || string.IsNullOrEmpty(body.FingerprintHash)) return Results.BadRequest();
+    await mediator.Send(new peeposredemption.Application.Features.Security.Commands.SubmitFingerprintCommand(
+        Guid.Parse(uid), body.FingerprintHash, body.RawComponents));
+    return Results.Ok();
+}).RequireAuthorization();
+
+// Security admin endpoints
+app.MapPost("/api/admin/security/ip-ban", async (HttpContext ctx, IMediator mediator, IConfiguration config, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var body = await ctx.Request.ReadFromJsonAsync<IpBanRequest>();
+    if (body == null) return Results.BadRequest();
+    await mediator.Send(new peeposredemption.Application.Features.Security.Commands.BanIpCommand(body.IpAddress, Guid.Parse(uid!), body.Reason));
+    IpBanMiddleware.InvalidateCache(cache);
+    return Results.Ok();
+}).RequireAuthorization();
+
+app.MapDelete("/api/admin/security/ip-ban/{id:guid}", async (Guid id, HttpContext ctx, IMediator mediator, IConfiguration config, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    await mediator.Send(new peeposredemption.Application.Features.Security.Commands.UnbanIpCommand(id));
+    IpBanMiddleware.InvalidateCache(cache);
+    return Results.Ok();
+}).RequireAuthorization();
+
+app.MapPost("/api/admin/security/device-ban", async (HttpContext ctx, IMediator mediator, IConfiguration config, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var body = await ctx.Request.ReadFromJsonAsync<DeviceBanRequest>();
+    if (body == null) return Results.BadRequest();
+    await mediator.Send(new peeposredemption.Application.Features.Security.Commands.BanDeviceCommand(body.DeviceId));
+    DeviceIdMiddleware.InvalidateCache(cache);
+    return Results.Ok();
+}).RequireAuthorization();
+
+app.MapDelete("/api/admin/security/device-ban/{deviceId:guid}", async (Guid deviceId, HttpContext ctx, IMediator mediator, IConfiguration config, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    await mediator.Send(new peeposredemption.Application.Features.Security.Commands.UnbanDeviceCommand(deviceId));
+    DeviceIdMiddleware.InvalidateCache(cache);
+    return Results.Ok();
+}).RequireAuthorization();
+
+app.MapPost("/api/admin/security/toggle-suspicious", async (HttpContext ctx, IMediator mediator, IConfiguration config) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var body = await ctx.Request.ReadFromJsonAsync<ToggleSuspiciousRequest>();
+    if (body == null) return Results.BadRequest();
+    await mediator.Send(new peeposredemption.Application.Features.Security.Commands.ToggleSuspiciousCommand(body.TargetUserId, body.IsSuspicious));
+    return Results.Ok();
+}).RequireAuthorization();
+
+app.MapGet("/api/admin/security/user/{userId:guid}", async (Guid userId, HttpContext ctx, IMediator mediator, IConfiguration config) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var result = await mediator.Send(new peeposredemption.Application.Features.Security.Queries.GetUserSecurityInfoQuery(userId));
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+app.MapGet("/api/admin/security/ip-bans", async (HttpContext ctx, IMediator mediator, IConfiguration config) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var result = await mediator.Send(new peeposredemption.Application.Features.Security.Queries.GetIpBansQuery());
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+static bool IsTorvexOwner(HttpContext ctx, IConfiguration config)
+{
+    var emailClaim = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+    var adminEmail = config["Email:AdminEmail"] ?? string.Empty;
+    return !string.IsNullOrEmpty(adminEmail) &&
+           string.Equals(emailClaim, adminEmail, StringComparison.OrdinalIgnoreCase);
+}
+
+// MFA endpoints
+app.MapPost("/api/auth/mfa/verify", async (HttpContext ctx, IMediator mediator) =>
+{
+    var body = await ctx.Request.ReadFromJsonAsync<MfaVerifyRequest>();
+    if (body == null) return Results.BadRequest();
+    try
+    {
+        var result = await mediator.Send(new peeposredemption.Application.Features.Auth.Commands.VerifyMfaCommand(
+            body.MfaPendingToken, body.Code));
+        return Results.Ok(new { result.Token, result.RefreshToken, result.UserId });
+    }
+    catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 401); }
+}).AllowAnonymous().DisableAntiforgery();
+
+app.MapGet("/api/auth/mfa/setup", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var result = await mediator.Send(new peeposredemption.Application.Features.Auth.Queries.GenerateMfaSetupQuery(Guid.Parse(uid)));
+    return Results.Ok(new { result.Secret, result.QrCodeBase64 });
+}).RequireAuthorization();
+
+app.MapPost("/api/auth/mfa/confirm", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var body = await ctx.Request.ReadFromJsonAsync<MfaConfirmRequest>();
+    if (body == null) return Results.BadRequest();
+    try
+    {
+        var codes = await mediator.Send(new peeposredemption.Application.Features.Auth.Commands.ConfirmMfaSetupCommand(
+            Guid.Parse(uid), body.Secret, body.Code));
+        return Results.Ok(new { RecoveryCodes = codes });
+    }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization().DisableAntiforgery();
+
+app.MapPost("/api/auth/mfa/disable", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var body = await ctx.Request.ReadFromJsonAsync<MfaDisableRequest>();
+    if (body == null) return Results.BadRequest();
+    try
+    {
+        await mediator.Send(new peeposredemption.Application.Features.Auth.Commands.DisableMfaCommand(
+            Guid.Parse(uid), body.Code));
+        return Results.Ok();
+    }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization().DisableAntiforgery();
+
+// ICE servers endpoint for WebRTC — generates ephemeral TURN credentials via HMAC-SHA1
+app.MapGet("/api/ice-servers", (IConfiguration config) =>
+{
+    var urls = (config["Turn:Urls"] ?? "stun:stun.l.google.com:19302")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    var sharedSecret = config["Turn:SharedSecret"] ?? "";
+    var ttl = int.TryParse(config["Turn:CredentialTtlSeconds"], out var t) ? t : 86400;
+
+    // Ephemeral credentials: username = expiry timestamp, password = HMAC-SHA1(secret, username)
+    var expiry = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + ttl;
+    var username = expiry.ToString();
+    var credential = "";
+    if (!string.IsNullOrEmpty(sharedSecret))
+    {
+        using var hmac = new System.Security.Cryptography.HMACSHA1(Encoding.UTF8.GetBytes(sharedSecret));
+        credential = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(username)));
+    }
+
+    var servers = new List<object>();
+    foreach (var url in urls)
+    {
+        if (url.StartsWith("stun:"))
+            servers.Add(new { urls = url });
+        else
+            servers.Add(new { urls = url, username, credential });
+    }
+    return Results.Ok(servers);
+}).RequireAuthorization();
+
 // Seed badge definitions + artists on startup
 using (var scope = app.Services.CreateScope())
 {
@@ -438,3 +614,10 @@ record OrbGiftRequest(string ChannelId, string RecipientUsername, long Amount, s
 record ArtistPayoutRequest(Guid ArtistId, long AmountCents, string? Reference);
 record ModerationActionRequest(string ServerId, string TargetUserId);
 record MuteActionRequest(string ServerId, string TargetUserId, int DurationMinutes = 10);
+record FingerprintRequest(string FingerprintHash, string? RawComponents);
+record IpBanRequest(string IpAddress, string? Reason);
+record DeviceBanRequest(Guid DeviceId);
+record ToggleSuspiciousRequest(Guid TargetUserId, bool IsSuspicious);
+record MfaVerifyRequest(string MfaPendingToken, string Code);
+record MfaConfirmRequest(string Secret, string Code);
+record MfaDisableRequest(string Code);

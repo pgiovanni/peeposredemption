@@ -5,7 +5,7 @@ using peeposredemption.Domain.Interfaces;
 
 namespace peeposredemption.Application.Features.Channels.Commands;
 
-public record CreateChannelCommand(Guid ServerId, string Name, Guid RequesterId) : IRequest<ChannelDto>;
+public record CreateChannelCommand(Guid ServerId, string Name, Guid RequesterId, ChannelType ChannelType = ChannelType.Text) : IRequest<ChannelDto>;
 
 public class CreateChannelCommandHandler : IRequestHandler<CreateChannelCommand, ChannelDto>
 {
@@ -21,12 +21,13 @@ public class CreateChannelCommandHandler : IRequestHandler<CreateChannelCommand,
         var channel = new Channel
         {
             ServerId = cmd.ServerId,
-            Name = cmd.Name.ToLower().Replace(" ", "-")
+            Name = cmd.Name.ToLower().Replace(" ", "-"),
+            Type = cmd.ChannelType
         };
 
         await _uow.Channels.AddAsync(channel);
         await _uow.SaveChangesAsync();
 
-        return new ChannelDto(channel.Id, channel.ServerId, channel.Name);
+        return new ChannelDto(channel.Id, channel.ServerId, channel.Name, (int)channel.Type);
     }
 }
