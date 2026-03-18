@@ -48,6 +48,12 @@ namespace peeposredemption.Domain.Interfaces
         IMarketplaceListingRepository MarketplaceListings { get; }
         ITradeOfferRepository TradeOffers { get; }
 
+        // Anti-alt security
+        IIpBanRepository IpBans { get; }
+        IUserDeviceRepository UserDevices { get; }
+        IUserIpLogRepository UserIpLogs { get; }
+        IUserFingerprintRepository UserFingerprints { get; }
+
         Task<int> SaveChangesAsync();
     }
 

@@ -13,6 +13,10 @@
         <a href="/App/Index" class="channel-item">Back to Messages</a>
         @if (Model.IsOwnProfile)
         {
+            <div class="sidebar-section-label">SETTINGS</div>
+            <a href="#profile" class="channel-item settings-nav active" data-tab="profile">Profile</a>
+            <a href="#security" class="channel-item settings-nav" data-tab="security">Security</a>
+            <div class="sidebar-section-label" style="margin-top: 12px;">LINKS</div>
             <a href="/App/Wallet" class="channel-item">Wallet</a>
             <a href="/App/Badges" class="channel-item">Badges</a>
             <a href="/App/OrbShop" class="channel-item">Orb Shop</a>
@@ -26,162 +30,258 @@
 
     <div class="sidebar-backdrop"></div>
 
-    <div class="content-area">
+    <div class="content-area @(Model.IsOwnProfile ? "settings-page" : "")">
         <div class="content-header">
             <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
             <span>@(Model.IsOwnProfile ? "Edit Profile" : (Model.DisplayName ?? Model.Username))</span>
         </div>
 
-        <div class="profile-container">
+        @if (Model.IsOwnProfile)
+        {
+            <div class="settings-body">
+                <!-- ═══ Profile Tab ═══ -->
+                <div class="settings-tab active" id="tab-profile">
+                    <div class="profile-container">
 
-            @if (Model.IsOwnProfile)
-            {
-                @if (Model.SaveSuccess)
-                {
-                    <div class="form-success" id="profile-success">Profile updated!</div>
-                }
-                @if (Model.ErrorMessage != null)
-                {
-                    <div class="form-error">@Model.ErrorMessage</div>
-                }
-            }
+                        @if (Model.SaveSuccess)
+                        {
+                            <div class="form-success" id="profile-success">Profile updated!</div>
+                        }
+                        @if (Model.ErrorMessage != null)
+                        {
+                            <div class="form-error">@Model.ErrorMessage</div>
+                        }
 
-            <!-- Profile Card -->
-            <div class="profile-preview-card" style="@(Model.ProfileBackgroundColor != null ? $"background-color:{Model.ProfileBackgroundColor}" : "")">
-                <div class="profile-banner" id="banner-preview">
-                    @if (Model.BannerUrl != null)
-                    {
-                        <img src="@Model.BannerUrl" alt="Banner" />
-                    }
-                    @if (Model.IsOwnProfile)
-                    {
-                        <label class="profile-upload-overlay" for="bannerFile" title="Change banner">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                            </svg>
-                        </label>
-                    }
-                </div>
-                <div class="profile-avatar-section">
-                    <div class="profile-avatar" id="avatar-preview">
-                        @if (Model.AvatarUrl != null)
+                        <!-- Profile Card -->
+                        <div class="profile-preview-card" style="@(Model.ProfileBackgroundColor != null ? $"background-color:{Model.ProfileBackgroundColor}" : "")">
+                            <div class="profile-banner" id="banner-preview">
+                                @if (Model.BannerUrl != null)
+                                {
+                                    <img src="@Model.BannerUrl" alt="Banner" />
+                                }
+                                <label class="profile-upload-overlay" for="bannerFile" title="Change banner">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                    </svg>
+                                </label>
+                            </div>
+                            <div class="profile-avatar-section">
+                                <div class="profile-avatar" id="avatar-preview">
+                                    @if (Model.AvatarUrl != null)
+                                    {
+                                        <img src="@Model.AvatarUrl" alt="Avatar" />
+                                    }
+                                    else
+                                    {
+                                        <span class="profile-avatar-initial">@Model.Username.Substring(0, 1).ToUpper()</span>
+                                    }
+                                    <label class="profile-avatar-upload" for="avatarFile" title="Change avatar">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                        </svg>
+                                    </label>
+                                </div>
+                                <div class="profile-preview-info">
+                                    <span class="profile-preview-displayname" id="preview-displayname">@(Model.DisplayName ?? Model.Username)</span>
+                                    <span class="profile-preview-username">@@@Model.Username</span>
+                                    @if (Model.Pronouns != null)
+                                    {
+                                        <span class="profile-preview-pronouns" id="preview-pronouns">@Model.Pronouns</span>
+                                    }
+                                </div>
+                            </div>
+                            @if (Model.Bio != null)
+                            {
+                                <div class="profile-preview-bio" id="preview-bio">@Model.Bio</div>
+                            }
+                        </div>
+
+                        @if (Model.Badges.Any())
                         {
-                            <img src="@Model.AvatarUrl" alt="Avatar" />
+                            <div class="profile-section">
+                                <div class="profile-section-label">BADGES</div>
+                                <div class="profile-badges-grid">
+                                    @foreach (var badge in Model.Badges)
+                                    {
+                                        <div class="profile-badge" title="@badge.Name — @badge.Description">
+                                            <span class="profile-badge-icon">@badge.Icon</span>
+                                            <span class="profile-badge-name">@badge.Name</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
                         }
-                        else
-                        {
-                            <span class="profile-avatar-initial">@Model.Username.Substring(0, 1).ToUpper()</span>
-                        }
-                        @if (Model.IsOwnProfile)
-                        {
-                            <label class="profile-avatar-upload" for="avatarFile" title="Change avatar">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                                </svg>
-                            </label>
-                        }
+
+                        <!-- Edit Form -->
+                        <form method="post" enctype="multipart/form-data" class="profile-form">
+                            <input type="file" id="avatarFile" name="avatarFile" accept="image/png,image/jpeg,image/webp,image/gif"
+                                   class="hidden" />
+                            <input type="file" id="bannerFile" name="bannerFile" accept="image/png,image/jpeg,image/webp,image/gif"
+                                   class="hidden" />
+
+                            <div class="form-group">
+                                <label>Username</label>
+                                <input type="text" value="@Model.Username" disabled />
+                                <span class="form-hint">This is your unique handle used for friend requests.</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Display Name</label>
+                                <input type="text" name="displayName" value="@Model.DisplayName" placeholder="@Model.Username"
+                                       maxlength="32" id="displayNameInput" />
+                                <span class="form-hint">This is how others will see you in chat.</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Bio</label>
+                                <textarea name="bio" maxlength="200" rows="3" placeholder="Tell us about yourself..."
+                                          id="bioInput">@Model.Bio</textarea>
+                                <span class="form-hint"><span id="bio-count">@(Model.Bio?.Length ?? 0)</span>/200</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Pronouns</label>
+                                <input type="text" name="pronouns" value="@Model.Pronouns" placeholder="e.g. he/him, she/her, they/them"
+                                       maxlength="30" id="pronounsInput" />
+                            </div>
+
+                            <div class="form-group">
+                                <label>Profile Background Color</label>
+                                <div class="profile-color-picker">
+                                    <input type="color" name="profileBackgroundColor"
+                                           value="@(Model.ProfileBackgroundColor ?? "#2b2d31")"
+                                           id="bgColorInput" />
+                                    <span class="profile-color-hex" id="bgColorHex">@(Model.ProfileBackgroundColor ?? "#2b2d31")</span>
+                                    <button type="button" class="btn-cancel btn-sm" id="resetColorBtn">Reset</button>
+                                </div>
+                            </div>
+
+                            <div class="profile-form-actions">
+                                <a href="/App/Index" class="btn-cancel">Cancel</a>
+                                <button type="submit" class="btn-primary">Save Changes</button>
+                            </div>
+                        </form>
                     </div>
-                    <div class="profile-preview-info">
-                        <span class="profile-preview-displayname" id="preview-displayname">@(Model.DisplayName ?? Model.Username)</span>
-                        <span class="profile-preview-username">@@@Model.Username</span>
-                        @if (Model.Pronouns != null)
-                        {
-                            <span class="profile-preview-pronouns" id="preview-pronouns">@Model.Pronouns</span>
-                        }
+                </div>
+
+                <!-- ═══ Security Tab ═══ -->
+                <div class="settings-tab" id="tab-security">
+                    <div class="profile-container">
+                        <h3 class="settings-heading">Security</h3>
+
+                        <!-- Two-Factor Authentication -->
+                        <div class="settings-section">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <div style="color: #fff; font-size: 14px; font-weight: 500;">Two-Factor Authentication</div>
+                                    <div style="color: #949ba4; font-size: 13px; margin-top: 2px;">
+                                        @if (Model.IsMfaEnabled)
+                                        {
+                                            <span style="color: #3ba55d;">&#10003; Enabled</span>
+                                        }
+                                        else
+                                        {
+                                            <text>Not enabled</text>
+                                        }
+                                    </div>
+                                </div>
+                                <a href="/App/MfaSetup" class="btn-primary" style="font-size: 13px; padding: 6px 16px;">
+                                    @(Model.IsMfaEnabled ? "Manage 2FA" : "Enable 2FA")
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Change Password -->
+                        <div class="settings-section">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div>
+                                    <div style="color: #fff; font-size: 14px; font-weight: 500;">Change Password</div>
+                                    <div style="color: #949ba4; font-size: 13px; margin-top: 2px;">
+                                        We'll send a password reset link to your email.
+                                    </div>
+                                </div>
+                                <form method="post" asp-page-handler="RequestPasswordChange" style="margin: 0;">
+                                    <button type="submit" class="btn-primary" style="font-size: 13px; padding: 6px 16px;"
+                                            id="requestPasswordChangeBtn">
+                                        Request Password Change
+                                    </button>
+                                </form>
+                            </div>
+                            @if (Model.PasswordChangeRequested)
+                            {
+                                <div class="form-success" style="margin-top: 12px;" id="password-change-success">
+                                    A password reset link has been sent to your email.
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
-                @if (Model.Bio != null)
-                {
-                    <div class="profile-preview-bio" id="preview-bio">@Model.Bio</div>
-                }
             </div>
+        }
+        else
+        {
+            <!-- Public Profile View (unchanged) -->
+            <div class="profile-container">
+                <!-- Profile Card -->
+                <div class="profile-preview-card" style="@(Model.ProfileBackgroundColor != null ? $"background-color:{Model.ProfileBackgroundColor}" : "")">
+                    <div class="profile-banner" id="banner-preview">
+                        @if (Model.BannerUrl != null)
+                        {
+                            <img src="@Model.BannerUrl" alt="Banner" />
+                        }
+                    </div>
+                    <div class="profile-avatar-section">
+                        <div class="profile-avatar" id="avatar-preview">
+                            @if (Model.AvatarUrl != null)
+                            {
+                                <img src="@Model.AvatarUrl" alt="Avatar" />
+                            }
+                            else
+                            {
+                                <span class="profile-avatar-initial">@Model.Username.Substring(0, 1).ToUpper()</span>
+                            }
+                        </div>
+                        <div class="profile-preview-info">
+                            <span class="profile-preview-displayname">@(Model.DisplayName ?? Model.Username)</span>
+                            <span class="profile-preview-username">@@@Model.Username</span>
+                            @if (Model.Pronouns != null)
+                            {
+                                <span class="profile-preview-pronouns">@Model.Pronouns</span>
+                            }
+                        </div>
+                    </div>
+                    @if (Model.Bio != null)
+                    {
+                        <div class="profile-preview-bio">@Model.Bio</div>
+                    }
+                </div>
 
-            <!-- Public Profile: Member Since + Badges -->
-            @if (!Model.IsOwnProfile)
-            {
                 <div class="profile-section">
                     <div class="profile-section-label">MEMBER SINCE</div>
                     <div class="profile-section-value">@Model.MemberSince.ToString("MMMM d, yyyy")</div>
                 </div>
-            }
 
-            @if (Model.Badges.Any())
-            {
-                <div class="profile-section">
-                    <div class="profile-section-label">BADGES</div>
-                    <div class="profile-badges-grid">
-                        @foreach (var badge in Model.Badges)
-                        {
-                            <div class="profile-badge" title="@badge.Name — @badge.Description">
-                                <span class="profile-badge-icon">@badge.Icon</span>
-                                <span class="profile-badge-name">@badge.Name</span>
-                            </div>
-                        }
+                @if (Model.Badges.Any())
+                {
+                    <div class="profile-section">
+                        <div class="profile-section-label">BADGES</div>
+                        <div class="profile-badges-grid">
+                            @foreach (var badge in Model.Badges)
+                            {
+                                <div class="profile-badge" title="@badge.Name — @badge.Description">
+                                    <span class="profile-badge-icon">@badge.Icon</span>
+                                    <span class="profile-badge-name">@badge.Name</span>
+                                </div>
+                            }
+                        </div>
                     </div>
-                </div>
-            }
+                }
 
-            @if (!Model.IsOwnProfile)
-            {
-                <!-- Action buttons for public profile -->
                 <div class="profile-actions">
                     <a href="/App/Index?friendId=@Model.ProfileUserId" class="btn-primary">Send Message</a>
                 </div>
-            }
-
-            @if (Model.IsOwnProfile)
-            {
-                <!-- Edit Form (own profile only) -->
-                <form method="post" enctype="multipart/form-data" class="profile-form">
-                    <input type="file" id="avatarFile" name="avatarFile" accept="image/png,image/jpeg,image/webp,image/gif"
-                           class="hidden" />
-                    <input type="file" id="bannerFile" name="bannerFile" accept="image/png,image/jpeg,image/webp,image/gif"
-                           class="hidden" />
-
-                    <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" value="@Model.Username" disabled />
-                        <span class="form-hint">This is your unique handle used for friend requests.</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Display Name</label>
-                        <input type="text" name="displayName" value="@Model.DisplayName" placeholder="@Model.Username"
-                               maxlength="32" id="displayNameInput" />
-                        <span class="form-hint">This is how others will see you in chat.</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Bio</label>
-                        <textarea name="bio" maxlength="200" rows="3" placeholder="Tell us about yourself..."
-                                  id="bioInput">@Model.Bio</textarea>
-                        <span class="form-hint"><span id="bio-count">@(Model.Bio?.Length ?? 0)</span>/200</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Pronouns</label>
-                        <input type="text" name="pronouns" value="@Model.Pronouns" placeholder="e.g. he/him, she/her, they/them"
-                               maxlength="30" id="pronounsInput" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Profile Background Color</label>
-                        <div class="profile-color-picker">
-                            <input type="color" name="profileBackgroundColor"
-                                   value="@(Model.ProfileBackgroundColor ?? "#2b2d31")"
-                                   id="bgColorInput" />
-                            <span class="profile-color-hex" id="bgColorHex">@(Model.ProfileBackgroundColor ?? "#2b2d31")</span>
-                            <button type="button" class="btn-cancel btn-sm" id="resetColorBtn">Reset</button>
-                        </div>
-                    </div>
-
-                    <div class="profile-form-actions">
-                        <a href="/App/Index" class="btn-cancel">Cancel</a>
-                        <button type="submit" class="btn-primary">Save Changes</button>
-                    </div>
-                </form>
-            }
-        </div>
+            </div>
+        }
     </div>
 </div>
 
@@ -189,6 +289,27 @@
 <script>
 @if (Model.IsOwnProfile)
 {
+    @:// Settings tab navigation
+    @:document.querySelectorAll('.settings-nav').forEach(link => {
+    @:    link.addEventListener('click', function(e) {
+    @:        e.preventDefault();
+    @:        const tab = this.dataset.tab;
+    @:        document.querySelectorAll('.settings-nav').forEach(l => l.classList.remove('active'));
+    @:        document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+    @:        this.classList.add('active');
+    @:        const target = document.getElementById('tab-' + tab);
+    @:        if (target) target.classList.add('active');
+    @:    });
+    @:});
+    @:
+    @:// If password change was requested, switch to security tab
+    @:if (@(Model.PasswordChangeRequested ? "true" : "false")) {
+    @:    document.querySelectorAll('.settings-nav').forEach(l => l.classList.remove('active'));
+    @:    document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+    @:    document.querySelector('[data-tab="security"]').classList.add('active');
+    @:    document.getElementById('tab-security').classList.add('active');
+    @:}
+    @:
     @:// Avatar preview
     @:document.getElementById('avatarFile').addEventListener('change', function(e) {
     @:    const file = e.target.files[0];
@@ -264,9 +385,11 @@
     @:    document.querySelector('.profile-preview-card').style.backgroundColor = '';
     @:});
     @:
-    @:// Auto-hide success message
+    @:// Auto-hide success messages
     @:const successEl = document.getElementById('profile-success');
     @:if (successEl) setTimeout(() => successEl.style.display = 'none', 3000);
+    @:const pwSuccess = document.getElementById('password-change-success');
+    @:if (pwSuccess) setTimeout(() => pwSuccess.style.display = 'none', 5000);
 }
 </script>
 }

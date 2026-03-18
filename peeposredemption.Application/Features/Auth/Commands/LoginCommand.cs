@@ -1,17 +1,15 @@
-﻿using MediatR;
+using MediatR;
 using peeposredemption.Application.DTOs.Auth;
 using peeposredemption.Application.Services;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace peeposredemption.Application.Features.Auth.Commands
 {
-    public record LoginCommand(string Email, string Password) : IRequest<TokenResponseDto>;
+    public record LoginCommand(string Email, string Password) : IRequest<LoginResultDto>;
 
-    public class LoginCommandHandler : IRequestHandler<LoginCommand, TokenResponseDto>
+    public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResultDto>
     {
         private readonly IUnitOfWork _uow;
         private readonly TokenService _tokenService;
@@ -22,7 +20,7 @@ namespace peeposredemption.Application.Features.Auth.Commands
             _tokenService = tokenService;
         }
 
-        public async Task<TokenResponseDto> Handle(LoginCommand cmd, CancellationToken ct)
+        public async Task<LoginResultDto> Handle(LoginCommand cmd, CancellationToken ct)
         {
             var user = await _uow.Users.GetByEmailAsync(cmd.Email)
                 ?? throw new UnauthorizedAccessException("Invalid credentials.");
@@ -32,6 +30,13 @@ namespace peeposredemption.Application.Features.Auth.Commands
 
             if (!user.EmailConfirmed)
                 throw new UnauthorizedAccessException("Please confirm your email before logging in.");
+
+            // If MFA is enabled, return a pending token instead of full auth
+            if (user.IsMfaEnabled)
+            {
+                var pendingToken = _tokenService.GenerateMfaPendingToken(user);
+                return LoginResultDtoExtensions.MfaPending(pendingToken, user.Id);
+            }
 
             var jwt = _tokenService.GenerateToken(user);
             var rawRefresh = _tokenService.GenerateRefreshToken();
@@ -44,7 +49,7 @@ namespace peeposredemption.Application.Features.Auth.Commands
             });
             await _uow.SaveChangesAsync();
 
-            return new TokenResponseDto(jwt, rawRefresh);
+            return LoginResultDtoExtensions.FullLogin(jwt, rawRefresh, user.Id);
         }
     }
 }

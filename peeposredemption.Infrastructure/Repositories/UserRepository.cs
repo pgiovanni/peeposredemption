@@ -29,6 +29,12 @@ namespace peeposredemption.Infrastructure.Repositories
 
         public Task<User?> GetByUsernameAsync(string username) =>
             _db.Users.FirstOrDefaultAsync(u => u.Username == username);
+
+        public Task<List<User>> GetAllAsync() =>
+            _db.Users.OrderBy(u => u.Username).ToListAsync();
+
+        public Task<User?> GetByPasswordResetTokenAsync(string token) =>
+            _db.Users.FirstOrDefaultAsync(u => u.PasswordResetToken == token);
     }
 
 }

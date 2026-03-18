@@ -6,9 +6,9 @@ using peeposredemption.Domain.Interfaces;
 
 namespace peeposredemption.Application.Features.Auth.Commands;
 
-public record RefreshTokenCommand(string RefreshToken) : IRequest<TokenResponseDto>;
+public record RefreshTokenCommand(string RefreshToken) : IRequest<LoginResultDto>;
 
-public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, TokenResponseDto>
+public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, LoginResultDto>
 {
     private readonly IUnitOfWork _uow;
     private readonly TokenService _tokenService;
@@ -19,7 +19,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, T
         _tokenService = tokenService;
     }
 
-    public async Task<TokenResponseDto> Handle(RefreshTokenCommand cmd, CancellationToken ct)
+    public async Task<LoginResultDto> Handle(RefreshTokenCommand cmd, CancellationToken ct)
     {
         var hash = TokenService.HashToken(cmd.RefreshToken);
         var existing = await _uow.RefreshTokens.GetByTokenHashAsync(hash)
@@ -54,6 +54,6 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, T
         await _uow.RefreshTokens.AddAsync(newRefreshEntity);
         await _uow.SaveChangesAsync();
 
-        return new TokenResponseDto(newJwt, newRawRefresh);
+        return LoginResultDtoExtensions.FullLogin(newJwt, newRawRefresh, user.Id);
     }
 }

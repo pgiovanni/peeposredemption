@@ -75,6 +75,19 @@ namespace peeposredemption.Application.Services
             await _resend.EmailSendAsync(message);
         }
 
+        public async Task SendPasswordResetEmailAsync(string toEmail, string resetLink)
+        {
+            var message = new EmailMessage
+            {
+                From = $"PeePo's Redemption <{_fromAddress}>",
+                To = { toEmail },
+                Subject = "Reset your password",
+                HtmlBody = $"<p>Click the link below to reset your password. This link expires in 30 minutes.</p><p><a href=\"{resetLink}\">Reset Password</a></p>"
+            };
+
+            await _resend.EmailSendAsync(message);
+        }
+
         public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
         {
             var message = new EmailMessage

@@ -12,9 +12,9 @@ using System.Text;
 namespace peeposredemption.Application.Features.Auth.Commands
 {
     public record RegisterCommand(string Username, string Email, string Password, DateTime? DateOfBirth = null, string? ReferralCode = null)
-     : IRequest<Unit>;
+     : IRequest<Guid>;
 
-    public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Unit>
+    public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
     {
         private readonly IUnitOfWork _uow;
         private readonly IEmailService _emailService;
@@ -24,7 +24,7 @@ namespace peeposredemption.Application.Features.Auth.Commands
         public RegisterCommandHandler(IUnitOfWork uow, IEmailService emailService, IConfiguration config, ILogger<RegisterCommandHandler> logger)
         { _uow = uow; _emailService = emailService; _config = config; _logger = logger; }
 
-        public async Task<Unit> Handle(RegisterCommand cmd, CancellationToken ct)
+        public async Task<Guid> Handle(RegisterCommand cmd, CancellationToken ct)
         {
             if (await _uow.Users.UsernameExistsAsync(cmd.Username))
                 throw new InvalidOperationException("Username already taken.");
@@ -89,7 +89,7 @@ namespace peeposredemption.Application.Features.Auth.Commands
             await _emailService.SendConfirmationEmailAsync(cmd.Email, confirmationLink);
             await _emailService.SendNewUserNotificationAsync(cmd.Username, cmd.Email);
 
-            return Unit.Value;
+            return user.Id;
         }
     }
 

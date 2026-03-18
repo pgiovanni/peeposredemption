@@ -1,8 +1,81 @@
-﻿@page
-@model PrivacyModel
+@page
 @{
     ViewData["Title"] = "Privacy Policy";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<script>document.body.classList.add('auth-page');</script>
+<div style="max-width:900px;margin:0 auto;padding:40px 16px;color:#dcddde;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.7">
+    <h1 style="color:#f2f3f5;margin-bottom:8px">Privacy Policy</h1>
+    <p style="color:#72767d;margin-bottom:32px">Last updated: March 17, 2026</p>
+
+    <p>Torvex ("we," "us," or "our") operates the website at <strong>torvex.app</strong>. This page explains what information we collect, how we use it, and your choices.</p>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">1. What We Collect</h2>
+
+    <h3 style="color:#f2f3f5">Account Info</h3>
+    <p>When you sign up, we collect your <strong>username</strong>, <strong>email</strong>, <strong>password</strong> (we never store it in plain text), and <strong>date of birth</strong> (to make sure you're old enough to use the site). You can also optionally add a display name, bio, pronouns, avatar, and banner.</p>
+
+    <h3 style="color:#f2f3f5">Messages</h3>
+    <p>We store the messages you send in server channels and DMs so they can be delivered to other people in the conversation.</p>
+
+    <h3 style="color:#f2f3f5">IP Addresses</h3>
+    <p>We log your IP address when you log in or register. This helps us keep the platform safe by detecting suspicious activity and ban evasion.</p>
+
+    <h3 style="color:#f2f3f5">Device Recognition</h3>
+    <p>We place a small cookie on your browser to recognize your device. This helps us detect when someone creates multiple accounts to get around a ban. You can clear it any time by clearing your browser cookies.</p>
+
+    <h3 style="color:#f2f3f5">VPN Detection</h3>
+    <p>We check whether your connection is coming through a VPN or Tor. We don't block these connections — we just note it for security review if needed.</p>
+
+    <h3 style="color:#f2f3f5">Browser Fingerprinting</h3>
+    <p>If an account is flagged for security review, we may collect a fingerprint of your browser's settings (like screen size, timezone, and language). This is <strong>only done for flagged accounts</strong>, not everyone.</p>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">2. How We Use It</h2>
+    <ul>
+        <li><strong>Run the platform</strong> — deliver messages, manage servers, power social features</li>
+        <li><strong>Keep things safe</strong> — detect ban evasion, abuse, and unauthorized access</li>
+        <li><strong>Verify accounts</strong> — send confirmation emails and notifications</li>
+        <li><strong>Age checks</strong> — make sure users are at least 13 years old</li>
+        <li><strong>Economy</strong> — manage your Orbs balance, transactions, and purchases</li>
+    </ul>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">3. Cookies</h2>
+    <p>We use cookies to keep you logged in, remember your session, recognize your device for security purposes, and protect forms from tampering. You can clear them any time through your browser settings.</p>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">4. Who We Share Data With</h2>
+    <p>We <strong>never</strong> sell your personal information. We use a few third-party services to make things work:</p>
+    <ul>
+        <li><strong>Stripe</strong> — handles payments (Orb purchases, storage upgrades)</li>
+        <li><strong>Resend</strong> — sends emails (confirmations, notifications)</li>
+        <li><strong>Cloudflare R2</strong> — stores uploaded images (avatars, emojis, banners)</li>
+        <li><strong>ip-api.com</strong> — checks if an IP is a VPN (no personal data shared)</li>
+    </ul>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">5. How Long We Keep Your Data</h2>
+    <p>We keep your data as long as your account exists. If you want everything deleted, just email us and we'll take care of it.</p>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">6. Kids & Age Requirements</h2>
+    <p>You must be at least <strong>13 years old</strong> to use Torvex. Users under 18 may be subject to parental controls. If we find out someone under 13 signed up, we'll delete the account right away.</p>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">7. Your Rights</h2>
+    <p>You can:</p>
+    <ul>
+        <li>Update your profile info any time</li>
+        <li>Ask for a copy of your data</li>
+        <li>Ask us to delete your account</li>
+        <li>Clear your device cookie by clearing your browser cookies</li>
+    </ul>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">8. Security</h2>
+    <p>We take security seriously. Your password is encrypted, all traffic is sent over HTTPS, and we follow industry best practices. That said, no system is 100% bulletproof.</p>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">9. Changes</h2>
+    <p>We may update this policy from time to time. If we do, we'll update the date at the top of this page.</p>
+
+    <h2 style="color:#f2f3f5;margin-top:32px">10. Contact</h2>
+    <p>Questions? Reach out at <strong>pgiovanni1234&#64;gmail.com</strong>.</p>
+
+    <div style="margin-top:48px;padding-top:16px;border-top:1px solid #3f4147;text-align:center">
+        <a href="/Auth/Login" style="color:#5865f2;text-decoration:none">Back to Torvex</a>
+    </div>
+</div>

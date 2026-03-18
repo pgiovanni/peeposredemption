@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using peeposredemption.Application.Features.Auth.Commands;
+using peeposredemption.Application.Features.Security.Commands;
+using peeposredemption.API.Infrastructure;
 
 namespace peeposredemption.API.Pages.Auth
 {
@@ -32,7 +34,13 @@ namespace peeposredemption.API.Pages.Auth
             try
             {
                 var cmd = Input with { ReferralCode = RefCode };
-                await _mediator.Send(cmd);
+                var userId = await _mediator.Send(cmd);
+
+                // Record IP + device for security tracking
+                var ip = IpBanMiddleware.GetClientIp(HttpContext) ?? "unknown";
+                var deviceId = HttpContext.Items["DeviceId"] is Guid d ? d : Guid.Empty;
+                await _mediator.Send(new RecordUserLoginInfoCommand(userId, ip, deviceId));
+
                 return RedirectToPage("/Auth/CheckEmail");
             }
             catch (InvalidOperationException ex)

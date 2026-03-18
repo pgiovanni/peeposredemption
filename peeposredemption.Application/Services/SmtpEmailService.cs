@@ -39,6 +39,26 @@ namespace peeposredemption.Application.Services
         public Task SendReferralPurchaseNotificationAsync(string marketerUsername, string buyerUsername, long amountCents) => Task.CompletedTask;
         public Task SendArtistSubmissionNotificationAsync(string displayName, string email, string portfolioUrl) => Task.CompletedTask;
 
+        public async Task SendPasswordResetEmailAsync(string toEmail, string resetLink)
+        {
+            using var client = new SmtpClient(_host, _port)
+            {
+                EnableSsl = false,
+                Credentials = CredentialCache.DefaultNetworkCredentials
+            };
+
+            var message = new MailMessage
+            {
+                From = new MailAddress("noreply@peeposredemption.local", "PeePo's Redemption"),
+                Subject = "Reset your password",
+                Body = $"<p>Click the link below to reset your password. This link expires in 30 minutes.</p><p><a href=\"{resetLink}\">Reset Password</a></p>",
+                IsBodyHtml = true
+            };
+            message.To.Add(toEmail);
+
+            await client.SendMailAsync(message);
+        }
+
         public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
         {
             using var client = new SmtpClient(_host, _port)
