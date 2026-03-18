@@ -1,0 +1,118 @@
+@page
+@model peeposredemption.API.Pages.IndexModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Torvex — Chat, Play, Connect";
+    ViewData["OgTitle"] = "Torvex — Chat, Play, Connect";
+    ViewData["Description"] = "Torvex is a free community platform with real-time chat, voice channels, a built-in RPG, custom emojis, and an orbs economy. Join the adventure.";
+}
+
+<section class="hero">
+    <h1>Your community.<br /><span class="hero-accent">Your adventure.</span></h1>
+    <p>Torvex is a free platform where you can chat in real time, hop into voice channels, play a built-in RPG, collect orbs, and build your community.</p>
+    <div class="hero-cta">
+        <a href="/Auth/Register" class="btn-large btn-signup">Get Started</a>
+        <a href="/Auth/Login" class="btn-large btn-login">Log In</a>
+    </div>
+</section>
+
+<section class="features">
+    <h2>Everything in one place</h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <span class="feature-icon">💬</span>
+            <h3>Real-Time Chat</h3>
+            <p>Instant messaging with servers, channels, DMs, custom emojis, GIFs, and @@mentions — all powered by SignalR.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🎙️</span>
+            <h3>Voice Channels</h3>
+            <p>Jump into voice channels with your friends. WebRTC peer-to-peer audio with low latency and speaking detection.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🔮</span>
+            <h3>Orbs Economy</h3>
+            <p>Earn orbs daily, gift them to friends, and spend them in the shop. Daily streaks, achievements, and more.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">⚔️</span>
+            <h3>Built-in RPG</h3>
+            <p>A text-based RPG right inside your chat. Fight monsters, craft items, trade with friends, and climb the leaderboard.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">😎</span>
+            <h3>Custom Emojis</h3>
+            <p>Upload your own emojis and use them across servers. Animated emojis, cross-server packs, and Twemoji support.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🏆</span>
+            <h3>Badges & Achievements</h3>
+            <p>Earn badges for milestones — messages sent, friends made, orbs collected. Show off your progress on your profile.</p>
+        </div>
+    </div>
+</section>
+
+<section class="landing-help">
+    <h2>Need help?</h2>
+    <p class="section-subtitle">Find answers to common questions or browse our full documentation.</p>
+    <div class="help-grid">
+        <a href="/Help#getting-started" class="help-topic-card">
+            <span class="help-topic-icon">🚀</span>
+            <h3>Getting Started</h3>
+            <p>Create your account, join servers, and start chatting in minutes.</p>
+        </a>
+        <a href="/Help#chat-servers" class="help-topic-card">
+            <span class="help-topic-icon">💬</span>
+            <h3>Chat & Servers</h3>
+            <p>Channels, DMs, mentions, emojis, GIFs, and everything messaging.</p>
+        </a>
+        <a href="/Help#orbs-economy" class="help-topic-card">
+            <span class="help-topic-icon">🔮</span>
+            <h3>Orbs & Economy</h3>
+            <p>Earn, spend, and gift orbs. Daily rewards, streaks, and the shop.</p>
+        </a>
+        <a href="/Help#game" class="help-topic-card">
+            <span class="help-topic-icon">⚔️</span>
+            <h3>Game Commands</h3>
+            <p>Fight monsters, craft items, trade, and climb the leaderboard.</p>
+        </a>
+    </div>
+    <a href="/Help" class="section-link">View all documentation &rarr;</a>
+</section>
+
+<section class="landing-support">
+    <h2>Get in touch</h2>
+    <p class="section-subtitle">Have a question, found a bug, or need help with your account?</p>
+    <div class="support-cards">
+        <a href="mailto:pgiovanni1234@gmail.com?subject=Bug%20Report" class="support-card-landing">
+            <span class="support-card-landing-icon">🐛</span>
+            <h3>Bug Report</h3>
+            <p>Something broken? Let us know.</p>
+        </a>
+        <a href="mailto:pgiovanni1234@gmail.com?subject=Account%20Help" class="support-card-landing">
+            <span class="support-card-landing-icon">🔑</span>
+            <h3>Account Help</h3>
+            <p>Locked out or need assistance.</p>
+        </a>
+        <a href="mailto:pgiovanni1234@gmail.com?subject=General%20Question" class="support-card-landing">
+            <span class="support-card-landing-icon">💬</span>
+            <h3>General Question</h3>
+            <p>Anything else — we're happy to help.</p>
+        </a>
+    </div>
+    <p class="support-email-line">Email us anytime: <a href="mailto:pgiovanni1234@gmail.com"><strong>pgiovanni1234&#64;gmail.com</strong></a></p>
+    <a href="/Support" class="section-link">More support options &rarr;</a>
+</section>
+
+<section class="landing-trust">
+    <h2>Trust & Safety</h2>
+    <p class="section-subtitle">Your safety is our top priority. Issues involving minors are treated with the highest urgency.</p>
+    <a href="mailto:pgiovanni1234@gmail.com?subject=Trust%20%26%20Safety%20Report" class="btn-report-landing">Report an Issue</a>
+    <div class="trust-topics">
+        <div class="trust-topic">🚫 Harassment</div>
+        <div class="trust-topic">👶 Underage users</div>
+        <div class="trust-topic">⚠️ Inappropriate content</div>
+        <div class="trust-topic">🔒 Threats</div>
+    </div>
+    <a href="/TrustSafety" class="section-link">Read our full Trust & Safety policy &rarr;</a>
+</section>

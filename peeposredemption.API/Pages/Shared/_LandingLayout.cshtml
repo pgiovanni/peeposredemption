@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="google-site-verification" content="MvoHAl7vXmYuZPAwD7xSZMY_WK8rYii2s9pygJ7UvGg" />
+    <title>@(ViewData["Title"] != null ? $"{ViewData["Title"]} - Torvex" : "Torvex — Chat, Play, Connect")</title>
+    <link rel="icon" type="image/x-icon" href="~/favicon.ico" />
+    <link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
+
+    @{
+        var pageDescription = ViewData["Description"]?.ToString()
+            ?? "Torvex is a free community platform with real-time chat, voice channels, a built-in RPG, custom emojis, and an orbs economy. Join the adventure.";
+        var pageTitle = ViewData["OgTitle"]?.ToString()
+            ?? ViewData["Title"]?.ToString()
+            ?? "Torvex — Chat, Play, Connect";
+        var pageUrl = $"https://{Context.Request.Host}{Context.Request.Path}";
+        var ogImage = "https://torvex.app/images/og-preview.png";
+    }
+
+    <meta name="description" content="@pageDescription" />
+    <link rel="canonical" href="@pageUrl" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Torvex" />
+    <meta property="og:title" content="@pageTitle" />
+    <meta property="og:description" content="@pageDescription" />
+    <meta property="og:image" content="@ogImage" />
+    <meta property="og:url" content="@pageUrl" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="@pageTitle" />
+    <meta name="twitter:description" content="@pageDescription" />
+    <meta name="twitter:image" content="@ogImage" />
+
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body>
+    <nav class="landing-nav">
+        <a href="/" class="landing-logo">
+            <img src="/images/orb.png" alt="Torvex" />
+            <span>Torvex</span>
+        </a>
+        <div class="nav-links">
+            <a href="/Auth/Login" class="nav-btn nav-btn-ghost">Log In</a>
+            <a href="/Auth/Register" class="nav-btn nav-btn-primary">Sign Up</a>
+        </div>
+    </nav>
+
+    @RenderBody()
+
+    <footer class="landing-footer">
+        <div class="footer-links">
+            <a href="/Auth/Login">Log In</a>
+            <a href="/Auth/Register">Sign Up</a>
+            <a href="/Help">Help</a>
+            <a href="/Support">Support</a>
+            <a href="/TrustSafety">Trust & Safety</a>
+            <a href="/Privacy">Privacy Policy</a>
+        </div>
+        <p class="footer-copy">&copy; @DateTime.UtcNow.Year Torvex. All rights reserved.</p>
+    </footer>
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@@context": "https://schema.org",
+        "@@type": "WebApplication",
+        "name": "Torvex",
+        "url": "https://torvex.app",
+        "description": "A free community platform with real-time chat, voice channels, a built-in RPG, custom emojis, and an orbs economy.",
+        "applicationCategory": "SocialNetworkingApplication",
+        "operatingSystem": "Any",
+        "offers": {
+            "@@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        }
+    }
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
