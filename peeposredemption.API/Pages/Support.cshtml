@@ -1,0 +1,62 @@
+@page
+@model peeposredemption.API.Pages.SupportModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Support";
+    ViewData["OgTitle"] = "Support — Torvex";
+    ViewData["Description"] = "Get help with your Torvex account. Report bugs, get account assistance, or ask a question.";
+}
+
+<div class="support-page">
+    <div class="support-header">
+        <h1>Support</h1>
+        <p>We're here to help. Choose a category below or email us directly.</p>
+        <div class="support-email">
+            <a href="mailto:pgiovanni1234@gmail.com" class="btn-support-email">pgiovanni1234&#64;gmail.com</a>
+        </div>
+    </div>
+
+    <div class="support-grid">
+        <a href="mailto:pgiovanni1234@gmail.com?subject=Bug%20Report" class="support-card">
+            <span class="support-card-icon">🐛</span>
+            <h3>Bug Report</h3>
+            <p>Found something broken? Let us know what happened, what you expected, and what browser you're using.</p>
+        </a>
+
+        <a href="mailto:pgiovanni1234@gmail.com?subject=Account%20Help" class="support-card">
+            <span class="support-card-icon">🔑</span>
+            <h3>Account Help</h3>
+            <p>Locked out of your account, can't verify your email, or need to change your credentials? We can help.</p>
+        </a>
+
+        <a href="mailto:pgiovanni1234@gmail.com?subject=General%20Question" class="support-card">
+            <span class="support-card-icon">💬</span>
+            <h3>General Question</h3>
+            <p>Have a question about how something works, a feature request, or just want to say hi? Reach out.</p>
+        </a>
+
+        <a href="/TrustSafety" class="support-card support-card-safety">
+            <span class="support-card-icon">🛡️</span>
+            <h3>Trust & Safety</h3>
+            <p>Need to report harassment, abuse, or a safety concern? Visit our Trust & Safety page for immediate help.</p>
+        </a>
+    </div>
+
+    <div class="support-info">
+        <h2>Before you reach out</h2>
+        <div class="support-tips">
+            <div class="support-tip">
+                <h3>Check the docs</h3>
+                <p>Many common questions are answered in our <a href="/Help">Help & Documentation</a> page.</p>
+            </div>
+            <div class="support-tip">
+                <h3>Include details</h3>
+                <p>When reporting a bug, include your browser, what you were doing, and any error messages you saw.</p>
+            </div>
+            <div class="support-tip">
+                <h3>Response time</h3>
+                <p>We aim to respond within 24 hours. Trust & Safety reports involving minors are prioritized immediately.</p>
+            </div>
+        </div>
+    </div>
+</div>

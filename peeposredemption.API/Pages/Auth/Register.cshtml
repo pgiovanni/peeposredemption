@@ -50,9 +50,25 @@
     </p>
     <p style="text-align: center; margin-top: 8px; font-size: 11px; color: #4e5058;">
         By registering, you agree to our <a href="/Privacy" style="color: #4e5058; text-decoration: underline;">Privacy Policy</a>
+        &nbsp;&middot;&nbsp;
+        <a href="/TrustSafety" style="color: #4e5058; text-decoration: underline;">Trust & Safety</a>
     </p>
 </div>
 
 @section Scripts {
     @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script>
+        // Track referral link click
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            var ref = params.get('ref');
+            if (ref) {
+                fetch('/api/referral/track-click', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: ref })
+                }).catch(function() {});
+            }
+        })();
+    </script>
 }

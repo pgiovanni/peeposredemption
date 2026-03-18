@@ -1,0 +1,135 @@
+@page
+@model peeposredemption.API.Pages.HelpModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Help & Documentation";
+    ViewData["OgTitle"] = "Help & Documentation — Torvex";
+    ViewData["Description"] = "Get help with Torvex — guides for getting started, chat, servers, orbs, the RPG, emojis, MFA, and more.";
+}
+
+<div class="help-page">
+    <div class="help-header">
+        <h1>Help & Documentation</h1>
+        <p>Everything you need to know about using Torvex.</p>
+    </div>
+
+    <div class="help-section" id="getting-started">
+        <h2>Getting Started</h2>
+        <div class="help-item">
+            <h3>Creating an account</h3>
+            <p>Head to the <a href="/Auth/Register">Sign Up</a> page and enter a username, email, password, and your date of birth (you must be at least 13). Check your inbox for a confirmation email and click the link to activate your account.</p>
+        </div>
+        <div class="help-item">
+            <h3>Logging in</h3>
+            <p>Go to <a href="/Auth/Login">Log In</a> and enter your email and password. If you have two-factor authentication enabled, you'll be asked for your 6-digit code from your authenticator app.</p>
+        </div>
+        <div class="help-item">
+            <h3>Forgot your password?</h3>
+            <p>On the login page, click "Forgot password?" and enter your email. We'll send you a link to reset it.</p>
+        </div>
+    </div>
+
+    <div class="help-section" id="chat-servers">
+        <h2>Chat & Servers</h2>
+        <div class="help-item">
+            <h3>Joining a server</h3>
+            <p>You can join a server by using an invite link. When you first sign up, you're automatically added to the main Torvex server.</p>
+        </div>
+        <div class="help-item">
+            <h3>Creating a server</h3>
+            <p>Click the "+" button in the server list to create your own server. You can customize it with a name, icon, and channels.</p>
+        </div>
+        <div class="help-item">
+            <h3>Channels</h3>
+            <p>Servers are organized into channels. Text channels are for messaging, and voice channels let you talk in real time. Server admins and moderators can create and manage channels.</p>
+        </div>
+        <div class="help-item">
+            <h3>Sending messages</h3>
+            <p>Type in the message box at the bottom of any channel and press Enter. You can use @@mentions to ping someone, custom emojis with <code>:emoji_name:</code>, and GIFs from the GIF picker.</p>
+        </div>
+        <div class="help-item">
+            <h3>Direct messages</h3>
+            <p>Click on a user's name and select "Send Message" to start a DM. You can also access your DMs from the sidebar.</p>
+        </div>
+    </div>
+
+    <div class="help-section" id="orbs-economy">
+        <h2>Orbs & Economy</h2>
+        <div class="help-item">
+            <h3>What are orbs?</h3>
+            <p>Orbs are the in-app currency. You can earn them for free every day, buy them, or receive them as gifts from friends.</p>
+        </div>
+        <div class="help-item">
+            <h3>Earning orbs</h3>
+            <p>Claim <strong>10 free orbs daily</strong> from the Orb Shop. You also earn 1 orb per 10 messages (up to 50/day). Build a login streak for bonus orbs: +50 at 7 days, +200 at 30 days.</p>
+        </div>
+        <div class="help-item">
+            <h3>Spending orbs</h3>
+            <p>Use orbs in the shop, gift them to friends, or spend them in the marketplace and RPG.</p>
+        </div>
+        <div class="help-item">
+            <h3>Buying orbs</h3>
+            <p>Visit the Orb Shop to purchase packs: 100 orbs for $0.99, 600 for $4.99, or 1,500 for $9.99. Payments are handled securely through Stripe.</p>
+        </div>
+    </div>
+
+    <div class="help-section" id="game">
+        <h2>Game Commands</h2>
+        <div class="help-item">
+            <h3>The RPG</h3>
+            <p>Torvex has a built-in text-based RPG you can play right in chat. Use slash commands to explore, fight monsters, craft items, trade with friends, and more.</p>
+        </div>
+        <div class="help-item">
+            <h3>Key commands</h3>
+            <p>Type <code>/help</code> in a game-enabled channel to see all available commands. Common ones include <code>/explore</code>, <code>/fight</code>, <code>/inventory</code>, <code>/craft</code>, and <code>/trade</code>.</p>
+        </div>
+        <div class="help-item">
+            <h3>Enabling the game</h3>
+            <p>Server admins can enable or disable the RPG on a per-channel basis from Channel Settings.</p>
+        </div>
+    </div>
+
+    <div class="help-section" id="emojis">
+        <h2>Emojis</h2>
+        <div class="help-item">
+            <h3>Custom emojis</h3>
+            <p>Server owners and admins can upload custom emojis (PNG, GIF, or WebP, max 256KB). Use them by typing <code>:emoji_name:</code> in chat.</p>
+        </div>
+        <div class="help-item">
+            <h3>Cross-server emojis</h3>
+            <p>You can use emojis from any server you're a member of. The emoji picker groups them by server.</p>
+        </div>
+        <div class="help-item">
+            <h3>Emoji limits</h3>
+            <p>Free servers get 50 emojis. Upgrade to Standard (150) or Boosted (500) for more slots.</p>
+        </div>
+    </div>
+
+    <div class="help-section" id="security">
+        <h2>Security & MFA</h2>
+        <div class="help-item">
+            <h3>Two-factor authentication</h3>
+            <p>Enable TOTP two-factor authentication from your account settings. You'll need an authenticator app like Google Authenticator or Authy. Once enabled, you'll enter a 6-digit code each time you log in.</p>
+        </div>
+        <div class="help-item">
+            <h3>Recovery codes</h3>
+            <p>When you enable MFA, you'll receive recovery codes. Store them somewhere safe — they're your backup if you lose access to your authenticator app.</p>
+        </div>
+    </div>
+
+    <div class="help-section" id="profiles">
+        <h2>Profiles</h2>
+        <div class="help-item">
+            <h3>Customizing your profile</h3>
+            <p>You can set a display name, bio, pronouns, avatar, banner image, and background color. Visit your profile page to make changes.</p>
+        </div>
+        <div class="help-item">
+            <h3>Badges</h3>
+            <p>Earn badges by reaching milestones — messages sent, friends made, orbs collected, and more. Each badge earns you bonus orbs. Check the Badges page to see your progress.</p>
+        </div>
+    </div>
+
+    <div class="help-footer">
+        <p>Still need help? <a href="/Support">Contact us</a> or email <strong>pgiovanni1234&#64;gmail.com</strong>.</p>
+    </div>
+</div>
