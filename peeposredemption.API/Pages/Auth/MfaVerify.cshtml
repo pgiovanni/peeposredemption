@@ -1,0 +1,53 @@
+@page
+@model peeposredemption.API.Pages.Auth.MfaVerifyModel
+@{
+    ViewData["Title"] = "Two-Factor Authentication";
+}
+
+<script>document.body.classList.add('auth-page');</script>
+
+<div class="auth-container">
+    <div style="text-align: center; margin-bottom: 8px;">
+        <img src="/images/orb.png" alt="Orb" style="width: 64px; height: 64px;" />
+    </div>
+    <h1>Two-Factor Authentication</h1>
+    <p style="color: #949ba4; font-size: 13px; text-align: center; margin-bottom: 16px;">
+        @(Model.UseRecovery
+            ? "Enter one of your recovery codes"
+            : "Enter the 6-digit code from your authenticator app")
+    </p>
+
+    <form method="post">
+        <div asp-validation-summary="All" class="text-danger" style="margin-bottom: 12px; font-size: 13px;"></div>
+
+        <div class="form-group">
+            <label>@(Model.UseRecovery ? "Recovery Code" : "Verification Code")</label>
+            <input asp-for="Code" type="text" inputmode="@(Model.UseRecovery ? "text" : "numeric")"
+                   pattern="@(Model.UseRecovery ? ".*" : "[0-9]{6}")"
+                   maxlength="@(Model.UseRecovery ? 11 : 6)"
+                   placeholder="@(Model.UseRecovery ? "xxxxx-xxxxx" : "000000")"
+                   autocomplete="one-time-code" autofocus />
+        </div>
+
+        <input type="hidden" asp-for="UseRecovery" />
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 8px;">Verify</button>
+    </form>
+
+    <p style="text-align: center; margin-top: 16px; font-size: 13px; color: #949ba4;">
+        @if (Model.UseRecovery)
+        {
+            <a href="/Auth/MfaVerify" style="color: #5865f2;">Use authenticator code instead</a>
+        }
+        else
+        {
+            <a href="/Auth/MfaVerify?useRecovery=true" style="color: #5865f2;">Use a recovery code</a>
+        }
+    </p>
+    <p style="text-align: center; margin-top: 8px; font-size: 12px; color: #72767d;">
+        <a href="/Auth/Login" style="color: #5865f2;">Back to login</a>
+    </p>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}
