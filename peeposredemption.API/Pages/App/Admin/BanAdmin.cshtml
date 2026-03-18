@@ -1,0 +1,138 @@
+@page
+@model peeposredemption.API.Pages.App.Admin.BanAdminModel
+@{
+    ViewData["Title"] = "Admin — Bans & Servers";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Index" class="icon-btn" title="Back">&#8592;</a>
+            <span>Bans & Servers</span>
+        </div>
+        <div class="sidebar-section-header">ADMIN</div>
+        <a href="/App/Admin/SecurityAdmin" class="channel-item">Security</a>
+        <a href="/App/Admin/BanAdmin" class="channel-item active">Bans & Servers</a>
+        <a href="/App/Admin/Referrals" class="channel-item">Referrals</a>
+        <a href="/App/Admin/ArtistAdmin" class="channel-item">Artists</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Bans & Servers</span>
+        </div>
+
+        <div class="settings-body">
+            <!-- All Bans Section -->
+            <section class="settings-section">
+                <h3 class="settings-heading">ALL SERVER BANS — @Model.AllBans.Count</h3>
+
+                @if (Model.AllBans.Any())
+                {
+                    <input type="text" id="ban-search" placeholder="Search by username or server..." class="settings-input" style="margin-bottom:16px;max-width:300px" />
+
+                    <table class="audit-table" style="width:100%" id="bans-table">
+                        <thead>
+                            <tr>
+                                <th>Banned User</th>
+                                <th>Server</th>
+                                <th>Banned By</th>
+                                <th>Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ban in Model.AllBans)
+                            {
+                                <tr data-search="@ban.User.Username.ToLower() @ban.Server.Name.ToLower()">
+                                    <td>@ban.User.Username</td>
+                                    <td>@ban.Server.Name</td>
+                                    <td>@ban.BannedBy.Username</td>
+                                    <td><span class="local-time" data-utc="@ban.BannedAt.ToString("o")"></span></td>
+                                    <td>
+                                        <form method="post" asp-page-handler="Unban" style="display:inline">
+                                            <input type="hidden" name="serverId" value="@ban.ServerId" />
+                                            <input type="hidden" name="targetUserId" value="@ban.UserId" />
+                                            <button type="submit" class="btn btn-sm btn-primary">Unban</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p style="color:#72767d">No bans across any server.</p>
+                }
+            </section>
+
+            <!-- All Servers Section -->
+            <section class="settings-section" style="margin-top:24px">
+                <h3 class="settings-heading">ALL SERVERS — @Model.Servers.Count</h3>
+
+                <input type="text" id="server-search" placeholder="Search by server name or owner..." class="settings-input" style="margin-bottom:16px;max-width:300px" />
+
+                <table class="audit-table" style="width:100%" id="servers-table">
+                    <thead>
+                        <tr>
+                            <th>Server</th>
+                            <th>Owner</th>
+                            <th>Members</th>
+                            <th>Bans</th>
+                            <th>Created</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var server in Model.Servers)
+                        {
+                            <tr data-search="@server.Name.ToLower() @server.OwnerUsername.ToLower()">
+                                <td>@server.Name</td>
+                                <td>@server.OwnerUsername</td>
+                                <td>@server.MemberCount</td>
+                                <td>@(server.BanCount > 0 ? server.BanCount.ToString() : "—")</td>
+                                <td><span class="local-time" data-utc="@server.CreatedAt.ToString("o")"></span></td>
+                                <td>
+                                    <a href="/App/ServerSettings?serverId=@server.Id" class="btn btn-sm">Settings</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Render local times
+    document.querySelectorAll('.local-time').forEach(el => {
+        const d = new Date(el.dataset.utc);
+        el.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
+
+    // Ban search filter
+    const banSearch = document.getElementById('ban-search');
+    if (banSearch) {
+        banSearch.addEventListener('input', function () {
+            const q = this.value.toLowerCase();
+            document.querySelectorAll('#bans-table tbody tr').forEach(row => {
+                row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+            });
+        });
+    }
+
+    // Server search filter
+    document.getElementById('server-search').addEventListener('input', function () {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('#servers-table tbody tr').forEach(row => {
+            row.style.display = row.dataset.search.includes(q) ? '' : 'none';
+        });
+    });
+</script>
+}

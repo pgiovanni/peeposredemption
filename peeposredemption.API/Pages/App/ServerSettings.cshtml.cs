@@ -32,6 +32,7 @@ public class ServerSettingsModel : PageModel
     public StorageTier ServerStorageTier { get; set; }
     public int EmojiLimit { get; set; }
     public List<ServerMemberDto> Members { get; set; } = new();
+    public List<BannedMember> BannedMembers { get; set; } = new();
     public List<ModerationLog> AuditLog { get; set; } = new();
     public List<ServerEmojiDto> Emojis { get; set; } = new();
     public string? ServerName { get; set; }
@@ -48,6 +49,7 @@ public class ServerSettingsModel : PageModel
         {
             CurrentUserRole = await _mediator.Send(new GetMemberRoleQuery(serverId, userId.Value));
             Members = await _mediator.Send(new GetServerMembersQuery(serverId, userId.Value));
+            BannedMembers = await _uow.BannedMembers.GetByServerAsync(serverId);
             AuditLog = await _uow.ModerationLogs.GetServerLogsAsync(serverId);
             Emojis = await _mediator.Send(new GetServerEmojisQuery(serverId));
 
@@ -88,6 +90,19 @@ public class ServerSettingsModel : PageModel
             await _mediator.Send(new BanMemberCommand(serverId, userId.Value, targetUserId));
         }
         catch (UnauthorizedAccessException) { return Forbid(); }
+        return RedirectToPage(new { serverId });
+    }
+
+    public async Task<IActionResult> OnPostUnbanAsync(Guid serverId, Guid targetUserId)
+    {
+        var userId = GetUserId();
+        if (userId == null) return RedirectToPage("/Auth/Login");
+        try
+        {
+            await _mediator.Send(new UnbanMemberCommand(serverId, userId.Value, targetUserId));
+        }
+        catch (UnauthorizedAccessException) { return Forbid(); }
+        catch (InvalidOperationException ex) { TempData["Error"] = ex.Message; }
         return RedirectToPage(new { serverId });
     }
 
