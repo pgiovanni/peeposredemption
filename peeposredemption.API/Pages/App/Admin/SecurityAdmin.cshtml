@@ -1,0 +1,249 @@
+@page
+@model peeposredemption.API.Pages.App.Admin.SecurityAdminModel
+@{
+    ViewData["Title"] = "Admin — Security";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Index" class="icon-btn" title="Back">&#8592;</a>
+            <span>Security</span>
+        </div>
+    </div>
+
+    <div class="content-area settings-page">
+        <!-- IP Bans -->
+        <section class="settings-section">
+            <h3 class="settings-heading">IP BANS</h3>
+
+            <div style="display:flex;gap:8px;margin-bottom:16px">
+                <input type="text" id="ban-ip-input" placeholder="IP address" class="settings-input" style="flex:1" />
+                <input type="text" id="ban-ip-reason" placeholder="Reason (optional)" class="settings-input" style="flex:1" />
+                <button id="ban-ip-btn" class="btn btn-danger" style="white-space:nowrap">Ban IP</button>
+            </div>
+
+            @if (Model.IpBans.Any())
+            {
+                <table class="audit-table" style="width:100%">
+                    <thead><tr><th>IP</th><th>Reason</th><th>Banned By</th><th>Date</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var ban in Model.IpBans)
+                        {
+                            <tr data-ban-id="@ban.Id">
+                                <td>@ban.IpAddress</td>
+                                <td>@(ban.Reason ?? "—")</td>
+                                <td>@ban.BannedByUsername</td>
+                                <td>@ban.CreatedAt.ToString("MMM d, yyyy")</td>
+                                <td><button class="btn btn-sm unban-ip-btn" data-id="@ban.Id">Unban</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p style="color:#72767d">No IP bans.</p>
+            }
+        </section>
+
+        <!-- User Security Overview -->
+        <section class="settings-section" style="margin-top:24px">
+            <h3 class="settings-heading">USER SECURITY</h3>
+
+            <input type="text" id="user-search" placeholder="Search by username..." class="settings-input" style="margin-bottom:16px;max-width:300px" />
+
+            <table class="audit-table" style="width:100%" id="users-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Last IP</th>
+                        <th>VPN</th>
+                        <th>Tor</th>
+                        <th>Devices</th>
+                        <th>Logins</th>
+                        <th>Suspicious</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model.Users)
+                    {
+                        <tr data-username="@user.Username.ToLower()" data-user-id="@user.UserId">
+                            <td>@user.Username</td>
+                            <td style="font-family:monospace;font-size:12px">@(user.LastIp ?? "—")</td>
+                            <td>@(user.IsVpn ? "YES" : "—")</td>
+                            <td>@(user.IsTor ? "YES" : "—")</td>
+                            <td>@user.DeviceCount</td>
+                            <td>@user.LoginCount</td>
+                            <td>
+                                @if (user.IsSuspicious)
+                                {
+                                    <span style="color:#ed4245">FLAGGED</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#72767d">—</span>
+                                }
+                            </td>
+                            <td style="display:flex;gap:4px;flex-wrap:wrap">
+                                <button class="btn btn-sm view-details-btn" data-id="@user.UserId">Details</button>
+                                <button class="btn btn-sm toggle-suspicious-btn"
+                                        data-id="@user.UserId"
+                                        data-current="@user.IsSuspicious.ToString().ToLower()">
+                                    @(user.IsSuspicious ? "Unflag" : "Flag")
+                                </button>
+                                @if (!string.IsNullOrEmpty(user.LastIp))
+                                {
+                                    <button class="btn btn-sm btn-danger ban-user-ip-btn" data-ip="@user.LastIp">Ban IP</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <!-- User Detail Panel -->
+        <div id="detail-panel" style="display:none;margin-top:24px">
+            <section class="settings-section">
+                <h3 class="settings-heading" id="detail-username">USER DETAILS</h3>
+                <div id="detail-content" style="color:#dcddde"></div>
+            </section>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const jwt = document.querySelector('meta[name="jwt"]')?.content;
+    const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt };
+
+    // Search filter
+    document.getElementById('user-search').addEventListener('input', function () {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('#users-table tbody tr').forEach(row => {
+            row.style.display = row.dataset.username.includes(q) ? '' : 'none';
+        });
+    });
+
+    // Ban IP
+    document.getElementById('ban-ip-btn').addEventListener('click', async () => {
+        const ip = document.getElementById('ban-ip-input').value.trim();
+        const reason = document.getElementById('ban-ip-reason').value.trim();
+        if (!ip) return;
+        const res = await fetch('/api/admin/security/ip-ban', {
+            method: 'POST', headers, body: JSON.stringify({ ipAddress: ip, reason: reason || null })
+        });
+        if (res.ok) location.reload();
+        else alert('Failed to ban IP');
+    });
+
+    // Unban IP
+    document.querySelectorAll('.unban-ip-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            const res = await fetch('/api/admin/security/ip-ban/' + id, { method: 'DELETE', headers });
+            if (res.ok) btn.closest('tr').remove();
+        });
+    });
+
+    // Ban user's IP (from user table)
+    document.querySelectorAll('.ban-user-ip-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const ip = btn.dataset.ip;
+            if (!confirm('Ban IP ' + ip + '?')) return;
+            const res = await fetch('/api/admin/security/ip-ban', {
+                method: 'POST', headers, body: JSON.stringify({ ipAddress: ip, reason: 'Banned from security dashboard' })
+            });
+            if (res.ok) location.reload();
+        });
+    });
+
+    // Toggle suspicious
+    document.querySelectorAll('.toggle-suspicious-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const userId = btn.dataset.id;
+            const current = btn.dataset.current === 'true';
+            const res = await fetch('/api/admin/security/toggle-suspicious', {
+                method: 'POST', headers, body: JSON.stringify({ targetUserId: userId, isSuspicious: !current })
+            });
+            if (res.ok) location.reload();
+        });
+    });
+
+    // View details
+    document.querySelectorAll('.view-details-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const userId = btn.dataset.id;
+            const res = await fetch('/api/admin/security/user/' + userId, { headers });
+            if (!res.ok) return;
+            const data = await res.json();
+            const panel = document.getElementById('detail-panel');
+            document.getElementById('detail-username').textContent = data.username.toUpperCase() + ' — SECURITY DETAILS';
+
+            let html = '';
+
+            // IP logs
+            html += '<h4 style="margin:12px 0 8px;color:#f2f3f5">IP History</h4>';
+            if (data.ipLogs.length) {
+                html += '<table class="audit-table" style="width:100%"><thead><tr><th>IP</th><th>VPN</th><th>Tor</th><th>Date</th></tr></thead><tbody>';
+                data.ipLogs.forEach(l => {
+                    html += `<tr><td style="font-family:monospace">${l.ipAddress}</td><td>${l.isVpn ? 'YES' : '—'}</td><td>${l.isTor ? 'YES' : '—'}</td><td>${new Date(l.seenAt).toLocaleString()}</td></tr>`;
+                });
+                html += '</tbody></table>';
+            } else html += '<p style="color:#72767d">No IP data.</p>';
+
+            // Devices
+            html += '<h4 style="margin:12px 0 8px;color:#f2f3f5">Devices</h4>';
+            if (data.devices.length) {
+                html += '<table class="audit-table" style="width:100%"><thead><tr><th>Device ID</th><th>First Seen</th><th>Last Seen</th><th>Banned</th><th></th></tr></thead><tbody>';
+                data.devices.forEach(d => {
+                    html += `<tr><td style="font-family:monospace;font-size:11px">${d.deviceId}</td><td>${new Date(d.firstSeenAt).toLocaleString()}</td><td>${new Date(d.lastSeenAt).toLocaleString()}</td><td>${d.isBanned ? 'YES' : '—'}</td>`;
+                    html += `<td><button class="btn btn-sm btn-danger device-ban-btn" data-device="${d.deviceId}">${d.isBanned ? 'Unban' : 'Ban'}</button></td></tr>`;
+                });
+                html += '</tbody></table>';
+            } else html += '<p style="color:#72767d">No devices.</p>';
+
+            // Fingerprints
+            if (data.fingerprints.length) {
+                html += '<h4 style="margin:12px 0 8px;color:#f2f3f5">Fingerprints</h4>';
+                html += '<table class="audit-table" style="width:100%"><thead><tr><th>Hash</th><th>Date</th></tr></thead><tbody>';
+                data.fingerprints.forEach(f => {
+                    html += `<tr><td style="font-family:monospace;font-size:11px">${f.fingerprintHash}</td><td>${new Date(f.createdAt).toLocaleString()}</td></tr>`;
+                });
+                html += '</tbody></table>';
+            }
+
+            // Linked accounts
+            html += '<h4 style="margin:12px 0 8px;color:#f2f3f5">Linked Accounts (Alt Detection)</h4>';
+            if (data.linkedAccounts.length) {
+                html += '<table class="audit-table" style="width:100%"><thead><tr><th>Username</th><th>Match Type</th><th>Match Value</th></tr></thead><tbody>';
+                data.linkedAccounts.forEach(a => {
+                    html += `<tr><td>${a.username}</td><td>${a.matchType}</td><td style="font-family:monospace;font-size:11px">${a.matchValue}</td></tr>`;
+                });
+                html += '</tbody></table>';
+            } else html += '<p style="color:#3ba55c">No linked accounts found.</p>';
+
+            document.getElementById('detail-content').innerHTML = html;
+            panel.style.display = 'block';
+            panel.scrollIntoView({ behavior: 'smooth' });
+
+            // Bind device ban buttons
+            document.querySelectorAll('.device-ban-btn').forEach(dbtn => {
+                dbtn.addEventListener('click', async () => {
+                    const deviceId = dbtn.dataset.device;
+                    const isBanned = dbtn.textContent.trim() === 'Unban';
+                    const url = isBanned
+                        ? '/api/admin/security/device-ban/' + deviceId
+                        : '/api/admin/security/device-ban';
+                    const method = isBanned ? 'DELETE' : 'POST';
+                    const body = isBanned ? undefined : JSON.stringify({ deviceId });
+                    const res = await fetch(url, { method, headers, body });
+                    if (res.ok) location.reload();
+                });
+            });
+        });
+    });
+</script>
+}
