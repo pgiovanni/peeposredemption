@@ -52,6 +52,12 @@ namespace peeposredemption.Infrastructure
         public IMarketplaceListingRepository MarketplaceListings { get; }
         public ITradeOfferRepository TradeOffers { get; }
 
+        // Anti-alt security
+        public IIpBanRepository IpBans { get; }
+        public IUserDeviceRepository UserDevices { get; }
+        public IUserIpLogRepository UserIpLogs { get; }
+        public IUserFingerprintRepository UserFingerprints { get; }
+
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
             IMessageRepository messages, IDirectMessageRepository directMessages,
@@ -87,7 +93,11 @@ namespace peeposredemption.Infrastructure
             IGameChannelConfigRepository gameChannelConfigs,
             ICraftingRecipeRepository craftingRecipes,
             IMarketplaceListingRepository marketplaceListings,
-            ITradeOfferRepository tradeOffers)
+            ITradeOfferRepository tradeOffers,
+            IIpBanRepository ipBans,
+            IUserDeviceRepository userDevices,
+            IUserIpLogRepository userIpLogs,
+            IUserFingerprintRepository userFingerprints)
         {
             _db = db;
             Users = users;
@@ -128,6 +138,10 @@ namespace peeposredemption.Infrastructure
             CraftingRecipes = craftingRecipes;
             MarketplaceListings = marketplaceListings;
             TradeOffers = tradeOffers;
+            IpBans = ipBans;
+            UserDevices = userDevices;
+            UserIpLogs = userIpLogs;
+            UserFingerprints = userFingerprints;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

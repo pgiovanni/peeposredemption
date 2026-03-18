@@ -53,6 +53,12 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<CraftingRecipeIngredient> CraftingRecipeIngredients { get; set; }
         public DbSet<MarketplaceListing> MarketplaceListings { get; set; }
 
+        // Anti-alt security
+        public DbSet<IpBan> IpBans { get; set; }
+        public DbSet<UserDevice> UserDevices { get; set; }
+        public DbSet<UserIpLog> UserIpLogs { get; set; }
+        public DbSet<UserFingerprint> UserFingerprints { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Force snake_case so Windows dev and Linux prod behave identically
@@ -474,6 +480,56 @@ namespace peeposredemption.Infrastructure.Persistence
 
             modelBuilder.Entity<MarketplaceListing>()
                 .HasIndex(l => new { l.Status, l.ExpiresAt });
+
+            // ── Anti-Alt Security ────────────────────────────────────────
+
+            // IpBan — unique IP
+            modelBuilder.Entity<IpBan>()
+                .HasIndex(b => b.IpAddress)
+                .IsUnique();
+
+            modelBuilder.Entity<IpBan>()
+                .HasOne(b => b.BannedBy)
+                .WithMany()
+                .HasForeignKey(b => b.BannedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // UserDevice — unique (DeviceId, UserId)
+            modelBuilder.Entity<UserDevice>()
+                .HasIndex(d => new { d.DeviceId, d.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<UserDevice>()
+                .HasIndex(d => d.DeviceId);
+
+            modelBuilder.Entity<UserDevice>()
+                .HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // UserIpLog
+            modelBuilder.Entity<UserIpLog>()
+                .HasIndex(l => l.IpAddress);
+
+            modelBuilder.Entity<UserIpLog>()
+                .HasIndex(l => new { l.UserId, l.SeenAt });
+
+            modelBuilder.Entity<UserIpLog>()
+                .HasOne(l => l.User)
+                .WithMany()
+                .HasForeignKey(l => l.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // UserFingerprint
+            modelBuilder.Entity<UserFingerprint>()
+                .HasIndex(f => f.FingerprintHash);
+
+            modelBuilder.Entity<UserFingerprint>()
+                .HasOne(f => f.User)
+                .WithMany()
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         // Converts PascalCase to snake_case

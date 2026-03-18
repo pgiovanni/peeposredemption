@@ -49,5 +49,17 @@
         });
     </script>
     @await RenderSectionAsync("Scripts", required: false)
+    @{
+        var uidClaim = Context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (uidClaim != null)
+        {
+            var uow = Context.RequestServices.GetRequiredService<peeposredemption.Domain.Interfaces.IUnitOfWork>();
+            var currentUser = await uow.Users.GetByIdAsync(Guid.Parse(uidClaim));
+            if (currentUser?.IsSuspicious == true)
+            {
+                <script src="~/js/fingerprint.js" asp-append-version="true"></script>
+            }
+        }
+    }
 </body>
 </html>

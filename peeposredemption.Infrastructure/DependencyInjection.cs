@@ -62,6 +62,12 @@ namespace peeposredemption.Infrastructure
             services.AddScoped<IMarketplaceListingRepository, MarketplaceListingRepository>();
             services.AddScoped<ITradeOfferRepository, TradeOfferRepository>();
 
+            // Anti-alt security
+            services.AddScoped<IIpBanRepository, IpBanRepository>();
+            services.AddScoped<IUserDeviceRepository, UserDeviceRepository>();
+            services.AddScoped<IUserIpLogRepository, UserIpLogRepository>();
+            services.AddScoped<IUserFingerprintRepository, UserFingerprintRepository>();
+
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             services.AddScoped<IR2StorageService, R2StorageService>();

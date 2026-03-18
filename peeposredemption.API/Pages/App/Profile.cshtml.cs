@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using peeposredemption.Application.Features.Badges.Queries;
 using peeposredemption.Application.Features.Channels.Queries;
 using peeposredemption.Application.Features.Servers.Queries;
+using peeposredemption.Application.Features.Auth.Commands;
 using peeposredemption.Application.Features.Users.Commands;
 using peeposredemption.Domain.Interfaces;
 using System.Security.Claims;
@@ -36,9 +37,11 @@ public class ProfileModel : PageModel
     public bool IsOwnProfile { get; set; }
     public List<UserBadgeDto> Badges { get; set; } = new();
     public DateTime MemberSince { get; set; }
+    public bool IsMfaEnabled { get; set; }
 
     public string? ErrorMessage { get; set; }
     public bool SaveSuccess { get; set; }
+    public bool PasswordChangeRequested { get; set; }
 
     public async Task<IActionResult> OnGetAsync(Guid? userId)
     {
@@ -111,6 +114,29 @@ public class ProfileModel : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostRequestPasswordChangeAsync()
+    {
+        var userId = GetUserId();
+        if (userId == null) return RedirectToPage("/Auth/Login");
+
+        IsOwnProfile = true;
+        await LoadServerListAsync(userId.Value);
+
+        try
+        {
+            await _mediator.Send(new RequestPasswordChangeCommand(userId.Value));
+            PasswordChangeRequested = true;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException)
+        {
+            ErrorMessage = ex.Message;
+        }
+
+        await LoadProfileAsync(userId.Value);
+        Badges = await _mediator.Send(new GetUserBadgesQuery(userId.Value));
+        return Page();
+    }
+
     private async Task LoadProfileAsync(Guid userId)
     {
         var user = await _uow.Users.GetByIdAsync(userId);
@@ -126,6 +152,7 @@ public class ProfileModel : PageModel
         ProfileBackgroundColor = user.ProfileBackgroundColor;
         OrbBalance = user.OrbBalance;
         MemberSince = user.CreatedAt;
+        IsMfaEnabled = user.IsMfaEnabled;
     }
 
     private Guid? GetUserId()

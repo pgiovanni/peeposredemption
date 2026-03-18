@@ -658,6 +658,45 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.ToTable("game_channel_configs");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.IpBan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BannedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("banned_by_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ip_address");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_ip_bans");
+
+                    b.HasIndex("BannedByUserId");
+
+                    b.HasIndex("IpAddress")
+                        .IsUnique();
+
+                    b.ToTable("ip_bans");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.ItemDefinition", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1851,6 +1890,18 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("email_confirmed");
 
+                    b.Property<bool>("IsMfaEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_mfa_enabled");
+
+                    b.Property<bool>("IsSuspicious")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_suspicious");
+
+                    b.Property<string>("MfaRecoveryCodes")
+                        .HasColumnType("text")
+                        .HasColumnName("mfa_recovery_codes");
+
                     b.Property<long>("OrbBalance")
                         .HasColumnType("bigint")
                         .HasColumnName("orb_balance");
@@ -1859,6 +1910,14 @@ namespace peeposredemption.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("text")
+                        .HasColumnName("password_reset_token");
+
+                    b.Property<DateTime?>("PasswordResetTokenExpiry")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_reset_token_expiry");
 
                     b.Property<string>("ProfileBackgroundColor")
                         .HasColumnType("text")
@@ -1871,6 +1930,10 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Property<Guid?>("ReferredByCodeId")
                         .HasColumnType("uuid")
                         .HasColumnName("referred_by_code_id");
+
+                    b.Property<string>("TotpSecret")
+                        .HasColumnType("text")
+                        .HasColumnName("totp_secret");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -1962,6 +2025,118 @@ namespace peeposredemption.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("user_badges");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.UserDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("device_id");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_seen_at");
+
+                    b.Property<bool>("IsBanned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_banned");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_user_devices");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("DeviceId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("user_devices");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.UserFingerprint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FingerprintHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("fingerprint_hash");
+
+                    b.Property<string>("RawComponents")
+                        .HasColumnType("text")
+                        .HasColumnName("raw_components");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_user_fingerprints");
+
+                    b.HasIndex("FingerprintHash");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("user_fingerprints");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.UserIpLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ip_address");
+
+                    b.Property<bool>("IsTor")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_tor");
+
+                    b.Property<bool>("IsVpn")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_vpn");
+
+                    b.Property<DateTime>("SeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("seen_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_user_ip_logs");
+
+                    b.HasIndex("IpAddress");
+
+                    b.HasIndex("UserId", "SeenAt");
+
+                    b.ToTable("user_ip_logs");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.UserLoginStreak", b =>
@@ -2231,6 +2406,18 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasConstraintName("f_k_game_channel_configs_channels_channel_id");
 
                     b.Navigation("Channel");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.IpBan", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "BannedBy")
+                        .WithMany()
+                        .HasForeignKey("BannedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("f_k_ip_bans__users_banned_by_id");
+
+                    b.Navigation("BannedBy");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.MarketplaceListing", b =>
@@ -2645,6 +2832,42 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasConstraintName("f_k_user_badges_users_user_id");
 
                     b.Navigation("BadgeDefinition");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.UserDevice", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_user_devices_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.UserFingerprint", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_user_fingerprints_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.UserIpLog", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_user_ip_logs_users_user_id");
 
                     b.Navigation("User");
                 });

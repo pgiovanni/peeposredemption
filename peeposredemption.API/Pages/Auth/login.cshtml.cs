@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using peeposredemption.Application.Features.Auth.Commands;
+using peeposredemption.Application.Features.Security.Commands;
+using peeposredemption.API.Infrastructure;
 
 namespace peeposredemption.API.Pages.Auth
 {
@@ -21,16 +23,33 @@ namespace peeposredemption.API.Pages.Auth
             try
             {
                 var result = await _mediator.Send(Input);
-                Response.Cookies.Append("jwt", result.Token, new CookieOptions
+
+                if (result.RequiresMfa)
+                {
+                    Response.Cookies.Append("mfa_pending", result.MfaPendingToken!, new CookieOptions
+                    {
+                        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
+                        MaxAge = TimeSpan.FromMinutes(5)
+                    });
+                    return RedirectToPage("/Auth/MfaVerify");
+                }
+
+                Response.Cookies.Append("jwt", result.Token!, new CookieOptions
                 {
                     HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
                     MaxAge = TimeSpan.FromMinutes(15)
                 });
-                Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
+                Response.Cookies.Append("refreshToken", result.RefreshToken!, new CookieOptions
                 {
                     HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
                     MaxAge = TimeSpan.FromDays(30)
                 });
+
+                // Record IP + device for security tracking
+                var ip = IpBanMiddleware.GetClientIp(HttpContext) ?? "unknown";
+                var deviceId = HttpContext.Items["DeviceId"] is Guid d ? d : Guid.Empty;
+                await _mediator.Send(new RecordUserLoginInfoCommand(result.UserId, ip, deviceId));
+
                 return RedirectToPage("/App/Index");
             }
             catch (UnauthorizedAccessException ex)

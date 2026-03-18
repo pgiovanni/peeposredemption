@@ -48,6 +48,50 @@ namespace peeposredemption.Application.Services
                 .Replace("+", "-").Replace("/", "_").TrimEnd('=');
         }
 
+        public string GenerateMfaPendingToken(User user)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim("purpose", "mfa-pending"),
+            };
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(
+                issuer: _config["Jwt:Issuer"],
+                audience: "mfa-pending",
+                expires: DateTime.UtcNow.AddMinutes(5),
+                claims: claims,
+                signingCredentials: creds);
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public ClaimsPrincipal? ValidateMfaPendingToken(string token)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            try
+            {
+                var principal = handler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(_config["Jwt:Key"])),
+                    ValidateIssuer = true,
+                    ValidIssuer = _config["Jwt:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = "mfa-pending",
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero,
+                }, out _);
+                return principal;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static string HashToken(string rawToken)
         {
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));

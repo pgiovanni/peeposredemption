@@ -14,5 +14,7 @@ namespace peeposredemption.Domain.Interfaces.Repositories
         Task AddAsync(User user);
         Task<User?> GetByConfirmationTokenAsync(string token);
         Task<User?> GetByUsernameAsync(string username);
+        Task<List<User>> GetAllAsync();
+        Task<User?> GetByPasswordResetTokenAsync(string token);
     }
 }

@@ -24,6 +24,17 @@ public class User
         && DateOfBirth.Value.AddYears(18) > DateTime.UtcNow
         && DateOfBirth.Value.AddYears(13) <= DateTime.UtcNow;
 
+    public bool IsSuspicious { get; set; }
+
+    // MFA (TOTP)
+    public bool IsMfaEnabled { get; set; }
+    public string? TotpSecret { get; set; }
+    public string? MfaRecoveryCodes { get; set; }
+
+    // Password reset
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetTokenExpiry { get; set; }
+
     public string DisplayOrUsername => DisplayName ?? Username;
 
     public ICollection<ServerMember> ServerMemberships { get; set; }

@@ -35,11 +35,10 @@
             <input asp-for="ConfirmPassword" type="password" placeholder="Confirm Password" />
         </div>
 
-        @* DOB field hidden for now — re-enable when age gate goes live *@
-        @* <div class="form-group">
+        <div class="form-group">
             <label>Date of Birth</label>
-            <input asp-for="Input.DateOfBirth" type="date" max="@DateTime.UtcNow.ToString("yyyy-MM-dd")" min="1900-01-01" />
-        </div> *@
+            <input asp-for="Input.DateOfBirth" type="date" />
+        </div>
 
         <input type="hidden" asp-for="RefCode" />
 
@@ -48,6 +47,9 @@
 
     <p style="text-align: center; margin-top: 16px; font-size: 13px; color: #949ba4;">
         Already have an account? <a href="/Auth/Login" style="color: #5865f2;">Log in</a>
+    </p>
+    <p style="text-align: center; margin-top: 8px; font-size: 11px; color: #4e5058;">
+        By registering, you agree to our <a href="/Privacy" style="color: #4e5058; text-decoration: underline;">Privacy Policy</a>
     </p>
 </div>
 
