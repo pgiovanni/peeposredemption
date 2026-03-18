@@ -241,6 +241,24 @@ connection.on("UserTyping", (userId) => {
     setTimeout(() => { if (el) el.textContent = ''; }, 2000);
 });
 
+// Voice channel sidebar participant updates
+connection.on("VoiceChannelState", (data) => {
+    const container = document.querySelector(`[data-voice-channel="${data.channelId}"]`);
+    if (!container) return;
+    container.innerHTML = '';
+    if (data.participants && data.participants.length > 0) {
+        data.participants.forEach(p => {
+            const el = document.createElement('div');
+            el.className = 'voice-sidebar-user';
+            const initial = (p.displayName || '?')[0].toUpperCase();
+            el.innerHTML = p.avatarUrl
+                ? `<img src="${p.avatarUrl}" class="voice-sidebar-avatar" alt="" /><span>${esc(p.displayName)}</span>`
+                : `<div class="voice-sidebar-avatar voice-sidebar-avatar-fallback">${initial}</div><span>${esc(p.displayName)}</span>`;
+            container.appendChild(el);
+        });
+    }
+});
+
 (async () => {
     await connection.start();
     if (typeof channelId !== 'undefined')
