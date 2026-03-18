@@ -8,6 +8,7 @@ namespace peeposredemption.Domain.Entities
     {
         public Guid Id { get; set; } = Guid.NewGuid();
         public Guid ServerId { get; set; }
+        public Guid? UserId { get; set; }
         public Server Server { get; set; } = null!;
         public string StripeSessionId { get; set; } = string.Empty;
         public StorageTier TargetTier { get; set; } = StorageTier.Standard;

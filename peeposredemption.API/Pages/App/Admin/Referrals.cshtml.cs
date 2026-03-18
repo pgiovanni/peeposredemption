@@ -33,6 +33,8 @@ public class ReferralsModel : PageModel
             {
                 OwnerUsername = code.Owner?.Username ?? "—",
                 Code = code.Code,
+                LinkCopies = code.LinkCopies,
+                LinkClicks = code.LinkClicks,
                 Signups = signups,
                 Purchases = code.Purchases?.ToList() ?? new()
             });
@@ -53,6 +55,8 @@ public class ReferralsModel : PageModel
     {
         public string OwnerUsername { get; set; } = string.Empty;
         public string Code { get; set; } = string.Empty;
+        public int LinkCopies { get; set; }
+        public int LinkClicks { get; set; }
         public int Signups { get; set; }
         public List<ReferralPurchase> Purchases { get; set; } = new();
         public long TotalRevenueCents => Purchases.Sum(p => p.AmountCents);

@@ -117,6 +117,18 @@ function createMessageEl(author, content, time, isMine = false, id = null, autho
     contentEl.className = "message-content";
     contentEl.textContent = content;
 
+    // Highlight @mentions in message content
+    highlightMentions(contentEl);
+
+    // Check if this message mentions the current user
+    if (typeof currentUsername !== 'undefined' && currentUsername) {
+        const lower = content.toLowerCase();
+        const mentionPattern = '@' + currentUsername.toLowerCase();
+        if (lower.includes(mentionPattern) || lower.includes('@everyone')) {
+            div.classList.add('message-mentioned');
+        }
+    }
+
     const timeEl = document.createElement("span");
     timeEl.className = "message-time";
     timeEl.textContent = time;
@@ -141,6 +153,29 @@ function getDateLabel(dateStr) {
 function getDateKey(dateStr) {
     const d = new Date(dateStr);
     return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function highlightMentions(el) {
+    const text = el.textContent;
+    if (!/@\w/.test(text)) return;
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    el.innerHTML = escaped.replace(/@(\w+)/g, '<span class="mention-text">@$1</span>');
+}
+
+function highlightServerRenderedMentions() {
+    if (typeof currentUsername === 'undefined' || !currentUsername) return;
+    const container = document.getElementById('messages');
+    if (!container) return;
+    container.querySelectorAll('.message').forEach(msg => {
+        const content = msg.querySelector('.message-content');
+        if (!content) return;
+        const text = content.textContent.toLowerCase();
+        const mentionPattern = '@' + currentUsername.toLowerCase();
+        if (text.includes(mentionPattern) || text.includes('@everyone')) {
+            msg.classList.add('message-mentioned');
+        }
+        highlightMentions(content);
+    });
 }
 
 function ensureDateSeparator(dateStr) {

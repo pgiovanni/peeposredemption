@@ -118,14 +118,13 @@ public class IndexModel : PageModel
             if (first != null) defaultChannels[s.Id] = first.Id;
         }
         var unreadDms = await _uow.DirectMessages.GetUnreadCountAsync(userId);
-        var unreadPings = await _uow.Notifications.GetUnreadCountAsync(userId);
         var serverUnreadCounts = await _uow.Notifications.GetUnreadCountByServerAsync(userId);
         var dmUnreadCounts = await _uow.DirectMessages.GetUnreadCountBySenderAsync(userId);
         ServerList = new ServerListViewModel
         {
             Servers = servers,
             ServerDefaultChannels = defaultChannels,
-            UnreadCount = unreadDms + unreadPings,
+            UnreadCount = unreadDms,
             ServerUnreadCounts = serverUnreadCounts,
             DmUnreadCounts = dmUnreadCounts
         };

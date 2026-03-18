@@ -9,9 +9,14 @@
 <div class="app-shell">
     <div class="sidebar">
         <div class="sidebar-header">
-            <a href="/App/Index" class="icon-btn" title="Back">←</a>
+            <a href="/App/Index" class="icon-btn" title="Back">&#8592;</a>
             <span>Referrals</span>
         </div>
+        <div class="sidebar-section-header">ADMIN</div>
+        <a href="/App/Admin/SecurityAdmin" class="channel-item">Security</a>
+        <a href="/App/Admin/BanAdmin" class="channel-item">Bans & Servers</a>
+        <a href="/App/Admin/Referrals" class="channel-item active">Referrals</a>
+        <a href="/App/Admin/ArtistAdmin" class="channel-item">Artists</a>
     </div>
 
     <div class="content-area settings-page">
@@ -44,6 +49,8 @@
                         <tr>
                             <th>Marketer</th>
                             <th>Code</th>
+                            <th>Copies</th>
+                            <th>Clicks</th>
                             <th>Signups</th>
                             <th>Purchases</th>
                             <th>Revenue</th>
@@ -56,6 +63,8 @@
                             <tr>
                                 <td><strong>@s.OwnerUsername</strong></td>
                                 <td><code>@s.Code</code></td>
+                                <td>@s.LinkCopies</td>
+                                <td>@s.LinkClicks</td>
                                 <td>@s.Signups</td>
                                 <td>@s.Purchases.Count</td>
                                 <td>$@((s.TotalRevenueCents / 100m).ToString("F2"))</td>

@@ -25,6 +25,7 @@ public class ChannelModel : PageModel
     public List<string> MemberUsernames { get; set; } = new();
     public List<MemberInfo> MemberData { get; set; } = new();
     public Guid CurrentUserId { get; set; }
+    public string CurrentUsername { get; set; } = "";
 
     public class MemberInfo
     {
@@ -68,7 +69,6 @@ public class ChannelModel : PageModel
         await _uow.SaveChangesAsync();
 
         var unreadDms = await _uow.DirectMessages.GetUnreadCountAsync(userId);
-        var unreadPings = await _uow.Notifications.GetUnreadCountAsync(userId);
         var serverUnreadCounts = await _uow.Notifications.GetUnreadCountByServerAsync(userId);
         var dmUnreadCounts = await _uow.DirectMessages.GetUnreadCountBySenderAsync(userId);
         ServerList = new ServerListViewModel
@@ -76,7 +76,7 @@ public class ChannelModel : PageModel
             Servers = servers,
             ServerDefaultChannels = defaultChannels,
             ActiveServerId = serverId,
-            UnreadCount = unreadDms + unreadPings,
+            UnreadCount = unreadDms,
             ServerUnreadCounts = serverUnreadCounts,
             DmUnreadCounts = dmUnreadCounts
         };
@@ -107,9 +107,10 @@ public class ChannelModel : PageModel
         MemberData = members.Select(m => new MemberInfo { Id = m.UserId, Username = m.User.Username, AvatarUrl = m.User.AvatarUrl }).ToList();
         CurrentUserId = userId;
 
-        // Load orb balance
+        // Load orb balance + username
         var currentUser = await _uow.Users.GetByIdAsync(userId);
         OrbBalance = currentUser?.OrbBalance ?? 0;
+        CurrentUsername = currentUser?.Username ?? "";
 
         return Page();
     }

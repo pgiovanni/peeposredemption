@@ -92,12 +92,27 @@
         {
             <div class="sidebar-empty">Add friends to start chatting!</div>
         }
+
+        <div class="sidebar-footer">
+            <a href="/App/Profile" title="Edit Profile">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+                Profile
+            </a>
+        </div>
     </div>
 
     <div class="sidebar-backdrop"></div>
 
     <!-- Col 3: DM conversation or welcome -->
     <div class="content-area">
+        @{
+            var cfg = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+            var aEmail = cfg["Email:AdminEmail"] ?? "";
+            var uEmail = HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            var isAdmin = !string.IsNullOrEmpty(aEmail) && string.Equals(uEmail, aEmail, StringComparison.OrdinalIgnoreCase);
+        }
         @if (Model.ActiveFriend != null)
         {
             <div class="content-header">
@@ -106,6 +121,10 @@
                 <span>@Model.ActiveFriend.DisplayOrUsername</span>
                 <span style="margin-left:auto"></span>
                 <partial name="_NotifDropdown" />
+                @if (isAdmin)
+                {
+                    <a href="/App/Admin/SecurityAdmin" class="icon-btn" title="Site Admin" style="font-size:1rem;text-decoration:none">🛡️</a>
+                }
             </div>
             <div id="messages" class="messages-container">
                 @{
@@ -153,11 +172,23 @@
                 <span>Home</span>
                 <span style="margin-left:auto"></span>
                 <partial name="_NotifDropdown" />
+                @if (isAdmin)
+                {
+                    <a href="/App/Admin/SecurityAdmin" class="icon-btn" title="Site Admin" style="font-size:1rem;text-decoration:none">🛡️</a>
+                }
             </div>
             <div class="welcome-screen">
                 <div class="welcome-icon">👋</div>
                 <h2>Welcome to Torvex</h2>
                 <p>Add friends and start chatting, or join a server on the left.</p>
+
+                <!-- Add Friends CTA -->
+                <button id="add-friend-cta" class="btn-add-friend-cta">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                    Add Friends
+                </button>
 
                 <!-- Daily Orbs Claim -->
                 <div class="orb-claim-section">
@@ -177,6 +208,57 @@
                         <a href="/App/OrbShop" class="btn-secondary btn-sm">Orb Shop</a>
                         <a href="/App/Wallet" class="btn-secondary btn-sm">Wallet</a>
                         <a href="/App/Badges" class="btn-secondary btn-sm">Badges</a>
+                    </div>
+                </div>
+
+                <!-- Getting Started Tips -->
+                <div class="getting-started-tips">
+                    <h3>Getting Started</h3>
+                    <div class="tip-cards">
+                        <div class="tip-card">
+                            <div class="tip-icon tip-icon-green">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+                                </svg>
+                            </div>
+                            <div class="tip-text">
+                                <strong>Create Your Own Server</strong>
+                                <span>You can create your own servers by hitting the green <span class="tip-inline-icon tip-inline-green"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg></span> sign on the left. Make your own communities, advertise your products. Please don't forget to keep it safe for everyone.</span>
+                            </div>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon tip-icon-blue">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
+                            </div>
+                            <div class="tip-text">
+                                <strong>Add Your Friends</strong>
+                                <span>Remember to add your friends on Torvex! Just hit the green button above, type their username, and away you go!</span>
+                            </div>
+                        </div>
+                        <div class="tip-card">
+                            <div class="tip-icon tip-icon-purple">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+                                </svg>
+                            </div>
+                            <div class="tip-text">
+                                <strong>Invite People to Your Server</strong>
+                                <span>Once you're inside a server, you'll see an invite link at the top of the channel list. Share that link with anyone you want to join your server!</span>
+                            </div>
+                        </div>
+                        <div class="tip-card tip-card-notice">
+                            <div class="tip-icon tip-icon-yellow">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                                </svg>
+                            </div>
+                            <div class="tip-text">
+                                <strong>Voice Chat</strong>
+                                <span>Voice channels are still under construction and may not fully function properly yet.</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -201,6 +283,16 @@
         const toggle = document.getElementById('add-friend-toggle');
         const section = document.getElementById('add-friend-section');
         toggle.addEventListener('click', () => section.classList.toggle('hidden'));
+
+        // Big green "Add Friends" CTA on welcome screen
+        const addFriendCta = document.getElementById('add-friend-cta');
+        if (addFriendCta) {
+            addFriendCta.addEventListener('click', () => {
+                section.classList.remove('hidden');
+                const input = section.querySelector('input[name="RecipientUsername"]');
+                if (input) input.focus();
+            });
+        }
 
         // Daily claim
         const claimBtn = document.getElementById('claim-daily-btn');

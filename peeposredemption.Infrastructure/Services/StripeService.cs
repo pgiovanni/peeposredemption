@@ -14,7 +14,7 @@ namespace peeposredemption.Infrastructure.Services
         }
 
         public async Task<StripeCheckoutResult> CreateStorageUpgradeSessionAsync(
-            Guid serverId, string serverName, StorageTier targetTier, string successUrl, string cancelUrl)
+            Guid serverId, Guid userId, string serverName, StorageTier targetTier, string successUrl, string cancelUrl)
         {
             var (price, name, description) = targetTier switch
             {
@@ -49,6 +49,7 @@ namespace peeposredemption.Infrastructure.Services
                 Metadata = new Dictionary<string, string>
                 {
                     { "serverId", serverId.ToString() },
+                    { "userId", userId.ToString() },
                     { "targetTier", ((int)targetTier).ToString() }
                 },
                 AutomaticTax = new SessionAutomaticTaxOptions { Enabled = true }
