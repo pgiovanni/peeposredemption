@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /App/
+Disallow: /api/
+Disallow: /hubs/
+Disallow: /webhooks/
+
+Sitemap: https://torvex.app/sitemap.xml
