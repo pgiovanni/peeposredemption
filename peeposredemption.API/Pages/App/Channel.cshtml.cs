@@ -10,6 +10,7 @@ using peeposredemption.Application.Features.Moderation.Commands;
 using peeposredemption.Application.Features.Moderation.Queries;
 using peeposredemption.Application.Features.Servers.Commands;
 using peeposredemption.Application.Features.Servers.Queries;
+using peeposredemption.API.Infrastructure;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
 using System.Security.Claims;
@@ -20,18 +21,23 @@ public class ChannelModel : PageModel
 {
     private readonly IMediator _mediator;
     private readonly IUnitOfWork _uow;
-    public ChannelModel(IMediator mediator, IUnitOfWork uow) { _mediator = mediator; _uow = uow; }
+    private readonly PresenceTracker _presenceTracker;
+    public ChannelModel(IMediator mediator, IUnitOfWork uow, PresenceTracker presenceTracker) { _mediator = mediator; _uow = uow; _presenceTracker = presenceTracker; }
 
     public List<string> MemberUsernames { get; set; } = new();
     public List<MemberInfo> MemberData { get; set; } = new();
     public Guid CurrentUserId { get; set; }
     public string CurrentUsername { get; set; } = "";
 
+    public HashSet<Guid> OnlineMemberIds { get; set; } = new();
+
     public class MemberInfo
     {
         public Guid Id { get; set; }
         public string Username { get; set; } = "";
+        public string? DisplayName { get; set; }
         public string? AvatarUrl { get; set; }
+        public string DisplayOrUsername => !string.IsNullOrEmpty(DisplayName) ? DisplayName : Username;
     }
 
     public ServerListViewModel ServerList { get; set; } = new();
@@ -104,7 +110,8 @@ public class ChannelModel : PageModel
         // Member usernames for @mention autocomplete
         var members = await _uow.Servers.GetServerMembersAsync(serverId);
         MemberUsernames = members.Select(m => m.User.Username).ToList();
-        MemberData = members.Select(m => new MemberInfo { Id = m.UserId, Username = m.User.Username, AvatarUrl = m.User.AvatarUrl }).ToList();
+        MemberData = members.Select(m => new MemberInfo { Id = m.UserId, Username = m.User.Username, DisplayName = m.User.DisplayName, AvatarUrl = m.User.AvatarUrl }).ToList();
+        OnlineMemberIds = _presenceTracker.GetOnlineUsers(MemberData.Select(m => m.Id));
         CurrentUserId = userId;
 
         // Load orb balance + username

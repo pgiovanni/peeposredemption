@@ -224,6 +224,50 @@
         }
     </div>
 
+    <!-- Col 4: Members sidebar -->
+    <div class="members-sidebar" id="members-sidebar">
+        @{
+            var onlineMembers = Model.MemberData.Where(m => Model.OnlineMemberIds.Contains(m.Id)).ToList();
+            var offlineMembers = Model.MemberData.Where(m => !Model.OnlineMemberIds.Contains(m.Id)).ToList();
+        }
+        <div class="members-section-header" id="online-count">ONLINE — @onlineMembers.Count</div>
+        @foreach (var member in onlineMembers)
+        {
+            <a href="/App/Profile?userId=@member.Id" class="member-item" data-member-id="@member.Id">
+                <div class="avatar-wrapper">
+                    @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                    {
+                        <img src="@member.AvatarUrl" alt="@member.DisplayOrUsername" class="member-avatar" />
+                    }
+                    else
+                    {
+                        <div class="member-avatar member-avatar-fallback">@member.DisplayOrUsername.Substring(0, 1).ToUpper()</div>
+                    }
+                    <span class="presence-dot online"></span>
+                </div>
+                <span class="member-name">@member.DisplayOrUsername</span>
+            </a>
+        }
+        <div class="members-section-header" id="offline-count">OFFLINE — @offlineMembers.Count</div>
+        @foreach (var member in offlineMembers)
+        {
+            <a href="/App/Profile?userId=@member.Id" class="member-item member-offline" data-member-id="@member.Id">
+                <div class="avatar-wrapper">
+                    @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                    {
+                        <img src="@member.AvatarUrl" alt="@member.DisplayOrUsername" class="member-avatar" />
+                    }
+                    else
+                    {
+                        <div class="member-avatar member-avatar-fallback">@member.DisplayOrUsername.Substring(0, 1).ToUpper()</div>
+                    }
+                    <span class="presence-dot offline"></span>
+                </div>
+                <span class="member-name">@member.DisplayOrUsername</span>
+            </a>
+        }
+    </div>
+
     <!-- Gift animation container -->
     <div id="gift-animation-container" class="gift-animation-container"></div>
 

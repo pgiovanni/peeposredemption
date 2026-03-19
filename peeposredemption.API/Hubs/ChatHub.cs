@@ -20,11 +20,13 @@ namespace peeposredemption.API.Hubs
         private readonly IMediator _mediator;
         private readonly IUnitOfWork _uow;
         private readonly VoiceStateTracker _voiceTracker;
-        public ChatHub(IMediator mediator, IUnitOfWork uow, VoiceStateTracker voiceTracker)
+        private readonly PresenceTracker _presenceTracker;
+        public ChatHub(IMediator mediator, IUnitOfWork uow, VoiceStateTracker voiceTracker, PresenceTracker presenceTracker)
         {
             _mediator = mediator;
             _uow = uow;
             _voiceTracker = voiceTracker;
+            _presenceTracker = presenceTracker;
         }
 
         private Guid CurrentUserId =>
@@ -289,8 +291,35 @@ namespace peeposredemption.API.Hubs
                 });
         }
 
+        public override async Task OnConnectedAsync()
+        {
+            var userId = CurrentUserId;
+            var cameOnline = _presenceTracker.UserConnected(userId, Context.ConnectionId);
+
+            // Join all server groups so we can receive ServerMemberOnline/Offline
+            var servers = await _uow.Servers.GetUserServersAsync(userId);
+            foreach (var server in servers)
+                await Groups.AddToGroupAsync(Context.ConnectionId, $"server:{server.Id}");
+
+            if (cameOnline)
+            {
+                // Notify friends
+                var friendRequests = await _uow.FriendRequests.GetAcceptedAsync(userId);
+                var friendIds = friendRequests.Select(fr => fr.SenderId == userId ? fr.ReceiverId : fr.SenderId).Distinct();
+                foreach (var friendId in friendIds)
+                    await Clients.User(friendId.ToString()).SendAsync("UserOnline", userId);
+
+                // Notify server members
+                foreach (var server in servers)
+                    await Clients.Group($"server:{server.Id}").SendAsync("ServerMemberOnline", userId);
+            }
+
+            await base.OnConnectedAsync();
+        }
+
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
+            // Voice cleanup
             var removed = _voiceTracker.LeaveByConnectionId(Context.ConnectionId);
             foreach (var (channelId, participant) in removed)
             {
@@ -301,6 +330,23 @@ namespace peeposredemption.API.Hubs
                 await Clients.Group($"channel:{channelId}")
                     .SendAsync("VoiceChannelState", new { ChannelId = channelId, Participants = remaining.Select(p => new { p.UserId, p.DisplayName, p.AvatarUrl }) });
             }
+
+            // Presence cleanup
+            var userId = CurrentUserId;
+            var wentOffline = _presenceTracker.UserDisconnected(userId, Context.ConnectionId);
+
+            if (wentOffline)
+            {
+                var friendRequests = await _uow.FriendRequests.GetAcceptedAsync(userId);
+                var friendIds = friendRequests.Select(fr => fr.SenderId == userId ? fr.ReceiverId : fr.SenderId).Distinct();
+                foreach (var friendId in friendIds)
+                    await Clients.User(friendId.ToString()).SendAsync("UserOffline", userId);
+
+                var servers = await _uow.Servers.GetUserServersAsync(userId);
+                foreach (var server in servers)
+                    await Clients.Group($"server:{server.Id}").SendAsync("ServerMemberOffline", userId);
+            }
+
             await base.OnDisconnectedAsync(exception);
         }
     }

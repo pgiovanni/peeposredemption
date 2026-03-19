@@ -8,6 +8,7 @@ using peeposredemption.Application.Features.Friends.Commands;
 using peeposredemption.Application.Features.Friends.Queries;
 using peeposredemption.Application.Features.Servers.Commands;
 using peeposredemption.Application.Features.Servers.Queries;
+using peeposredemption.API.Infrastructure;
 using peeposredemption.Domain.Interfaces;
 using System.Security.Claims;
 
@@ -17,11 +18,13 @@ public class IndexModel : PageModel
 {
     private readonly IMediator _mediator;
     private readonly IUnitOfWork _uow;
+    private readonly PresenceTracker _presenceTracker;
 
-    public IndexModel(IMediator mediator, IUnitOfWork uow)
+    public IndexModel(IMediator mediator, IUnitOfWork uow, PresenceTracker presenceTracker)
     {
         _mediator = mediator;
         _uow = uow;
+        _presenceTracker = presenceTracker;
     }
 
     public ServerListViewModel ServerList { get; set; } = new();
@@ -37,6 +40,7 @@ public class IndexModel : PageModel
     public bool ClaimedToday { get; set; }
     public string? CurrentUserAvatarUrl { get; set; }
     public string CurrentUserDisplayName { get; set; } = "";
+    public HashSet<Guid> OnlineFriendIds { get; set; } = new();
 
     public async Task<IActionResult> OnGetAsync(Guid? friendId)
     {
@@ -131,6 +135,7 @@ public class IndexModel : PageModel
 
         Friends = await _mediator.Send(new GetFriendsQuery(userId));
         PendingRequests = await _mediator.Send(new GetPendingRequestsQuery(userId));
+        OnlineFriendIds = _presenceTracker.GetOnlineUsers(Friends.Select(f => f.Id));
 
         // Load orb data
         var currentUser = await _uow.Users.GetByIdAsync(userId);
