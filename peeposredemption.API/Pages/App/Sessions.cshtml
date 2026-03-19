@@ -1,0 +1,118 @@
+@page
+@model peeposredemption.API.Pages.App.SessionsModel
+@{
+    ViewData["Title"] = "Active Sessions";
+}
+
+<div class="app-shell">
+
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">Security</div>
+        <a href="/App/Profile" class="channel-item">Back to Profile</a>
+        <div class="sidebar-section-label">SECURITY</div>
+        <a href="/App/MfaSetup" class="channel-item">Two-Factor Auth</a>
+        <a href="/App/Sessions" class="channel-item active">Active Sessions</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Active Sessions</span>
+        </div>
+
+        <div class="profile-container" style="max-width: 640px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div>
+                    <h3 style="color: #fff; margin: 0;">Active Sessions</h3>
+                    <p style="color: #949ba4; font-size: 13px; margin: 4px 0 0;">
+                        These are the devices currently logged into your account.
+                    </p>
+                </div>
+                <button id="revoke-others-btn" class="btn btn-danger" style="white-space: nowrap;">
+                    Log Out All Other Sessions
+                </button>
+            </div>
+
+            <div id="sessions-list" style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="color: #949ba4; padding: 24px; text-align: center;">Loading sessions...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const jwt = document.querySelector('meta[name="jwt"]')?.content;
+    const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt };
+
+    async function loadSessions() {
+        const res = await fetch('/api/sessions', { headers });
+        if (!res.ok) { document.getElementById('sessions-list').innerHTML = '<p style="color:#ed4245">Failed to load sessions.</p>'; return; }
+        const sessions = await res.json();
+        renderSessions(sessions);
+    }
+
+    function renderSessions(sessions) {
+        const container = document.getElementById('sessions-list');
+        if (!sessions.length) {
+            container.innerHTML = '<p style="color:#949ba4;text-align:center;padding:24px">No active sessions found.</p>';
+            return;
+        }
+        container.innerHTML = sessions.map(s => `
+            <div class="session-card${s.isCurrent ? ' session-current' : ''}" data-id="${s.id}">
+                <div class="session-icon">${getDeviceIcon(s.os)}</div>
+                <div class="session-info">
+                    <div class="session-title">
+                        ${s.browser || 'Unknown Browser'} on ${s.os || 'Unknown OS'}
+                        ${s.isCurrent ? '<span class="session-badge">This device</span>' : ''}
+                    </div>
+                    <div class="session-meta">
+                        ${s.ipAddress ? `<span>${s.ipAddress}</span>` : ''}
+                        <span>${formatDate(s.createdAt)}</span>
+                    </div>
+                </div>
+                ${!s.isCurrent ? `<button class="btn btn-sm btn-danger revoke-btn" data-id="${s.id}">Revoke</button>` : ''}
+            </div>
+        `).join('');
+
+        container.querySelectorAll('.revoke-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!confirm('Revoke this session? The device will be logged out.')) return;
+                const res = await fetch('/api/sessions/' + btn.dataset.id, { method: 'DELETE', headers });
+                if (res.ok) loadSessions();
+                else alert('Failed to revoke session.');
+            });
+        });
+    }
+
+    function getDeviceIcon(os) {
+        if (!os) return '&#128187;';
+        if (os === 'Windows') return '&#128187;';
+        if (os === 'macOS') return '&#128187;';
+        if (os === 'Linux') return '&#128187;';
+        if (os === 'Android' || os === 'iOS') return '&#128241;';
+        return '&#128187;';
+    }
+
+    function formatDate(iso) {
+        const d = new Date(iso + 'Z');
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+             + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    }
+
+    document.getElementById('revoke-others-btn').addEventListener('click', async () => {
+        if (!confirm('Log out all other devices? Only this session will remain active.')) return;
+        const res = await fetch('/api/sessions/revoke-others', { method: 'POST', headers });
+        if (res.ok) {
+            const data = await res.json();
+            loadSessions();
+        } else alert('Failed to revoke sessions.');
+    });
+
+    loadSessions();
+</script>
+}

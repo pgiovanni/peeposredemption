@@ -41,7 +41,10 @@ public class MfaVerifyModel : PageModel
 
         try
         {
-            var result = await _mediator.Send(new VerifyMfaCommand(pendingToken, Code));
+            var ip = IpBanMiddleware.GetClientIp(HttpContext) ?? "unknown";
+            var ua = Request.Headers.UserAgent.ToString();
+            var deviceId = HttpContext.Items["DeviceId"] is Guid d2 ? d2 : (Guid?)null;
+            var result = await _mediator.Send(new VerifyMfaCommand(pendingToken, Code, ip, ua, deviceId));
 
             // Clear MFA pending cookie
             Response.Cookies.Delete("mfa_pending");
@@ -59,9 +62,7 @@ public class MfaVerifyModel : PageModel
             });
 
             // Record IP + device for security tracking
-            var ip = IpBanMiddleware.GetClientIp(HttpContext) ?? "unknown";
-            var deviceId = HttpContext.Items["DeviceId"] is Guid d ? d : Guid.Empty;
-            await _mediator.Send(new RecordUserLoginInfoCommand(result.UserId, ip, deviceId));
+            await _mediator.Send(new RecordUserLoginInfoCommand(result.UserId, ip, deviceId ?? Guid.Empty));
 
             return RedirectToPage("/App/Index");
         }

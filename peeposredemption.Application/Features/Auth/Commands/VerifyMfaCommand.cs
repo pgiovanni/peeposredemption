@@ -9,7 +9,12 @@ using System.Text.Json;
 
 namespace peeposredemption.Application.Features.Auth.Commands;
 
-public record VerifyMfaCommand(string MfaPendingToken, string Code) : IRequest<LoginResultDto>;
+public record VerifyMfaCommand(
+    string MfaPendingToken,
+    string Code,
+    string? IpAddress = null,
+    string? UserAgent = null,
+    Guid? DeviceId = null) : IRequest<LoginResultDto>;
 
 public class VerifyMfaCommandHandler : IRequestHandler<VerifyMfaCommand, LoginResultDto>
 {
@@ -79,7 +84,10 @@ public class VerifyMfaCommandHandler : IRequestHandler<VerifyMfaCommand, LoginRe
         {
             UserId = user.Id,
             Token = TokenService.HashToken(rawRefresh),
-            ExpiresAt = DateTime.UtcNow.AddDays(30)
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            IpAddress = cmd.IpAddress,
+            UserAgent = cmd.UserAgent,
+            DeviceId = cmd.DeviceId
         });
         await _uow.SaveChangesAsync();
 

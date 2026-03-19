@@ -64,6 +64,7 @@ builder.Services.AddSingleton<IVpnDetectionService>(sp => sp.GetRequiredService<
 builder.Services.AddHostedService(sp => sp.GetRequiredService<VpnDetectionService>());
 
 builder.Services.AddSingleton<VoiceStateTracker>();
+builder.Services.AddSingleton<PresenceTracker>();
 builder.Services.AddMemoryCache();
 
 // JWT Authentication
@@ -120,8 +121,11 @@ app.Use(async (context, next) =>
         var mediator = context.RequestServices.GetRequiredService<IMediator>();
         try
         {
+            var ip = IpBanMiddleware.GetClientIp(context) ?? "unknown";
+            var ua = context.Request.Headers.UserAgent.ToString();
+            var devId = context.Items["DeviceId"] is Guid dId ? dId : (Guid?)null;
             var result = await mediator.Send(
-                new RefreshTokenCommand(context.Request.Cookies["refreshToken"]!));
+                new RefreshTokenCommand(context.Request.Cookies["refreshToken"]!, ip, ua, devId));
 
             context.Response.Cookies.Append("jwt", result.Token!, new CookieOptions
             {
@@ -160,7 +164,10 @@ app.MapPost("/api/auth/refresh", async (HttpRequest req, IMediator mediator) =>
 
     try
     {
-        var result = await mediator.Send(new RefreshTokenCommand(refreshToken));
+        var ip = IpBanMiddleware.GetClientIp(req.HttpContext) ?? "unknown";
+        var ua = req.Headers.UserAgent.ToString();
+        var devId = req.HttpContext.Items["DeviceId"] is Guid dId ? dId : (Guid?)null;
+        var result = await mediator.Send(new RefreshTokenCommand(refreshToken, ip, ua, devId));
 
         req.HttpContext.Response.Cookies.Append("jwt", result.Token!, new CookieOptions
         {
@@ -181,6 +188,64 @@ app.MapPost("/api/auth/refresh", async (HttpRequest req, IMediator mediator) =>
         return Results.Unauthorized();
     }
 }).AllowAnonymous().DisableAntiforgery();
+
+// ── Session management API ──────────────────────────────────────────
+app.MapGet("/api/sessions", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var refreshCookie = ctx.Request.Cookies["refreshToken"];
+    var currentHash = !string.IsNullOrEmpty(refreshCookie) ? TokenService.HashToken(refreshCookie) : null;
+    var sessions = await mediator.Send(new peeposredemption.Application.Features.Sessions.GetActiveSessionsQuery(
+        Guid.Parse(uid), currentHash));
+    return Results.Ok(sessions);
+}).RequireAuthorization();
+
+app.MapDelete("/api/sessions/{id:guid}", async (Guid id, HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var ok = await mediator.Send(new peeposredemption.Application.Features.Sessions.RevokeSessionCommand(id, Guid.Parse(uid)));
+    return ok ? Results.Ok() : Results.NotFound();
+}).RequireAuthorization();
+
+app.MapPost("/api/sessions/revoke-others", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var refreshCookie = ctx.Request.Cookies["refreshToken"];
+    if (string.IsNullOrEmpty(refreshCookie)) return Results.BadRequest();
+    var count = await mediator.Send(new peeposredemption.Application.Features.Sessions.RevokeOtherSessionsCommand(
+        Guid.Parse(uid), TokenService.HashToken(refreshCookie)));
+    return Results.Ok(new { revoked = count });
+}).RequireAuthorization().DisableAntiforgery();
+
+// Admin session management
+app.MapGet("/api/admin/sessions/{userId:guid}", async (Guid userId, HttpContext ctx, IMediator mediator, IConfiguration config) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null || uid != config["AdminUserId"]) return Results.Forbid();
+    var sessions = await mediator.Send(new peeposredemption.Application.Features.Sessions.GetActiveSessionsQuery(userId));
+    return Results.Ok(sessions);
+}).RequireAuthorization();
+
+app.MapDelete("/api/admin/sessions/{userId:guid}/{tokenId:guid}", async (Guid userId, Guid tokenId, HttpContext ctx, IMediator mediator, IConfiguration config) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null || uid != config["AdminUserId"]) return Results.Forbid();
+    var ok = await mediator.Send(new peeposredemption.Application.Features.Sessions.RevokeSessionCommand(tokenId, userId));
+    return ok ? Results.Ok() : Results.NotFound();
+}).RequireAuthorization();
+
+app.MapPost("/api/admin/sessions/{userId:guid}/revoke-all", async (Guid userId, HttpContext ctx, IMediator mediator, IConfiguration config) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null || uid != config["AdminUserId"]) return Results.Forbid();
+    var uow = ctx.RequestServices.GetRequiredService<peeposredemption.Domain.Interfaces.IUnitOfWork>();
+    await uow.RefreshTokens.RevokeAllForUserAsync(userId);
+    await uow.SaveChangesAsync();
+    return Results.Ok();
+}).RequireAuthorization().DisableAntiforgery();
 
 // Emoji list API
 app.MapGet("/api/servers/{serverId:guid}/emojis", async (Guid serverId, IMediator mediator) =>

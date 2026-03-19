@@ -6,7 +6,11 @@ using peeposredemption.Domain.Interfaces;
 
 namespace peeposredemption.Application.Features.Auth.Commands;
 
-public record RefreshTokenCommand(string RefreshToken) : IRequest<LoginResultDto>;
+public record RefreshTokenCommand(
+    string RefreshToken,
+    string? IpAddress = null,
+    string? UserAgent = null,
+    Guid? DeviceId = null) : IRequest<LoginResultDto>;
 
 public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, LoginResultDto>
 {
@@ -27,6 +31,24 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, L
 
         if (existing.IsRevoked)
         {
+            // If this token was revoked because it was rotated (has a replacement),
+            // this is likely a concurrent request that lost the race — not actual theft.
+            // Find the replacement chain and return its JWT instead of nuking everything.
+            if (!string.IsNullOrEmpty(existing.ReplacedByTokenId))
+            {
+                var replacement = await _uow.RefreshTokens.GetByIdAsync(
+                    Guid.Parse(existing.ReplacedByTokenId));
+                if (replacement != null && !replacement.IsRevoked && replacement.ExpiresAt > DateTime.UtcNow)
+                {
+                    var user2 = await _uow.Users.GetByIdAsync(existing.UserId)
+                        ?? throw new UnauthorizedAccessException("User not found.");
+                    var jwt2 = _tokenService.GenerateToken(user2);
+                    // Return same refresh token (the replacement) — don't rotate again
+                    return LoginResultDtoExtensions.FullLogin(jwt2, cmd.RefreshToken, user2.Id);
+                }
+            }
+
+            // Token was revoked WITHOUT a replacement — genuine reuse / theft
             await _uow.RefreshTokens.RevokeAllForUserAsync(existing.UserId);
             await _uow.SaveChangesAsync();
             throw new UnauthorizedAccessException("Token reuse detected. All sessions revoked.");
@@ -47,7 +69,10 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, L
         {
             UserId = user.Id,
             Token = TokenService.HashToken(newRawRefresh),
-            ExpiresAt = DateTime.UtcNow.AddDays(30)
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            IpAddress = cmd.IpAddress ?? existing.IpAddress,
+            UserAgent = cmd.UserAgent ?? existing.UserAgent,
+            DeviceId = cmd.DeviceId ?? existing.DeviceId
         };
         existing.ReplacedByTokenId = newRefreshEntity.Id.ToString();
 

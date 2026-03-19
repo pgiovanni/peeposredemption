@@ -22,7 +22,11 @@ namespace peeposredemption.API.Pages.Auth
             if (!ModelState.IsValid) return Page();
             try
             {
-                var result = await _mediator.Send(Input);
+                var ip = IpBanMiddleware.GetClientIp(HttpContext) ?? "unknown";
+                var ua = Request.Headers.UserAgent.ToString();
+                var deviceId = HttpContext.Items["DeviceId"] is Guid d2 ? d2 : (Guid?)null;
+                var cmd = Input with { IpAddress = ip, UserAgent = ua, DeviceId = deviceId };
+                var result = await _mediator.Send(cmd);
 
                 if (result.RequiresMfa)
                 {
@@ -46,9 +50,7 @@ namespace peeposredemption.API.Pages.Auth
                 });
 
                 // Record IP + device for security tracking
-                var ip = IpBanMiddleware.GetClientIp(HttpContext) ?? "unknown";
-                var deviceId = HttpContext.Items["DeviceId"] is Guid d ? d : Guid.Empty;
-                await _mediator.Send(new RecordUserLoginInfoCommand(result.UserId, ip, deviceId));
+                await _mediator.Send(new RecordUserLoginInfoCommand(result.UserId, ip, deviceId ?? Guid.Empty));
 
                 return RedirectToPage("/App/Index");
             }

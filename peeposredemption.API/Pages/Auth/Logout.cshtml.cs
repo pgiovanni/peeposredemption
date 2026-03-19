@@ -12,10 +12,10 @@ namespace peeposredemption.API.Pages.Auth
 
         public async Task<IActionResult> OnPost()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+            var currentToken = Request.Cookies["refreshToken"];
+            if (!string.IsNullOrEmpty(currentToken))
             {
-                await _uow.RefreshTokens.RevokeAllForUserAsync(userId);
+                await _uow.RefreshTokens.RevokeByTokenAsync(currentToken);
                 await _uow.SaveChangesAsync();
             }
 

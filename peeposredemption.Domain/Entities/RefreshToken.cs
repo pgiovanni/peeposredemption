@@ -9,6 +9,9 @@ public class RefreshToken
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? ReplacedByTokenId { get; set; }
     public bool IsRevoked { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public Guid? DeviceId { get; set; }
 
     public User User { get; set; } = null!;
 }
