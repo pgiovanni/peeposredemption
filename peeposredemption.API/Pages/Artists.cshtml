@@ -1,0 +1,87 @@
+@page
+@model peeposredemption.API.Pages.ArtistsModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Create for Torvex — Artist Program";
+    ViewData["OgTitle"] = "Create for Torvex — Artist Program";
+    ViewData["Description"] = "Join the Torvex artist program. Design cosmetics like borders, banners, badge icons, and backgrounds. Earn a 50/50 commission on every sale.";
+}
+
+<div class="help-page">
+    <div class="help-header">
+        <h1>Create for Torvex</h1>
+        <p>Design cosmetics that thousands of players use every day — and get paid for it.</p>
+    </div>
+
+    <section class="steps-section">
+        <h2>How it works</h2>
+        <div class="steps-grid">
+            <div class="step-card">
+                <span class="step-num">1</span>
+                <h3>Apply</h3>
+                <p>Submit your portfolio with 3 sample images. We review every application within a few days.</p>
+            </div>
+            <div class="step-card">
+                <span class="step-num">2</span>
+                <h3>Create</h3>
+                <p>Once accepted, you'll receive asset briefs with specs and guidelines. Design at your own pace.</p>
+            </div>
+            <div class="step-card">
+                <span class="step-num">3</span>
+                <h3>Earn</h3>
+                <p>Every time a player buys your cosmetic, you earn a commission. Payouts are monthly.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="help-section">
+        <h2>What you'll create</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="feature-icon">🖼️</span>
+                <h3>Profile Borders</h3>
+                <p>Decorative frames that surround player avatars. Multiple rarity tiers from common to legendary.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🏔️</span>
+                <h3>Banners</h3>
+                <p>Wide header images for player profiles. Landscapes, patterns, abstract art — your style, your call.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🎖️</span>
+                <h3>Badge Icons</h3>
+                <p>Small, detailed icons for achievement badges. Clean designs that look great at any size.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🎨</span>
+                <h3>Backgrounds</h3>
+                <p>Full-page profile backgrounds. Set the mood for a player's entire profile page.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="help-section">
+        <h2>Revenue split</h2>
+        <div class="help-item">
+            <h3>50/50 commission</h3>
+            <p>You keep half of every sale. When a player spends orbs on your cosmetic, 50% of the orb value is credited to your artist balance.</p>
+        </div>
+        <div class="help-item">
+            <h3>1 orb = $0.01</h3>
+            <p>Orbs convert to real money at a fixed rate. A 500-orb item earns you $2.50 per sale.</p>
+        </div>
+        <div class="help-item">
+            <h3>Monthly payouts</h3>
+            <p>Earnings are paid out manually via PayPal or Venmo once per month, with a $5.00 minimum threshold.</p>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <h2>Ready to create?</h2>
+        <p>Applications are open. Submit your portfolio and start earning.</p>
+        <div class="cta-buttons">
+            <a href="/App/ArtistApply" class="btn-large btn-signup">Apply Now</a>
+            <a href="/Auth/Register" class="btn-large btn-login">Sign Up First</a>
+        </div>
+    </section>
+</div>

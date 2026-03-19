@@ -44,8 +44,15 @@
             <span>Torvex</span>
         </a>
         <div class="nav-links">
-            <a href="/Auth/Login" class="nav-btn nav-btn-ghost">Log In</a>
-            <a href="/Auth/Register" class="nav-btn nav-btn-primary">Sign Up</a>
+            @if (Context.Request.Cookies.ContainsKey("jwt"))
+            {
+                <a href="/App/Index" class="nav-btn nav-btn-primary">Go to Chat</a>
+            }
+            else
+            {
+                <a href="/Auth/Login" class="nav-btn nav-btn-ghost">Log In</a>
+                <a href="/Auth/Register" class="nav-btn nav-btn-primary">Sign Up</a>
+            }
         </div>
     </nav>
 
@@ -53,8 +60,17 @@
 
     <footer class="landing-footer">
         <div class="footer-links">
-            <a href="/Auth/Login">Log In</a>
-            <a href="/Auth/Register">Sign Up</a>
+            @if (Context.Request.Cookies.ContainsKey("jwt"))
+            {
+                <a href="/App/Index">Go to Chat</a>
+            }
+            else
+            {
+                <a href="/Auth/Login">Log In</a>
+                <a href="/Auth/Register">Sign Up</a>
+            }
+            <a href="/Artists">Artists</a>
+            <a href="/Referrals">Referrals</a>
             <a href="/Help">Help</a>
             <a href="/Support">Support</a>
             <a href="/TrustSafety">Trust & Safety</a>
