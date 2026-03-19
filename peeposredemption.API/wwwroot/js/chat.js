@@ -270,6 +270,67 @@ connection.on("MessageDeleted", (messageId) => {
     }
 });
 
+// ── Presence: online/offline updates ────────────────────────────────────
+connection.on("UserOnline", (userId) => {
+    // Update DM sidebar dot
+    const dmItem = document.querySelector(`.dm-item[data-user-id="${userId}"]`);
+    if (dmItem) {
+        const dot = dmItem.querySelector('.presence-dot');
+        if (dot) { dot.classList.remove('offline'); dot.classList.add('online'); }
+    }
+});
+
+connection.on("UserOffline", (userId) => {
+    const dmItem = document.querySelector(`.dm-item[data-user-id="${userId}"]`);
+    if (dmItem) {
+        const dot = dmItem.querySelector('.presence-dot');
+        if (dot) { dot.classList.remove('online'); dot.classList.add('offline'); }
+    }
+});
+
+connection.on("ServerMemberOnline", (userId) => {
+    const sidebar = document.getElementById('members-sidebar');
+    if (!sidebar) return;
+    const member = sidebar.querySelector(`[data-member-id="${userId}"]`);
+    if (!member) return;
+
+    // Move to online section
+    member.classList.remove('member-offline');
+    const dot = member.querySelector('.presence-dot');
+    if (dot) { dot.classList.remove('offline'); dot.classList.add('online'); }
+
+    // Re-position: insert before the offline header
+    const offlineHeader = document.getElementById('offline-count');
+    if (offlineHeader) sidebar.insertBefore(member, offlineHeader);
+
+    updateMemberCounts(sidebar);
+});
+
+connection.on("ServerMemberOffline", (userId) => {
+    const sidebar = document.getElementById('members-sidebar');
+    if (!sidebar) return;
+    const member = sidebar.querySelector(`[data-member-id="${userId}"]`);
+    if (!member) return;
+
+    member.classList.add('member-offline');
+    const dot = member.querySelector('.presence-dot');
+    if (dot) { dot.classList.remove('online'); dot.classList.add('offline'); }
+
+    // Move to end (after offline header)
+    sidebar.appendChild(member);
+
+    updateMemberCounts(sidebar);
+});
+
+function updateMemberCounts(sidebar) {
+    const onlineCount = sidebar.querySelectorAll('.member-item:not(.member-offline)').length;
+    const offlineCount = sidebar.querySelectorAll('.member-item.member-offline').length;
+    const onlineHeader = document.getElementById('online-count');
+    const offlineHeader = document.getElementById('offline-count');
+    if (onlineHeader) onlineHeader.textContent = `ONLINE — ${onlineCount}`;
+    if (offlineHeader) offlineHeader.textContent = `OFFLINE — ${offlineCount}`;
+}
+
 connection.on("UserTyping", (userId) => {
     const el = document.getElementById("typing-indicator");
     if (el) el.textContent = "someone is typing...";
