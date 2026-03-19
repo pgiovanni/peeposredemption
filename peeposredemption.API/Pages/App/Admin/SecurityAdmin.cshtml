@@ -17,12 +17,20 @@
         <a href="/App/Admin/ArtistAdmin" class="channel-item">Artists</a>
     </div>
 
+    <div class="sidebar-backdrop"></div>
+
     <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Security</span>
+        </div>
+
+        <div class="settings-body admin-body">
         <!-- IP Bans -->
         <section class="settings-section">
             <h3 class="settings-heading">IP BANS</h3>
 
-            <div style="display:flex;gap:8px;margin-bottom:16px">
+            <div class="admin-form-row">
                 <input type="text" id="ban-ip-input" placeholder="IP address" class="settings-input" style="flex:1" />
                 <input type="text" id="ban-ip-reason" placeholder="Reason (optional)" class="settings-input" style="flex:1" />
                 <button id="ban-ip-btn" class="btn btn-danger" style="white-space:nowrap">Ban IP</button>
@@ -30,6 +38,7 @@
 
             @if (Model.IpBans.Any())
             {
+                <div class="admin-table-wrap">
                 <table class="audit-table" style="width:100%">
                     <thead><tr><th>IP</th><th>Reason</th><th>Banned By</th><th>Date</th><th></th></tr></thead>
                     <tbody>
@@ -45,6 +54,7 @@
                         }
                     </tbody>
                 </table>
+                </div>
             }
             else
             {
@@ -58,6 +68,7 @@
 
             <input type="text" id="user-search" placeholder="Search by username..." class="settings-input" style="margin-bottom:16px;max-width:300px" />
 
+            <div class="admin-table-wrap">
             <table class="audit-table" style="width:100%" id="users-table">
                 <thead>
                     <tr>
@@ -93,6 +104,7 @@
                             </td>
                             <td style="display:flex;gap:4px;flex-wrap:wrap">
                                 <button class="btn btn-sm view-details-btn" data-id="@user.UserId">Details</button>
+                                <button class="btn btn-sm view-sessions-btn" data-id="@user.UserId" data-name="@user.Username">Sessions</button>
                                 <button class="btn btn-sm toggle-suspicious-btn"
                                         data-id="@user.UserId"
                                         data-current="@user.IsSuspicious.ToString().ToLower()">
@@ -107,6 +119,7 @@
                     }
                 </tbody>
             </table>
+            </div>
         </section>
 
         <!-- User Detail Panel -->
@@ -115,6 +128,18 @@
                 <h3 class="settings-heading" id="detail-username">USER DETAILS</h3>
                 <div id="detail-content" style="color:#dcddde"></div>
             </section>
+        </div>
+
+        <!-- Sessions Panel -->
+        <div id="sessions-panel" style="display:none;margin-top:24px">
+            <section class="settings-section">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <h3 class="settings-heading" id="sessions-username" style="margin:0">SESSIONS</h3>
+                    <button class="btn btn-danger btn-sm" id="admin-revoke-all-btn">Revoke All</button>
+                </div>
+                <div id="sessions-content" style="display:flex;flex-direction:column;gap:8px"></div>
+            </section>
+        </div>
         </div>
     </div>
 </div>
@@ -249,6 +274,57 @@
                 });
             });
         });
+    });
+
+    // ── Admin Session Management ──
+    let activeSessionUserId = null;
+
+    document.querySelectorAll('.view-sessions-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            activeSessionUserId = btn.dataset.id;
+            const name = btn.dataset.name;
+            document.getElementById('sessions-username').textContent = name.toUpperCase() + ' — SESSIONS';
+            const panel = document.getElementById('sessions-panel');
+            const content = document.getElementById('sessions-content');
+            content.innerHTML = '<p style="color:#949ba4">Loading...</p>';
+            panel.style.display = 'block';
+
+            const res = await fetch('/api/admin/sessions/' + activeSessionUserId, { headers });
+            if (!res.ok) { content.innerHTML = '<p style="color:#ed4245">Failed to load.</p>'; return; }
+            const sessions = await res.json();
+            if (!sessions.length) { content.innerHTML = '<p style="color:#949ba4">No active sessions.</p>'; return; }
+
+            content.innerHTML = sessions.map(s => `
+                <div class="session-card" data-id="${s.id}">
+                    <div class="session-icon">&#128187;</div>
+                    <div class="session-info">
+                        <div class="session-title">${s.browser || 'Unknown'} on ${s.os || 'Unknown'}</div>
+                        <div class="session-meta">
+                            ${s.ipAddress ? `<span>${s.ipAddress}</span>` : ''}
+                            <span>${new Date(s.createdAt + 'Z').toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-danger admin-revoke-session" data-id="${s.id}">Revoke</button>
+                </div>
+            `).join('');
+
+            content.querySelectorAll('.admin-revoke-session').forEach(rb => {
+                rb.addEventListener('click', async () => {
+                    const res = await fetch('/api/admin/sessions/' + activeSessionUserId + '/' + rb.dataset.id, { method: 'DELETE', headers });
+                    if (res.ok) rb.closest('.session-card').remove();
+                });
+            });
+
+            panel.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+
+    document.getElementById('admin-revoke-all-btn').addEventListener('click', async () => {
+        if (!activeSessionUserId || !confirm('Revoke ALL sessions for this user?')) return;
+        const res = await fetch('/api/admin/sessions/' + activeSessionUserId + '/revoke-all', { method: 'POST', headers });
+        if (res.ok) {
+            document.getElementById('sessions-content').innerHTML = '<p style="color:#949ba4">All sessions revoked.</p>';
+        }
     });
 </script>
 }
