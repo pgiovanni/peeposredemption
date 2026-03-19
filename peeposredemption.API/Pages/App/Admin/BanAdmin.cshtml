@@ -25,7 +25,7 @@
             <span>Bans & Servers</span>
         </div>
 
-        <div class="settings-body">
+        <div class="settings-body admin-body">
             <!-- All Bans Section -->
             <section class="settings-section">
                 <h3 class="settings-heading">ALL SERVER BANS — @Model.AllBans.Count</h3>
@@ -34,6 +34,7 @@
                 {
                     <input type="text" id="ban-search" placeholder="Search by username or server..." class="settings-input" style="margin-bottom:16px;max-width:300px" />
 
+                    <div class="admin-table-wrap">
                     <table class="audit-table" style="width:100%" id="bans-table">
                         <thead>
                             <tr>
@@ -63,6 +64,7 @@
                             }
                         </tbody>
                     </table>
+                    </div>
                 }
                 else
                 {
@@ -76,6 +78,7 @@
 
                 <input type="text" id="server-search" placeholder="Search by server name or owner..." class="settings-input" style="margin-bottom:16px;max-width:300px" />
 
+                <div class="admin-table-wrap">
                 <table class="audit-table" style="width:100%" id="servers-table">
                     <thead>
                         <tr>
@@ -103,6 +106,7 @@
                         }
                     </tbody>
                 </table>
+                </div>
             </section>
         </div>
     </div>
