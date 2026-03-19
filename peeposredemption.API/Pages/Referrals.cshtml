@@ -1,0 +1,71 @@
+@page
+@model peeposredemption.API.Pages.ReferralsModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Referral Program — Earn with Torvex";
+    ViewData["OgTitle"] = "Referral Program — Earn with Torvex";
+    ViewData["Description"] = "Earn 20% commission on every purchase made by users you refer to Torvex. Share your link, track clicks, and get paid.";
+}
+
+<div class="help-page">
+    <div class="help-header">
+        <h1>Earn by Sharing Torvex</h1>
+        <p>Share your referral link and earn commission on every purchase your referrals make.</p>
+    </div>
+
+    <section class="steps-section">
+        <h2>How it works</h2>
+        <div class="steps-grid">
+            <div class="step-card">
+                <span class="step-num">1</span>
+                <h3>Share</h3>
+                <p>Get your unique referral link from your dashboard and share it anywhere — social media, forums, friends.</p>
+            </div>
+            <div class="step-card">
+                <span class="step-num">2</span>
+                <h3>Track</h3>
+                <p>See clicks, sign-ups, and purchases in real time on your referral dashboard.</p>
+            </div>
+            <div class="step-card">
+                <span class="step-num">3</span>
+                <h3>Earn</h3>
+                <p>Earn 20% commission on every purchase made by someone who signed up through your link.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="help-section">
+        <h2>What you earn</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="feature-icon">💰</span>
+                <h3>20% Commission</h3>
+                <p>You earn 20% of every purchase your referrals make — orb packs, storage upgrades, and more.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📊</span>
+                <h3>Real-Time Dashboard</h3>
+                <p>Track link clicks, new sign-ups, and purchase conversions from your referral dashboard.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🔗</span>
+                <h3>Unique Link</h3>
+                <p>Your personal referral link is tied to your account. Share it wherever you have an audience.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🎁</span>
+                <h3>No Limit</h3>
+                <p>There's no cap on how many people you can refer or how much you can earn. The more you share, the more you make.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <h2>Start earning today</h2>
+        <p>Log in to get your referral link and start sharing.</p>
+        <div class="cta-buttons">
+            <a href="/App/Referral" class="btn-large btn-signup">Get Your Link</a>
+            <a href="/Auth/Register" class="btn-large btn-login">Sign Up First</a>
+        </div>
+    </section>
+</div>
