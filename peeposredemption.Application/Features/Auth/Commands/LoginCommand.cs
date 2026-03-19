@@ -7,7 +7,12 @@ using System;
 
 namespace peeposredemption.Application.Features.Auth.Commands
 {
-    public record LoginCommand(string Email, string Password) : IRequest<LoginResultDto>;
+    public record LoginCommand(
+        string Email,
+        string Password,
+        string? IpAddress = null,
+        string? UserAgent = null,
+        Guid? DeviceId = null) : IRequest<LoginResultDto>;
 
     public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResultDto>
     {
@@ -45,7 +50,10 @@ namespace peeposredemption.Application.Features.Auth.Commands
             {
                 UserId = user.Id,
                 Token = TokenService.HashToken(rawRefresh),
-                ExpiresAt = DateTime.UtcNow.AddDays(30)
+                ExpiresAt = DateTime.UtcNow.AddDays(30),
+                IpAddress = cmd.IpAddress,
+                UserAgent = cmd.UserAgent,
+                DeviceId = cmd.DeviceId
             });
             await _uow.SaveChangesAsync();
 
