@@ -142,6 +142,13 @@ a { text-decoration: none; color: inherit; }
 
 .btn-login:hover { background: #35373c; }
 
+.hero-micro {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 28px;
+    letter-spacing: 0.3px;
+}
+
 /* ===== FEATURES ===== */
 .features {
     padding: 60px 24px 80px;
@@ -192,6 +199,134 @@ a { text-decoration: none; color: inherit; }
     font-size: 14px;
     color: var(--text-muted);
     line-height: 1.5;
+}
+
+/* ===== DIFFERENTIATOR ===== */
+.landing-differentiator {
+    text-align: center;
+    padding: 60px 24px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.landing-differentiator h2 {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.landing-differentiator p {
+    font-size: 17px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+
+.differentiator-tagline {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.3px;
+}
+
+.philosophy-line {
+    font-size: 19px;
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+    line-height: 1.8;
+}
+
+/* ===== HOW IT WORKS ===== */
+.landing-how-it-works {
+    padding: 60px 24px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.landing-how-it-works h2 {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 40px;
+}
+
+/* ===== DEPTH ===== */
+.landing-depth {
+    padding: 60px 24px 80px;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.landing-depth h2 {
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+/* ===== HERO EMOTIONAL ===== */
+.hero-emotional {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    opacity: 0.85;
+}
+
+/* ===== MID CTA ===== */
+.landing-mid-cta {
+    text-align: center;
+    padding: 48px 24px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.landing-mid-cta p {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+/* ===== EMOTIONAL HOOK ===== */
+.landing-emotional {
+    text-align: center;
+    padding: 60px 24px;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.landing-emotional p {
+    font-size: 20px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.landing-emotional strong {
+    color: var(--text-primary);
+}
+
+/* ===== FINAL CTA ===== */
+.landing-final-cta {
+    text-align: center;
+    padding: 80px 24px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.landing-final-cta h2 {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 28px;
+}
+
+.landing-final-cta-sub {
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--text-muted);
 }
 
 /* ===== FOOTER ===== */
@@ -871,6 +1006,13 @@ a { text-decoration: none; color: inherit; }
     .trust-topics { flex-direction: column; align-items: center; }
     .btn-report-landing { font-size: 16px; padding: 14px 36px; }
     .btn-report { font-size: 16px; padding: 14px 36px; }
+    .landing-mid-cta { padding: 32px 16px; }
+    .landing-emotional { padding: 40px 16px; }
+    .landing-final-cta { padding: 48px 16px; }
+    .landing-final-cta h2 { font-size: 26px; }
+    .landing-differentiator { padding: 40px 16px; }
+    .landing-how-it-works { padding: 40px 16px; }
+    .landing-depth { padding: 40px 16px 60px; }
     .landing-programs { padding: 40px 16px; }
     .programs-grid { grid-template-columns: 1fr; }
     .steps-grid { grid-template-columns: 1fr; }
