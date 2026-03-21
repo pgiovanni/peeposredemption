@@ -9,7 +9,7 @@ using System.Text;
 
 namespace peeposredemption.Application.Features.Messages.Commands
 {
-    public record SendMessageCommand(Guid ChannelId, Guid AuthorId, string AuthorUsername, string Content)
+    public record SendMessageCommand(Guid ChannelId, Guid AuthorId, string AuthorUsername, string Content, Guid? ReplyToMessageId = null)
     : IRequest<MessageDto>;
 
     public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, MessageDto>
@@ -60,12 +60,31 @@ namespace peeposredemption.Application.Features.Messages.Commands
             {
                 ChannelId = cmd.ChannelId,
                 AuthorId = cmd.AuthorId,
-                Content = cmd.Content
+                Content = cmd.Content,
+                ReplyToMessageId = cmd.ReplyToMessageId
             };
             await _uow.Messages.AddAsync(message);
             await _uow.SaveChangesAsync();
             var author = await _uow.Users.GetByIdAsync(cmd.AuthorId);
-            return new MessageDto(message.Id, message.AuthorId, cmd.AuthorUsername, message.Content, message.SentAt, false, author?.AvatarUrl);
+
+            // Populate reply preview if replying
+            string? replyAuthorUsername = null;
+            string? replyContentPreview = null;
+            if (cmd.ReplyToMessageId.HasValue)
+            {
+                var replyMsg = await _uow.Messages.GetByIdAsync(cmd.ReplyToMessageId.Value);
+                if (replyMsg != null)
+                {
+                    var replyAuthor = await _uow.Users.GetByIdAsync(replyMsg.AuthorId);
+                    replyAuthorUsername = replyAuthor?.DisplayOrUsername ?? "Unknown";
+                    replyContentPreview = replyMsg.Content.Length > 100
+                        ? replyMsg.Content.Substring(0, 100) + "..."
+                        : replyMsg.Content;
+                }
+            }
+
+            return new MessageDto(message.Id, message.AuthorId, cmd.AuthorUsername, message.Content, message.SentAt, false, author?.AvatarUrl,
+                cmd.ReplyToMessageId, replyAuthorUsername, replyContentPreview);
         }
     }
 

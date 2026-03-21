@@ -17,7 +17,9 @@ namespace peeposredemption.Infrastructure.Repositories
             Guid channelId, int page, int pageSize)
         {
             // Fetch newest N descending, then reverse to ascending for display
-            var rows = await _db.Messages.Include(m => m.Author)
+            var rows = await _db.Messages
+                .Include(m => m.Author)
+                .Include(m => m.ReplyToMessage).ThenInclude(r => r!.Author)
                 .Where(m => m.ChannelId == channelId)
                 .OrderByDescending(m => m.SentAt).ThenByDescending(m => m.Id)
                 .Skip((page - 1) * pageSize)

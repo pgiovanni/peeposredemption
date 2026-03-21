@@ -10,8 +10,10 @@
         public bool IsEdited { get; set; } = false;
         public bool IsDeleted { get; set; } = false;
         public DateTime? EditedAt { get; set; }
+        public Guid? ReplyToMessageId { get; set; }
         public Channel Channel { get; set; }
         public User Author { get; set; }
+        public Message? ReplyToMessage { get; set; }
     }
 
 }
