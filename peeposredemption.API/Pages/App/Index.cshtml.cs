@@ -41,6 +41,7 @@ public class IndexModel : PageModel
     public string? CurrentUserAvatarUrl { get; set; }
     public string CurrentUserDisplayName { get; set; } = "";
     public HashSet<Guid> OnlineFriendIds { get; set; } = new();
+    public string ReferralLink { get; set; } = "";
 
     public async Task<IActionResult> OnGetAsync(Guid? friendId)
     {
@@ -146,6 +147,15 @@ public class IndexModel : PageModel
         CurrentStreak = streak?.CurrentStreak ?? 0;
         var today = DateTime.UtcNow.Date;
         ClaimedToday = streak?.LastClaimedDate.HasValue == true && streak.LastClaimedDate.Value.Date == today;
+
+        var refCode = await _uow.Referrals.GetCodeByOwnerIdAsync(userId);
+        if (refCode == null)
+        {
+            refCode = new peeposredemption.Domain.Entities.ReferralCode { OwnerId = userId };
+            await _uow.Referrals.AddCodeAsync(refCode);
+            await _uow.SaveChangesAsync();
+        }
+        ReferralLink = refCode.Code;
     }
 
     private Guid? GetUserId()
