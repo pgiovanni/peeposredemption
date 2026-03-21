@@ -121,8 +121,8 @@
         {
             <div class="content-header">
                 <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
-                <div class="friend-avatar">@Model.ActiveFriend.DisplayOrUsername.Substring(0, 1).ToUpper()</div>
-                <span>@Model.ActiveFriend.DisplayOrUsername</span>
+                <a href="/App/Profile?userId=@Model.ActiveFriend.Id" class="friend-avatar" title="View Profile">@Model.ActiveFriend.DisplayOrUsername.Substring(0, 1).ToUpper()</a>
+                <a href="/App/Profile?userId=@Model.ActiveFriend.Id" class="content-header-friend-name">@Model.ActiveFriend.DisplayOrUsername</a>
                 <a href="/App/Wallet" class="orb-balance" title="View Wallet" style="margin-left:auto">
                     <span class="orb-icon"></span>
                     <span id="orb-count-dm">@Model.OrbBalance</span>
@@ -148,7 +148,10 @@
                             var dmAvatarUrl = msg.IsMine ? Model.CurrentUserAvatarUrl : Model.ActiveFriend.AvatarUrl;
                             var dmDisplayName = msg.IsMine ? "You" : Model.ActiveFriend.DisplayOrUsername;
                         }
-                        <div class="message-avatar-link">
+                        @{
+                            var dmUserId = msg.IsMine ? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value : Model.ActiveFriend.Id.ToString();
+                        }
+                        <a href="/App/Profile?userId=@dmUserId" class="message-avatar-link">
                             @if (!string.IsNullOrEmpty(dmAvatarUrl))
                             {
                                 <img src="@dmAvatarUrl" alt="@dmDisplayName" class="message-avatar" />
@@ -157,10 +160,9 @@
                             {
                                 <div class="message-avatar message-avatar-fallback">@dmDisplayName.Substring(0, 1).ToUpper()</div>
                             }
-                        </div>
-                        <div class="message-author">@dmDisplayName</div>
+                        </a>
+                        <div class="message-author">@dmDisplayName <span class="message-time" data-time="@msg.SentAt.ToString("o")"></span></div>
                         <div class="message-content">@msg.Content</div>
-                        <div class="message-time">@msg.SentAt.ToString("HH:mm")</div>
                     </div>
                 }
             </div>
@@ -188,22 +190,44 @@
                 }
             </div>
             <div class="welcome-screen">
-                <div class="welcome-icon">👋</div>
-                <h2>Welcome to Torvex</h2>
-                <p>Add friends and start chatting, or join a server on the left.</p>
-
-                <!-- Add Friends CTA -->
-                <button id="add-friend-cta" class="btn-add-friend-cta">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
-                    Add Friends
-                </button>
-
-                <!-- Online Friends -->
                 @{
                     var onlineFriends = Model.Friends.Where(f => Model.OnlineFriendIds.Contains(f.Id)).ToList();
+                    var inviteLink = $"https://torvex.app/Auth/Register?ref={Model.ReferralLink}";
+                    var inviteMsg = $"Yo I made a group on Torvex\u2014join up so we can try it\n{inviteLink}";
                 }
+
+                <!-- 1. PRIMARY BLOCK -->
+                <div class="welcome-invite-block">
+                    <div class="welcome-icon">👋</div>
+                    <h2>Your group is empty</h2>
+                    <p class="welcome-subtext">Invite your friends to start chatting, talking, and playing together.</p>
+                    <button id="copy-invite-link-btn" class="btn-primary welcome-cta-main" data-copy="@inviteLink">
+                        Copy invite link
+                    </button>
+                    <button id="copy-invite-msg-btn" class="btn-secondary welcome-cta-secondary" data-copy="@inviteMsg">
+                        Copy invite message
+                    </button>
+                    <span class="welcome-helper-text">Works best with 2–3 people</span>
+                </div>
+
+                <!-- 2. INVITE MESSAGE (visible preview) -->
+                <div class="invite-message-preview">
+                    <div class="invite-msg-body">
+                        <span>Yo I made a group on Torvex—join up so we can try it</span>
+                        <span class="invite-msg-url">@inviteLink</span>
+                    </div>
+                    <button id="copy-msg-preview-btn" class="btn-secondary btn-sm" data-copy="@inviteMsg">
+                        Copy message
+                    </button>
+                </div>
+
+                <!-- 3. SOCIAL STATE -->
+                <div class="social-state-bar">
+                    <span class="social-state-label">Waiting for your friends…</span>
+                    <span class="social-state-count">@Model.Friends.Count / 3 joined</span>
+                </div>
+
+                <!-- Online friends (if any) -->
                 @if (onlineFriends.Any())
                 {
                     <div class="online-friends-section">
@@ -230,7 +254,7 @@
                     </div>
                 }
 
-                <!-- Daily Orbs Claim -->
+                <!-- 4. ORBS (demoted) -->
                 <div class="orb-claim-section">
                     <div class="orb-balance-display">
                         <span class="orb-icon-lg"></span>
@@ -242,65 +266,38 @@
                     </div>
                     <button id="claim-daily-btn" class="btn-primary btn-daily-claim @(Model.ClaimedToday ? "claimed" : "")"
                             @(Model.ClaimedToday ? "disabled" : "")>
-                        @(Model.ClaimedToday ? "Claimed Today" : "Claim Daily Orbs")
+                        @(Model.ClaimedToday ? "Come back tomorrow to keep your streak alive" : "Claim daily reward")
                     </button>
+                    <p class="orb-social-hint">Earn more by staying active with your group</p>
                     <div class="orb-links">
                         <a href="/App/OrbShop" class="btn-secondary btn-sm">Orb Shop</a>
                         <a href="/App/Wallet" class="btn-secondary btn-sm">Wallet</a>
                         <a href="/App/Badges" class="btn-secondary btn-sm">Badges</a>
+                        <a href="/App/FeatureRequests" class="btn-secondary btn-sm">Feature Requests</a>
                     </div>
                 </div>
 
-                <!-- Getting Started Tips -->
-                <div class="getting-started-tips">
-                    <h3>Getting Started</h3>
-                    <div class="tip-cards">
-                        <div class="tip-card">
-                            <div class="tip-icon tip-icon-green">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
-                                </svg>
-                            </div>
-                            <div class="tip-text">
-                                <strong>Create Your Own Server</strong>
-                                <span>You can create your own servers by hitting the green <span class="tip-inline-icon tip-inline-green"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg></span> sign on the left. Make your own communities, advertise your products. Please don't forget to keep it safe for everyone.</span>
-                            </div>
-                        </div>
-                        <div class="tip-card">
-                            <div class="tip-icon tip-icon-blue">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                                </svg>
-                            </div>
-                            <div class="tip-text">
-                                <strong>Add Your Friends</strong>
-                                <span>Remember to add your friends on Torvex! Just hit the green button above, type their username, and away you go!</span>
-                            </div>
-                        </div>
-                        <div class="tip-card">
-                            <div class="tip-icon tip-icon-purple">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
-                                </svg>
-                            </div>
-                            <div class="tip-text">
-                                <strong>Invite People to Your Server</strong>
-                                <span>Once you're inside a server, you'll see an invite link at the top of the channel list. Share that link with anyone you want to join your server!</span>
-                            </div>
-                        </div>
-                        <div class="tip-card tip-card-notice">
-                            <div class="tip-icon tip-icon-yellow">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-                                </svg>
-                            </div>
-                            <div class="tip-text">
-                                <strong>Voice Chat</strong>
-                                <span>Voice channels are still under construction and may not fully function properly yet.</span>
-                            </div>
-                        </div>
-                    </div>
+                <!-- 5. SECONDARY ACTIONS -->
+                <div class="welcome-secondary-actions">
+                    <p class="welcome-secondary-label">Or find friends on Torvex</p>
+                    <button id="add-friend-cta" class="btn-secondary welcome-add-friend-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                        Add Friends
+                    </button>
                 </div>
+
+                <!-- 6. WHAT HAPPENS NEXT -->
+                <div class="what-happens-next">
+                    <h3>What happens next</h3>
+                    <ol class="next-steps">
+                        <li>Invite your friends</li>
+                        <li>They join instantly</li>
+                        <li>Start hanging out</li>
+                    </ol>
+                </div>
+
             </div>
         }
     </div>
@@ -318,6 +315,19 @@
             const recipientAvatarUrl = '@(Model.ActiveFriend.AvatarUrl ?? "")';
         </script>
         <script src="~/js/chat.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                // Format DM message timestamps using browser locale (12/24-hour based on user's system)
+                document.querySelectorAll('.message-time[data-time]').forEach(el => {
+                    el.textContent = ' \u2014 ' + new Date(el.dataset.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                });
+                // Set grouped-time data attribute for DM grouped messages
+                document.querySelectorAll('.message.message-grouped[data-sent]').forEach(el => {
+                    el.dataset.groupedTime = new Date(el.dataset.sent).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                });
+                if (typeof window.applyEmojiRendering === 'function') window.applyEmojiRendering();
+            });
+        </script>
     }
     @if (Model.ActiveFriend == null)
     {
@@ -345,6 +355,10 @@
                 }
             });
 
+            _presenceConn.on("ReceiveNotification", (notif) => {
+                if (typeof window._notifDropdownOnNotification === 'function') window._notifDropdownOnNotification();
+            });
+
             _presenceConn.start().catch(() => {});
         </script>
     }
@@ -353,7 +367,7 @@
         const section = document.getElementById('add-friend-section');
         toggle.addEventListener('click', () => section.classList.toggle('hidden'));
 
-        // Big green "Add Friends" CTA on welcome screen
+        // "Add Friends" secondary CTA on welcome screen
         const addFriendCta = document.getElementById('add-friend-cta');
         if (addFriendCta) {
             addFriendCta.addEventListener('click', () => {
@@ -362,6 +376,22 @@
                 if (input) input.focus();
             });
         }
+
+        // Copy-to-clipboard helper
+        function copyText(text, btn, original) {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = original, 2000);
+            }).catch(() => {
+                btn.textContent = 'Failed';
+                setTimeout(() => btn.textContent = original, 2000);
+            });
+        }
+
+        // Wire up all copy buttons via data-copy attribute
+        document.querySelectorAll('[data-copy]').forEach(btn => {
+            btn.addEventListener('click', () => copyText(btn.dataset.copy, btn, btn.textContent.trim()));
+        });
 
         // Daily claim
         const claimBtn = document.getElementById('claim-daily-btn');
@@ -379,7 +409,7 @@
                         document.querySelector('.streak-display span').innerHTML = `&#x1F525; ${data.currentStreak} day streak`;
                     } else {
                         const err = await resp.json();
-                        claimBtn.textContent = err.error || 'Already claimed';
+                        claimBtn.textContent = err.error || 'Come back tomorrow to keep your streak alive';
                         claimBtn.classList.add('claimed');
                     }
                 } catch {

@@ -116,18 +116,15 @@
         document.querySelectorAll('#server-list .notif-badge').forEach(b => b.remove());
     });
 
-    // When a new notification arrives via SignalR, refresh the dropdown data
-    if (typeof connection !== 'undefined') {
-        const origHandler = connection._methods['receivenotification'];
-        connection.on("ReceiveNotification", () => {
-            loaded = false;
-            if (isOpen) loadNotifications();
-            // Update bell badge count
-            const badge = bell.querySelector('.notif-bell-count');
-            const current = badge ? (parseInt(badge.textContent) || 0) : 0;
-            updateBellBadge(current + 1);
-        });
-    }
+    // Expose global callback so SignalR handlers (chat.js / Index.cshtml) can notify us
+    window._notifDropdownOnNotification = function () {
+        loaded = false;
+        if (isOpen) loadNotifications();
+        // Update bell badge count
+        const badge = bell.querySelector('.notif-bell-count');
+        const current = badge ? (parseInt(badge.textContent) || 0) : 0;
+        updateBellBadge(current + 1);
+    };
 
     // Initial load on page ready
     loadNotifications();
