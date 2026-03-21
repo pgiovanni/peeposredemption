@@ -1,0 +1,82 @@
+@page
+@model peeposredemption.API.Pages.App.Admin.FeatureRequestAdminModel
+@{
+    ViewData["Title"] = "Admin — Feature Requests";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Index" class="icon-btn" title="Back">&#8592;</a>
+            <span>Feature Requests</span>
+        </div>
+        <div class="sidebar-section-header">ADMIN</div>
+        <a href="/App/Admin/SecurityAdmin" class="channel-item">Security</a>
+        <a href="/App/Admin/BanAdmin" class="channel-item">Bans & Servers</a>
+        <a href="/App/Admin/Referrals" class="channel-item">Referrals</a>
+        <a href="/App/Admin/ArtistAdmin" class="channel-item">Artists</a>
+        <a href="/App/Admin/FeatureRequestAdmin" class="channel-item active">Feature Requests</a>
+        <a href="/App/Admin/SupportTicketAdmin" class="channel-item">Support Tickets</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Feature Requests</span>
+        </div>
+
+        <div class="settings-body admin-body">
+        <section class="settings-section">
+            <h3 class="settings-heading">ALL FEATURE REQUESTS</h3>
+
+            @if (!Model.Requests.Any())
+            {
+                <div class="sidebar-empty">No feature requests yet.</div>
+            }
+            else
+            {
+                <div class="admin-table-wrap">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var req in Model.Requests)
+                        {
+                            <tr>
+                                <td><strong>@req.User.Username</strong></td>
+                                <td>@req.Title</td>
+                                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@req.Description">@req.Description</td>
+                                <td><span class="feature-status-badge status-@req.Status.ToString().ToLower()">@req.Status</span></td>
+                                <td class="audit-time">@req.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="UpdateStatus" style="display:flex;gap:4px;align-items:center">
+                                        <input type="hidden" name="requestId" value="@req.Id" />
+                                        <select name="status" style="padding:4px 8px;background:#1e1f22;border:1px solid #3f4147;border-radius:4px;color:#f2f3f5;font-size:12px">
+                                            @foreach (var s in Enum.GetValues<peeposredemption.Domain.Entities.FeatureRequestStatus>())
+                                            {
+                                                <option value="@s" selected="@(s == req.Status)">@s</option>
+                                            }
+                                        </select>
+                                        <button type="submit" class="btn-primary btn-sm">Update</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </section>
+        </div>
+    </div>
+</div>

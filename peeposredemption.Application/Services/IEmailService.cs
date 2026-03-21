@@ -8,5 +8,6 @@ namespace peeposredemption.Application.Services
         Task SendReferralPurchaseNotificationAsync(string marketerUsername, string buyerUsername, long amountCents);
         Task SendArtistSubmissionNotificationAsync(string displayName, string email, string portfolioUrl);
         Task SendPasswordResetEmailAsync(string toEmail, string resetLink);
+        Task SendSupportTicketNotificationAsync(string username, string category, string subject, string description);
     }
 }

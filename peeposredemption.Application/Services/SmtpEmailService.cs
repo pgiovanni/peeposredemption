@@ -38,6 +38,7 @@ namespace peeposredemption.Application.Services
         public Task SendNewUserNotificationAsync(string username, string email) => Task.CompletedTask;
         public Task SendReferralPurchaseNotificationAsync(string marketerUsername, string buyerUsername, long amountCents) => Task.CompletedTask;
         public Task SendArtistSubmissionNotificationAsync(string displayName, string email, string portfolioUrl) => Task.CompletedTask;
+        public Task SendSupportTicketNotificationAsync(string username, string category, string subject, string description) => Task.CompletedTask;
 
         public async Task SendPasswordResetEmailAsync(string toEmail, string resetLink)
         {
