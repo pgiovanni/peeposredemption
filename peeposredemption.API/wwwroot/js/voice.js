@@ -20,6 +20,9 @@
     let isScreenSharing = false;
     let joined = false;
 
+    // Expose voice state globally so other code can detect we're in voice
+    window.__voice = { joined: false, channelId: null, channelName: null, leave: null };
+
     // Fetch ICE server config
     async function fetchIceServers() {
         try {
@@ -470,6 +473,7 @@
     async function leaveVoice() {
         if (!joined) return;
         joined = false;
+        window.__voice.joined = false;
 
         // Close all peer connections
         Object.entries(peers).forEach(([id, p]) => {
@@ -516,6 +520,9 @@
             }
             await connection.invoke('JoinVoiceChannel', channelId);
             joined = true;
+            window.__voice.joined = true;
+            window.__voice.channelId = channelId;
+            window.__voice.channelName = (typeof channelName !== 'undefined' ? channelName : '');
         } catch (err) {
             grid.innerHTML = `<div class="voice-error">${err.message || 'Failed to join voice channel.'}</div>`;
         }
@@ -530,5 +537,6 @@
         }
     });
 
+    window.__voice.leave = leaveVoice;
     joinVoice();
 })();

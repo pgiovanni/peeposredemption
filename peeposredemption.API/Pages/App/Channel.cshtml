@@ -48,7 +48,10 @@
         {
             <div class="channel-row">
                 <a href="/App/Channel?channelId=@ch.Id&serverId=@Model.ServerId"
-                   class="channel-item @(ch.Id == Model.ChannelId ? "active" : "")">
+                   class="channel-item @(ch.Id == Model.ChannelId ? "active" : "")"
+                   data-channel-id="@ch.Id"
+                   data-channel-type="@ch.Type"
+                   data-channel-name="@ch.Name">
                     @if (ch.Type == 1)
                     {
                         <span class="channel-hash" title="Voice Channel">
@@ -77,6 +80,20 @@
                 <div class="voice-sidebar-participants" data-voice-channel="@ch.Id"></div>
             }
         }
+        <div id="voice-bar" class="voice-bar hidden">
+            <div class="voice-bar-info">
+                <span class="voice-bar-dot"></span>
+                <div>
+                    <div class="voice-bar-status">Voice Connected</div>
+                    <div id="voice-bar-name" class="voice-bar-channel"></div>
+                </div>
+            </div>
+            <div class="voice-bar-btns">
+                <a id="voice-bar-return" href="#" class="voice-bar-btn" title="Return to voice">&#x21A9;</a>
+                <button id="voice-bar-leave" class="voice-bar-btn voice-bar-leave-btn" title="Disconnect">&#x2715;</button>
+            </div>
+        </div>
+
         <div class="sidebar-footer">
             <a href="/App/Profile" title="Edit Profile">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -158,6 +175,18 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Text channel view shown when AJAX-switching away from voice to browse text channels -->
+            <div id="text-channel-view" class="hidden">
+                <div id="messages" class="messages-container"></div>
+                <div id="typing-indicator" class="typing-indicator"></div>
+                <div class="message-input-area">
+                    <form id="message-form">
+                        <input id="message-input" type="text" placeholder="" autocomplete="off" />
+                        <button type="submit">Send</button>
+                    </form>
+                </div>
+            </div>
         }
         else
         {
@@ -176,6 +205,12 @@
                                 <div class="message-avatar message-avatar-fallback">@msg.AuthorUsername.Substring(0, 1).ToUpper()</div>
                             }
                         </a>
+                        @if (msg.ReplyToMessageId.HasValue)
+                        {
+                            <div class="message-reply-ref" data-reply-to="@msg.ReplyToMessageId">
+                                <span class="reply-ref-author">@(msg.ReplyToAuthorUsername ?? "Unknown")</span><span class="reply-ref-preview">@(msg.ReplyToContentPreview ?? "")</span>
+                            </div>
+                        }
                         <div class="message-author"><a href="/App/Profile?userId=@msg.AuthorId" class="author-link">@msg.AuthorUsername</a> <span class="message-time" data-time="@msg.SentAt.ToString("o")"></span></div>
                         <div class="message-content">@msg.Content</div>
                     </div>
@@ -275,9 +310,10 @@
 
 @section Scripts {
     <script>
-        const channelId = '@Model.ChannelId';
+        let channelId = '@Model.ChannelId';
         const serverId = '@Model.ServerId';
-        const isVoiceChannel = @(Model.ChannelType == 1 ? "true" : "false");
+        let isVoiceChannel = @(Model.ChannelType == 1 ? "true" : "false");
+        const channelName = '@Model.ChannelName';
         const canDeleteMessages = @((Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator).ToString().ToLower());
         const memberUsernames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberUsernames));
         const memberData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberData));
@@ -325,17 +361,29 @@
                 const authorId = el.dataset.authorId;
                 if (lastAuthorId === authorId && lastMsgTime && (sent - lastMsgTime) < 5 * 60 * 1000) {
                     el.classList.add('message-grouped');
+                    el.dataset.groupedTime = sent.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 }
                 lastAuthorId = authorId;
                 lastMsgTime = sent;
                 // Format time
                 const timeEl = el.querySelector('.message-time');
                 if (timeEl && timeEl.dataset.time) {
-                    timeEl.textContent = new Date(timeEl.dataset.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    timeEl.textContent = ' \u2014 ' + new Date(timeEl.dataset.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 }
             });
             // Highlight messages that mention the current user
             highlightServerRenderedMentions();
+            // Wire up click-to-scroll for server-rendered reply refs
+            document.querySelectorAll('.message-reply-ref[data-reply-to]').forEach(ref => {
+                ref.addEventListener('click', () => {
+                    const target = document.querySelector(`[data-id="${ref.dataset.replyTo}"]`);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        target.classList.add('message-highlight');
+                        setTimeout(() => target.classList.remove('message-highlight'), 1500);
+                    }
+                });
+            });
         })();
         document.getElementById('add-channel-toggle').addEventListener('click', () => {
             document.getElementById('add-channel-section').classList.toggle('hidden');
@@ -848,6 +896,118 @@
         }
 
         } // end if (!isVoiceChannel)
+
+        // ── Persistent voice: stay in VC while browsing text channels ──────
+        (function() {
+            function updateVoiceBar() {
+                const bar = document.getElementById('voice-bar');
+                if (!bar) return;
+                if (window.__voice && window.__voice.joined) {
+                    bar.classList.remove('hidden');
+                    const nameEl = document.getElementById('voice-bar-name');
+                    if (nameEl) nameEl.textContent = window.__voice.channelName || 'Voice';
+                    const ret = document.getElementById('voice-bar-return');
+                    if (ret) ret.href = `/App/Channel?channelId=${window.__voice.channelId}&serverId=${serverId}`;
+                } else {
+                    bar.classList.add('hidden');
+                }
+            }
+
+            function applyAjaxMessageFormatting(container) {
+                let lastDateKey = null;
+                const msgs = Array.from(container.querySelectorAll('.message[data-sent]'));
+                msgs.forEach(el => {
+                    const key = getDateKey(el.dataset.sent);
+                    if (key !== lastDateKey) {
+                        const sep = document.createElement('div');
+                        sep.className = 'date-separator';
+                        sep.innerHTML = `<span>${getDateLabel(el.dataset.sent)}</span>`;
+                        container.insertBefore(sep, el);
+                        lastDateKey = key;
+                    }
+                });
+            }
+
+            async function switchToTextChannel(newChannelId, newChannelName, href) {
+                // Leave current SignalR text channel group
+                try { await connection.invoke('LeaveChannel', serverId, channelId); } catch(_) {}
+
+                // Fetch messages
+                let messages = [];
+                try {
+                    const r = await fetch(`/api/channels/${newChannelId}/messages`);
+                    if (r.ok) messages = await r.json();
+                } catch(_) {}
+
+                // Show text view, hide voice room
+                const voiceRoom = document.getElementById('voice-room');
+                const textView = document.getElementById('text-channel-view');
+                if (voiceRoom) voiceRoom.classList.add('hidden');
+                if (textView) textView.classList.remove('hidden');
+
+                // Render messages
+                const container = document.getElementById('messages');
+                if (container) {
+                    container.innerHTML = '';
+                    messages.forEach(m => {
+                        const replyTo = m.replyToMessageId
+                            ? { messageId: m.replyToMessageId, authorUsername: m.replyToAuthorUsername, contentPreview: m.replyToContentPreview }
+                            : null;
+                        const el = createMessageEl(
+                            m.authorUsername, m.content, formatTime(m.sentAt),
+                            m.authorId === currentUserId, m.id, m.authorId, m.authorAvatarUrl, m.sentAt, replyTo
+                        );
+                        container.appendChild(el);
+                    });
+                    applyAjaxMessageFormatting(container);
+                    container.scrollTop = container.scrollHeight;
+                }
+
+                // Update header
+                const headerSpan = document.querySelector('.content-header span:last-of-type');
+                if (headerSpan) headerSpan.textContent = newChannelName;
+                const headerHash = document.querySelector('.content-header .channel-hash');
+                if (headerHash) headerHash.textContent = '#';
+
+                // Update message input
+                const input = document.getElementById('message-input');
+                if (input) input.placeholder = `Message #${newChannelName}...`;
+
+                // Update globals and join new SignalR channel
+                channelId = newChannelId;
+                isVoiceChannel = false;
+                try { await connection.invoke('JoinChannel', serverId, newChannelId); } catch(_) {}
+
+                // Update URL and sidebar active state
+                history.pushState({}, '', href);
+                document.querySelectorAll('.channel-item').forEach(l => l.classList.remove('active'));
+                document.querySelector(`[data-channel-id="${newChannelId}"]`)?.classList.add('active');
+
+                updateVoiceBar();
+            }
+
+            // Intercept channel link clicks when in voice
+            document.querySelectorAll('.channel-item[data-channel-id]').forEach(link => {
+                link.addEventListener('click', async e => {
+                    const type = parseInt(link.dataset.channelType ?? '0');
+                    const id = link.dataset.channelId;
+                    const name = link.dataset.channelName || '';
+                    if (window.__voice && window.__voice.joined && type === 0 && id !== channelId) {
+                        e.preventDefault();
+                        await switchToTextChannel(id, name, link.href);
+                    }
+                });
+            });
+
+            // Voice bar leave button
+            document.getElementById('voice-bar-leave')?.addEventListener('click', () => {
+                if (window.__voice && window.__voice.leave) window.__voice.leave();
+                document.getElementById('voice-bar')?.classList.add('hidden');
+            });
+
+            // Poll voice state to keep the bar in sync
+            setInterval(updateVoiceBar, 500);
+        })();
 
         // ── Notification mute toggle ───────────────────────────
         const muteBtn = document.getElementById('notif-mute-toggle');
