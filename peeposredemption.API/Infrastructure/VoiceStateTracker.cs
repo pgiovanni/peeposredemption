@@ -9,7 +9,8 @@ public record VoiceParticipant(
     string ConnectionId,
     bool IsMuted = false,
     bool IsDeafened = false,
-    bool IsCameraOn = false);
+    bool IsCameraOn = false,
+    DateTime JoinedAt = default);
 
 public class VoiceStateTracker
 {
@@ -23,17 +24,17 @@ public class VoiceStateTracker
     {
         var participants = _channels.GetOrAdd(channelId, _ => new ConcurrentDictionary<Guid, VoiceParticipant>());
 
-        // Already in this channel — update connection
-        if (participants.ContainsKey(userId))
+        // Already in this channel — update connection but preserve JoinedAt
+        if (participants.TryGetValue(userId, out var existing))
         {
-            participants[userId] = new VoiceParticipant(userId, displayName, avatarUrl, connectionId);
+            participants[userId] = existing with { DisplayName = displayName, AvatarUrl = avatarUrl, ConnectionId = connectionId };
             return (true, participants.Values.ToList());
         }
 
         if (participants.Count >= MaxParticipants)
             return (false, participants.Values.ToList());
 
-        var participant = new VoiceParticipant(userId, displayName, avatarUrl, connectionId);
+        var participant = new VoiceParticipant(userId, displayName, avatarUrl, connectionId, JoinedAt: DateTime.UtcNow);
         participants[userId] = participant;
         return (true, participants.Values.ToList());
     }
@@ -51,17 +52,18 @@ public class VoiceStateTracker
         return removed;
     }
 
-    public List<(Guid ChannelId, VoiceParticipant Participant)> LeaveByConnectionId(string connectionId)
+    public List<(Guid ChannelId, VoiceParticipant Participant, int CountBeforeRemoval)> LeaveByConnectionId(string connectionId)
     {
-        var removed = new List<(Guid, VoiceParticipant)>();
+        var removed = new List<(Guid, VoiceParticipant, int)>();
 
         foreach (var (channelId, participants) in _channels)
         {
             var match = participants.Values.FirstOrDefault(p => p.ConnectionId == connectionId);
             if (match != null)
             {
+                var countBefore = participants.Count;
                 participants.TryRemove(match.UserId, out _);
-                removed.Add((channelId, match));
+                removed.Add((channelId, match, countBefore));
 
                 if (participants.IsEmpty)
                     _channels.TryRemove(channelId, out _);
@@ -93,4 +95,7 @@ public class VoiceStateTracker
             return participants.Values.ToList();
         return new List<VoiceParticipant>();
     }
+
+    public int GetParticipantCount(Guid channelId) =>
+        _channels.TryGetValue(channelId, out var p) ? p.Count : 0;
 }
