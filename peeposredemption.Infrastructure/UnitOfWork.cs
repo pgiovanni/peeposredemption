@@ -52,6 +52,15 @@ namespace peeposredemption.Infrastructure
         public IMarketplaceListingRepository MarketplaceListings { get; }
         public ITradeOfferRepository TradeOffers { get; }
 
+        // Voice sessions
+        public IVoiceSessionRepository VoiceSessions { get; }
+
+        // Feature requests
+        public IFeatureRequestRepository FeatureRequests { get; }
+
+        // Support tickets
+        public ISupportTicketRepository SupportTickets { get; }
+
         // Anti-alt security
         public IIpBanRepository IpBans { get; }
         public IUserDeviceRepository UserDevices { get; }
@@ -94,6 +103,9 @@ namespace peeposredemption.Infrastructure
             ICraftingRecipeRepository craftingRecipes,
             IMarketplaceListingRepository marketplaceListings,
             ITradeOfferRepository tradeOffers,
+            IVoiceSessionRepository voiceSessions,
+            IFeatureRequestRepository featureRequests,
+            ISupportTicketRepository supportTickets,
             IIpBanRepository ipBans,
             IUserDeviceRepository userDevices,
             IUserIpLogRepository userIpLogs,
@@ -138,6 +150,9 @@ namespace peeposredemption.Infrastructure
             CraftingRecipes = craftingRecipes;
             MarketplaceListings = marketplaceListings;
             TradeOffers = tradeOffers;
+            VoiceSessions = voiceSessions;
+            FeatureRequests = featureRequests;
+            SupportTickets = supportTickets;
             IpBans = ipBans;
             UserDevices = userDevices;
             UserIpLogs = userIpLogs;

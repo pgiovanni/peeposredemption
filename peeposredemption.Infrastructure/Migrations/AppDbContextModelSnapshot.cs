@@ -593,6 +593,43 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.ToTable("direct_messages");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.FeatureRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_feature_requests");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("feature_requests");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.FriendRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -901,6 +938,10 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_edited");
 
+                    b.Property<Guid?>("ReplyToMessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reply_to_message_id");
+
                     b.Property<DateTime>("SentAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("sent_at");
@@ -911,6 +952,8 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("AuthorId");
 
                     b.HasIndex("ChannelId");
+
+                    b.HasIndex("ReplyToMessageId");
 
                     b.ToTable("messages");
                 });
@@ -1811,6 +1854,47 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.ToTable("storage_upgrade_purchases");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.SupportTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("subject");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_support_tickets");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("support_tickets");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.TradeOffer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2207,6 +2291,45 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.ToTable("user_login_streaks");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.VoiceSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ChannelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("channel_id");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.Property<DateTime>("LeftAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("left_at");
+
+                    b.Property<long>("OrbsEarned")
+                        .HasColumnType("bigint")
+                        .HasColumnName("orbs_earned");
+
+                    b.Property<Guid>("ServerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("server_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_voice_sessions");
+
+                    b.HasIndex("UserId", "LeftAt");
+
+                    b.ToTable("voice_sessions");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.ArtItem", b =>
                 {
                     b.HasOne("peeposredemption.Domain.Entities.Artist", "Artist")
@@ -2399,6 +2522,18 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("Sender");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.FeatureRequest", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_feature_requests__users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.FriendRequest", b =>
                 {
                     b.HasOne("peeposredemption.Domain.Entities.User", "Receiver")
@@ -2489,9 +2624,17 @@ namespace peeposredemption.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("f_k_messages_channels_channel_id");
 
+                    b.HasOne("peeposredemption.Domain.Entities.Message", "ReplyToMessage")
+                        .WithMany()
+                        .HasForeignKey("ReplyToMessageId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("f_k_messages_messages_reply_to_message_id");
+
                     b.Navigation("Author");
 
                     b.Navigation("Channel");
+
+                    b.Navigation("ReplyToMessage");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.ModerationLog", b =>
@@ -2806,6 +2949,18 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Navigation("Server");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.SupportTicket", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_support_tickets__users_user_id");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.TradeOffer", b =>
                 {
                     b.HasOne("peeposredemption.Domain.Entities.PlayerCharacter", "Initiator")
@@ -2904,6 +3059,18 @@ namespace peeposredemption.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("f_k_user_login_streaks_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.VoiceSession", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_voice_sessions_users_user_id");
 
                     b.Navigation("User");
                 });
