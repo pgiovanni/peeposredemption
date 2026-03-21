@@ -75,13 +75,14 @@ function shouldGroupMessage(authorId, sentAt) {
     return (new Date(sentAt) - new Date(lastTime)) < 5 * 60 * 1000;
 }
 
-function createMessageEl(author, content, time, isMine = false, id = null, authorId = null, authorAvatarUrl = null, sentAt = null) {
+function createMessageEl(author, content, time, isMine = false, id = null, authorId = null, authorAvatarUrl = null, sentAt = null, replyTo = null) {
     const grouped = authorId && sentAt && shouldGroupMessage(authorId, sentAt);
     const div = document.createElement("div");
     div.className = "message" + (isMine ? " mine" : "") + (grouped ? " message-grouped" : "");
     if (id) div.dataset.id = id;
     if (authorId) { div.dataset.authorId = authorId; div.dataset.authorName = author; }
     if (sentAt) div.dataset.sent = sentAt;
+    if (grouped && sentAt) div.dataset.groupedTime = new Date(sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // Avatar
     const avatarLink = document.createElement(authorId ? 'a' : 'div');
@@ -113,6 +114,22 @@ function createMessageEl(author, content, time, isMine = false, id = null, autho
         authorEl.textContent = author;
     }
 
+    // Reply reference block (above content)
+    if (replyTo && replyTo.messageId) {
+        const ref = document.createElement('div');
+        ref.className = 'message-reply-ref';
+        ref.innerHTML = `<span class="reply-ref-author">@${esc(replyTo.authorUsername || 'Unknown')}</span><span class="reply-ref-preview">${esc(replyTo.contentPreview || '')}</span>`;
+        ref.addEventListener('click', () => {
+            const target = document.querySelector(`[data-id="${replyTo.messageId}"]`);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                target.classList.add('message-highlight');
+                setTimeout(() => target.classList.remove('message-highlight'), 1500);
+            }
+        });
+        div.appendChild(ref);
+    }
+
     const contentEl = document.createElement("div");
     contentEl.className = "message-content";
     contentEl.textContent = content;
@@ -131,7 +148,7 @@ function createMessageEl(author, content, time, isMine = false, id = null, autho
 
     const timeEl = document.createElement("span");
     timeEl.className = "message-time";
-    timeEl.textContent = time;
+    timeEl.textContent = ' \u2014 ' + time;
     authorEl.appendChild(document.createTextNode(' '));
     authorEl.appendChild(timeEl);
 
@@ -159,7 +176,15 @@ function highlightMentions(el) {
     const text = el.textContent;
     if (!/@\w/.test(text)) return;
     const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    el.innerHTML = escaped.replace(/@(\w+)/g, '<span class="mention-text">@$1</span>');
+    el.innerHTML = escaped.replace(/@(\w+)/g, (match, username) => {
+        const member = (typeof memberData !== 'undefined' && Array.isArray(memberData))
+            ? memberData.find(m => m.username.toLowerCase() === username.toLowerCase())
+            : null;
+        if (member) {
+            return `<a class="mention-text" href="/App/Profile?userId=${member.id}">@${username}</a>`;
+        }
+        return `<span class="mention-text">@${username}</span>`;
+    });
 }
 
 function highlightServerRenderedMentions() {
@@ -194,7 +219,12 @@ function ensureDateSeparator(dateStr) {
 
 connection.on("ReceiveChannelMessage", (msg) => {
     ensureDateSeparator(msg.sentAt);
-    const el = createMessageEl(msg.authorUsername, msg.content, formatTime(msg.sentAt), false, msg.id, msg.authorId, msg.authorAvatarUrl, msg.sentAt);
+    const replyTo = msg.replyToMessageId ? {
+        messageId: msg.replyToMessageId,
+        authorUsername: msg.replyToAuthorUsername,
+        contentPreview: msg.replyToContentPreview
+    } : null;
+    const el = createMessageEl(msg.authorUsername, msg.content, formatTime(msg.sentAt), false, msg.id, msg.authorId, msg.authorAvatarUrl, msg.sentAt, replyTo);
     document.getElementById("messages")?.appendChild(el);
     if (typeof window.applyEmojiRendering === 'function') window.applyEmojiRendering();
     scrollToBottom();
@@ -206,8 +236,9 @@ connection.on("ReceiveDirectMessage", (msg) => {
     const avatarUrl = isMine
         ? (typeof currentUserAvatarUrl !== 'undefined' ? currentUserAvatarUrl : null)
         : (typeof recipientAvatarUrl !== 'undefined' ? recipientAvatarUrl : null);
-    const el = createMessageEl(author, msg.content, formatTime(msg.sentAt), isMine, null, null, avatarUrl || null, msg.sentAt);
+    const el = createMessageEl(author, msg.content, formatTime(msg.sentAt), isMine, null, isMine ? currentUserId : msg.senderId, avatarUrl || null, msg.sentAt);
     document.getElementById("messages")?.appendChild(el);
+    if (typeof window.applyEmojiRendering === 'function') window.applyEmojiRendering();
     scrollToBottom();
     if (!isMine) {
         playNotifSound();
@@ -259,6 +290,9 @@ connection.on("ReceiveNotification", (notif) => {
             }
         }
     }
+
+    // Notify the dropdown to refresh
+    if (typeof window._notifDropdownOnNotification === 'function') window._notifDropdownOnNotification();
 });
 
 connection.on("MessageDeleted", (messageId) => {
@@ -362,12 +396,44 @@ connection.on("VoiceChannelState", (data) => {
     scrollToBottom();
 })();
 
+// ── Reply state ────────────────────────────────────────────────────
+let _replyState = null; // { messageId, authorName, preview }
+
+function setReplyState(messageId, authorName, preview) {
+    _replyState = { messageId, authorName, preview };
+    let bar = document.getElementById('reply-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'reply-bar';
+        bar.className = 'reply-bar';
+        const area = document.querySelector('.message-input-area');
+        if (area) area.insertBefore(bar, area.firstChild);
+    }
+    bar.innerHTML = `<span class="reply-bar-text">Replying to <strong>${esc(authorName)}</strong>: ${esc(preview)}</span><button class="reply-bar-cancel" title="Cancel reply">&times;</button>`;
+    bar.querySelector('.reply-bar-cancel').addEventListener('click', clearReplyState);
+    bar.classList.remove('hidden');
+}
+
+function clearReplyState() {
+    _replyState = null;
+    const bar = document.getElementById('reply-bar');
+    if (bar) bar.classList.add('hidden');
+}
+
 document.getElementById("message-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = document.getElementById("message-input");
     if (!input.value.trim()) return;
-    await connection.invoke('SendChannelMessage', channelId, input.value);
+    let content = input.value;
+    const replyId = _replyState?.messageId || null;
+    // Prepend @mention for reply ping
+    if (_replyState && _replyState.authorName) {
+        const mention = '@' + _replyState.authorName;
+        if (!content.startsWith(mention)) content = mention + ' ' + content;
+    }
+    await connection.invoke('SendChannelMessage', channelId, content, replyId);
     input.value = '';
+    clearReplyState();
 });
 
 document.getElementById("dm-form")?.addEventListener("submit", async (e) => {
@@ -665,6 +731,16 @@ function statRow(name, base, bonus) {
             menu.appendChild(sep);
         }
 
+        // -- Reply action (everyone, only for channel messages with an id) --
+        if (messageId) {
+            addItem('Reply', '↩', () => {
+                const preview = messageEl.querySelector('.message-content')?.textContent || '';
+                const truncated = preview.length > 100 ? preview.substring(0, 100) + '...' : preview;
+                setReplyState(messageId, authorName, truncated);
+            });
+            addSeparator();
+        }
+
         // -- Social actions (everyone) --
         addItem('View Profile', '👤', () => {
             window.location.href = `/App/Profile?userId=${authorId}`;
@@ -771,15 +847,31 @@ function statRow(name, base, bonus) {
             }, 'context-menu-danger');
         }
 
-        // Position menu
+        // Position menu with smart overflow handling
         menu.style.left = x + 'px';
         menu.style.top = y + 'px';
         document.body.appendChild(menu);
 
-        // Adjust if overflowing viewport
         const rect = menu.getBoundingClientRect();
-        if (rect.right > window.innerWidth) menu.style.left = (window.innerWidth - rect.width - 8) + 'px';
-        if (rect.bottom > window.innerHeight) menu.style.top = (window.innerHeight - rect.height - 8) + 'px';
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        // Horizontal: shift left if overflows right, clamp to 8px if overflows left
+        if (rect.right > vw) menu.style.left = Math.max(8, vw - rect.width - 8) + 'px';
+        if (rect.left < 0) menu.style.left = '8px';
+
+        // Vertical: flip upward if overflows bottom
+        if (rect.bottom > vh) {
+            const flippedTop = y - rect.height;
+            if (flippedTop >= 0) {
+                menu.style.top = flippedTop + 'px';
+            } else {
+                // Clamp to top and make scrollable
+                menu.style.top = '8px';
+                menu.style.maxHeight = (vh - 16) + 'px';
+                menu.style.overflowY = 'auto';
+            }
+        }
 
         _ctxMenu = menu;
     }
