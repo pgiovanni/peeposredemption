@@ -1,0 +1,120 @@
+@page
+@model peeposredemption.API.Pages.App.VcStatsModel
+@{
+    ViewData["Title"] = "VC Stats";
+}
+
+<div class="app-shell">
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>VC Stats</span>
+        </div>
+        <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
+        <a href="/App/Profile" class="dm-item">Profile</a>
+        <a href="/App/Wallet" class="dm-item">Wallet</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Voice Chat Stats</span>
+            <a href="/App/Wallet" class="orb-balance" title="View Wallet" style="margin-left:auto">
+                <span class="orb-icon"></span>
+                <span>@Model.OrbBalance</span>
+            </a>
+        </div>
+
+        <div class="settings-body">
+            <!-- Summary cards -->
+            <div class="settings-section">
+                <div class="settings-heading">Overview</div>
+                <div style="display:flex;gap:24px;flex-wrap:wrap">
+                    <div class="vc-stat-card">
+                        <div class="vc-stat-value">@Model.TotalHours.ToString("F1")</div>
+                        <div class="vc-stat-label">Total Hours</div>
+                    </div>
+                    <div class="vc-stat-card">
+                        <div class="vc-stat-value">@Model.TotalOrbsEarned</div>
+                        <div class="vc-stat-label">Total Orbs Earned</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Breakdown by server -->
+            @if (Model.Breakdown.Any())
+            {
+                <div class="settings-section">
+                    <div class="settings-heading">By Server</div>
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Server</th>
+                                <th>Hours</th>
+                                <th>Orbs Earned</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.Breakdown)
+                            {
+                                <tr>
+                                    <td>@row.ServerName</td>
+                                    <td>@row.Hours.ToString("F1")</td>
+                                    <td>@row.Orbs</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <!-- Recent sessions -->
+            @if (Model.RecentSessions.Any())
+            {
+                <div class="settings-section">
+                    <div class="settings-heading">Recent Sessions</div>
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Server</th>
+                                <th>Duration</th>
+                                <th>Orbs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var session in Model.RecentSessions)
+                            {
+                                <tr>
+                                    <td class="audit-time">@session.Date.ToString("MMM dd, HH:mm")</td>
+                                    <td>@session.ServerName</td>
+                                    <td>@(session.DurationMinutes < 60 ? $"{session.DurationMinutes:F0} min" : $"{(session.DurationMinutes / 60):F1} hr")</td>
+                                    <td>@session.OrbsEarned</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="settings-section">
+                    <div class="settings-heading">Recent Sessions</div>
+                    <p style="color:#949ba4;font-size:14px">No voice sessions yet. Join a voice channel to start earning orbs!</p>
+                </div>
+            }
+
+            <div class="settings-section">
+                <div class="settings-heading">How It Works</div>
+                <p style="color:#b5bac1;font-size:13px;line-height:1.6">
+                    Earn orbs by spending time in voice channels! You earn <strong style="color:#f2f3f5">1 orb every 5 minutes</strong>
+                    while unmuted with at least 2 people in the channel. Turn your camera on for <strong style="color:#f2f3f5">2 orbs every 5 minutes</strong>.
+                    Daily cap: <strong style="color:#f2f3f5">200 orbs</strong>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

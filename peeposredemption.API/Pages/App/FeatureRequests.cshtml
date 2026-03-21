@@ -1,0 +1,96 @@
+@page
+@model peeposredemption.API.Pages.App.FeatureRequestsModel
+@{
+    ViewData["Title"] = "Feature Requests";
+}
+
+<div class="app-shell">
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>Feature Requests</span>
+        </div>
+        <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
+        <a href="/App/Profile" class="dm-item">Profile</a>
+        <a href="/App/Wallet" class="dm-item">Wallet</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Feature Requests</span>
+            <a href="/App/Wallet" class="orb-balance" title="View Wallet" style="margin-left:auto">
+                <span class="orb-icon"></span>
+                <span>@Model.OrbBalance</span>
+            </a>
+        </div>
+
+        <div class="settings-body">
+            <!-- Submit form -->
+            <div class="settings-section">
+                <div class="settings-heading">Submit a Feature Request</div>
+                <p style="color:#b5bac1;font-size:13px;margin-bottom:12px">
+                    Have an idea for Torvex? We'd love to hear it! Tell us what you'd like to see.
+                </p>
+
+                @if (Model.SubmitSuccess)
+                {
+                    <div class="form-success" style="margin-bottom:12px">Your feature request has been submitted! Thank you for your feedback.</div>
+                }
+
+                <form method="post">
+                    <div style="margin-bottom:12px">
+                        <label style="display:block;font-size:12px;color:#b5bac1;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">Title</label>
+                        <input type="text" name="Title" value="@Model.Title" maxlength="100" required
+                               placeholder="Brief summary of your idea"
+                               style="width:100%;padding:8px 12px;background:#1e1f22;border:1px solid #3f4147;border-radius:4px;color:#f2f3f5;font-size:14px" />
+                    </div>
+                    <div style="margin-bottom:12px">
+                        <label style="display:block;font-size:12px;color:#b5bac1;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">Description</label>
+                        <textarea name="Description" maxlength="1000" required rows="5"
+                                  placeholder="Describe your feature idea in detail..."
+                                  style="width:100%;padding:8px 12px;background:#1e1f22;border:1px solid #3f4147;border-radius:4px;color:#f2f3f5;font-size:14px;resize:vertical">@Model.Description</textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">Submit Request</button>
+                </form>
+            </div>
+
+            <!-- Past submissions -->
+            @if (Model.MyRequests.Any())
+            {
+                <div class="settings-section">
+                    <div class="settings-heading">Your Submissions</div>
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var req in Model.MyRequests)
+                            {
+                                <tr>
+                                    <td>@req.Title</td>
+                                    <td><span class="feature-status-badge status-@req.Status.ToString().ToLower()">@req.Status</span></td>
+                                    <td class="audit-time">@req.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="settings-section">
+                    <div class="settings-heading">Your Submissions</div>
+                    <p style="color:#949ba4;font-size:14px">You haven't submitted any feature requests yet.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>

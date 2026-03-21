@@ -1,0 +1,110 @@
+@page
+@model peeposredemption.API.Pages.App.Admin.SupportTicketAdminModel
+@{
+    ViewData["Title"] = "Admin — Support Tickets";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Index" class="icon-btn" title="Back">&#8592;</a>
+            <span>Support Tickets</span>
+        </div>
+        <div class="sidebar-section-header">ADMIN</div>
+        <a href="/App/Admin/SecurityAdmin" class="channel-item">Security</a>
+        <a href="/App/Admin/BanAdmin" class="channel-item">Bans & Servers</a>
+        <a href="/App/Admin/Referrals" class="channel-item">Referrals</a>
+        <a href="/App/Admin/ArtistAdmin" class="channel-item">Artists</a>
+        <a href="/App/Admin/FeatureRequestAdmin" class="channel-item">Feature Requests</a>
+        <a href="/App/Admin/SupportTicketAdmin" class="channel-item active">Support Tickets</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Support Tickets</span>
+        </div>
+
+        <div class="settings-body admin-body">
+        <section class="settings-section">
+            <h3 class="settings-heading">ALL SUPPORT TICKETS</h3>
+
+            @if (!Model.Tickets.Any())
+            {
+                <div class="sidebar-empty">No support tickets yet.</div>
+            }
+            else
+            {
+                <div class="admin-table-wrap">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Category</th>
+                            <th>Subject</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ticket in Model.Tickets)
+                        {
+                            var catLabel = ticket.Category switch
+                            {
+                                peeposredemption.Domain.Entities.SupportTicketCategory.BugReport => "Bug Report",
+                                peeposredemption.Domain.Entities.SupportTicketCategory.AccountHelp => "Account Help",
+                                peeposredemption.Domain.Entities.SupportTicketCategory.GeneralQuestion => "General Question",
+                                peeposredemption.Domain.Entities.SupportTicketCategory.TrustSafety => "Trust & Safety",
+                                _ => ticket.Category.ToString()
+                            };
+                            var statusClass = ticket.Status switch
+                            {
+                                peeposredemption.Domain.Entities.SupportTicketStatus.Open => "status-open",
+                                peeposredemption.Domain.Entities.SupportTicketStatus.InProgress => "status-inprogress",
+                                peeposredemption.Domain.Entities.SupportTicketStatus.Resolved => "status-resolved",
+                                peeposredemption.Domain.Entities.SupportTicketStatus.Closed => "status-closed",
+                                _ => ""
+                            };
+                            var statusLabel = ticket.Status switch
+                            {
+                                peeposredemption.Domain.Entities.SupportTicketStatus.InProgress => "In Progress",
+                                _ => ticket.Status.ToString()
+                            };
+                            <tr>
+                                <td><strong>@ticket.User.Username</strong></td>
+                                <td>@catLabel</td>
+                                <td>@ticket.Subject</td>
+                                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@ticket.Description">@ticket.Description</td>
+                                <td><span class="ticket-status-badge @statusClass">@statusLabel</span></td>
+                                <td class="audit-time">@ticket.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="UpdateStatus" style="display:flex;gap:4px;align-items:center">
+                                        <input type="hidden" name="ticketId" value="@ticket.Id" />
+                                        <select name="status" style="padding:4px 8px;background:#1e1f22;border:1px solid #3f4147;border-radius:4px;color:#f2f3f5;font-size:12px">
+                                            @foreach (var s in Enum.GetValues<peeposredemption.Domain.Entities.SupportTicketStatus>())
+                                            {
+                                                var sLabel = s switch
+                                                {
+                                                    peeposredemption.Domain.Entities.SupportTicketStatus.InProgress => "In Progress",
+                                                    _ => s.ToString()
+                                                };
+                                                <option value="@s" selected="@(s == ticket.Status)">@sLabel</option>
+                                            }
+                                        </select>
+                                        <button type="submit" class="btn-primary btn-sm">Update</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </section>
+        </div>
+    </div>
+</div>

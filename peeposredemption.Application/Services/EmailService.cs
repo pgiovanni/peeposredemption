@@ -88,6 +88,23 @@ namespace peeposredemption.Application.Services
             await _resend.EmailSendAsync(message);
         }
 
+        public async Task SendSupportTicketNotificationAsync(string username, string category, string subject, string description)
+        {
+            var message = new EmailMessage
+            {
+                From = $"PeePo's Redemption <{_fromAddress}>",
+                To = { _adminEmail },
+                Subject = $"[Torvex] New support ticket — [{category}] {subject}",
+                HtmlBody = $"<p>A new support ticket has been submitted.</p>" +
+                           $"<p><strong>User:</strong> {System.Net.WebUtility.HtmlEncode(username)}<br/>" +
+                           $"<strong>Category:</strong> {System.Net.WebUtility.HtmlEncode(category)}<br/>" +
+                           $"<strong>Subject:</strong> {System.Net.WebUtility.HtmlEncode(subject)}<br/>" +
+                           $"<strong>Description:</strong> {System.Net.WebUtility.HtmlEncode(description)}</p>" +
+                           $"<p>Review at <a href=\"https://torvex.app/App/Admin/SupportTicketAdmin\">Support Tickets Admin</a>.</p>"
+            };
+            await _resend.EmailSendAsync(message);
+        }
+
         public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
         {
             var message = new EmailMessage
