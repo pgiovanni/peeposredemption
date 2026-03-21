@@ -53,6 +53,15 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<CraftingRecipeIngredient> CraftingRecipeIngredients { get; set; }
         public DbSet<MarketplaceListing> MarketplaceListings { get; set; }
 
+        // Voice sessions
+        public DbSet<VoiceSession> VoiceSessions { get; set; }
+
+        // Feature requests
+        public DbSet<FeatureRequest> FeatureRequests { get; set; }
+
+        // Support tickets
+        public DbSet<SupportTicket> SupportTickets { get; set; }
+
         // Anti-alt security
         public DbSet<IpBan> IpBans { get; set; }
         public DbSet<UserDevice> UserDevices { get; set; }
@@ -87,6 +96,23 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasOne(si => si.CreatedBy)
                 .WithMany()
                 .HasForeignKey(si => si.CreatedByUserId);
+
+            // VoiceSession
+            modelBuilder.Entity<VoiceSession>()
+                .HasOne(v => v.User)
+                .WithMany()
+                .HasForeignKey(v => v.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<VoiceSession>()
+                .HasIndex(v => new { v.UserId, v.LeftAt });
+
+            // Message reply self-reference
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.ReplyToMessage)
+                .WithMany()
+                .HasForeignKey(m => m.ReplyToMessageId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // Prevent cascade delete conflict on DirectMessages
             modelBuilder.Entity<DirectMessage>()
@@ -480,6 +506,26 @@ namespace peeposredemption.Infrastructure.Persistence
 
             modelBuilder.Entity<MarketplaceListing>()
                 .HasIndex(l => new { l.Status, l.ExpiresAt });
+
+            // ── Feature Requests ────────────────────────────────────────
+            modelBuilder.Entity<FeatureRequest>()
+                .HasOne(f => f.User)
+                .WithMany()
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FeatureRequest>()
+                .HasIndex(f => f.UserId);
+
+            // ── Support Tickets ────────────────────────────────────────
+            modelBuilder.Entity<SupportTicket>()
+                .HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SupportTicket>()
+                .HasIndex(t => t.UserId);
 
             // ── Anti-Alt Security ────────────────────────────────────────
 

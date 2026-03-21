@@ -189,6 +189,19 @@ app.MapPost("/api/auth/refresh", async (HttpRequest req, IMediator mediator) =>
     }
 }).AllowAnonymous().DisableAntiforgery();
 
+// ── Channel messages (AJAX channel switching while in voice) ─────────────
+app.MapGet("/api/channels/{channelId:guid}/messages", async (Guid channelId, HttpContext ctx, peeposredemption.Domain.Interfaces.IUnitOfWork uow, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var channel = await uow.Channels.GetByIdAsync(channelId);
+    if (channel == null) return Results.NotFound();
+    if (!await uow.Servers.IsMemberAsync(channel.ServerId, Guid.Parse(uid)))
+        return Results.Forbid();
+    var messages = await mediator.Send(new peeposredemption.Application.Features.Messages.Queries.GetChannelMessagesQuery(channelId));
+    return Results.Ok(messages);
+}).RequireAuthorization();
+
 // ── Session management API ──────────────────────────────────────────
 app.MapGet("/api/sessions", async (HttpContext ctx, IMediator mediator) =>
 {

@@ -44,7 +44,7 @@ namespace peeposredemption.API.Hubs
         public async Task JoinChannel(Guid serverId, Guid channelId) =>
             await Groups.AddToGroupAsync(Context.ConnectionId, $"channel:{channelId}");
 
-        public async Task SendChannelMessage(Guid channelId, string content)
+        public async Task SendChannelMessage(Guid channelId, string content, Guid? replyToMessageId = null)
         {
             // Slash command interception for RPG game system
             if (content.StartsWith("/"))
@@ -73,7 +73,7 @@ namespace peeposredemption.API.Hubs
             var displayName = await GetDisplayNameAsync();
 
             var dto = await _mediator.Send(
-                new SendMessageCommand(channelId, CurrentUserId, displayName, content));
+                new SendMessageCommand(channelId, CurrentUserId, displayName, content, replyToMessageId));
             await Clients.Group($"channel:{channelId}")
                 .SendAsync("ReceiveChannelMessage", dto);
 
@@ -247,8 +247,12 @@ namespace peeposredemption.API.Hubs
 
         public async Task LeaveVoiceChannel(Guid channelId)
         {
+            // Check participant count BEFORE removing (for orb eligibility: 2+ people)
+            var countBefore = _voiceTracker.GetParticipantCount(channelId);
             var removed = _voiceTracker.Leave(channelId, CurrentUserId);
             if (removed == null) return;
+
+            await PersistVoiceSessionAsync(channelId, removed, countBefore);
 
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"voice:{channelId}");
             await Clients.Group($"voice:{channelId}")
@@ -258,6 +262,67 @@ namespace peeposredemption.API.Hubs
             var remaining = _voiceTracker.GetParticipants(channelId);
             await Clients.Group($"channel:{channelId}")
                 .SendAsync("VoiceChannelState", new { ChannelId = channelId, Participants = remaining.Select(p => new { p.UserId, p.DisplayName, p.AvatarUrl }) });
+        }
+
+        private async Task PersistVoiceSessionAsync(Guid channelId, VoiceParticipant participant, int participantCountBefore)
+        {
+            var now = DateTime.UtcNow;
+            var joinedAt = participant.JoinedAt == default ? now.AddMinutes(-1) : participant.JoinedAt;
+            var durationMinutes = (now - joinedAt).TotalMinutes;
+
+            // Get the server for this channel
+            var channel = await _uow.Channels.GetByIdAsync(channelId);
+            var serverId = channel?.ServerId ?? Guid.Empty;
+
+            // Calculate orb rewards
+            // Base: 1 orb per 5 min (unmuted, 2+ people). Camera on: 2 orbs per 5 min.
+            long orbsEarned = 0;
+            bool eligible = !participant.IsMuted && participantCountBefore >= 2;
+            if (eligible && durationMinutes >= 1)
+            {
+                var intervals = (long)(durationMinutes / 5);
+                var ratePerInterval = participant.IsCameraOn ? 2L : 1L;
+                orbsEarned = intervals * ratePerInterval;
+
+                // Daily cap: 200 orbs from VC
+                if (orbsEarned > 0)
+                {
+                    var todayEarned = await _uow.VoiceSessions.GetTodayOrbsEarnedAsync(participant.UserId);
+                    var remaining = Math.Max(0, 200 - todayEarned);
+                    orbsEarned = Math.Min(orbsEarned, remaining);
+                }
+
+                // Credit to user's wallet
+                if (orbsEarned > 0)
+                {
+                    var user = await _uow.Users.GetByIdAsync(participant.UserId);
+                    if (user != null)
+                    {
+                        user.OrbBalance += orbsEarned;
+                        var tx = new OrbTransaction
+                        {
+                            UserId = participant.UserId,
+                            Amount = orbsEarned,
+                            Type = OrbTransactionType.VoiceReward,
+                            Description = $"VC reward: {durationMinutes:F0} min in voice"
+                        };
+                        await _uow.OrbTransactions.AddAsync(tx);
+                    }
+                }
+            }
+
+            // Persist the session record
+            var session = new VoiceSession
+            {
+                UserId = participant.UserId,
+                ChannelId = channelId,
+                ServerId = serverId,
+                JoinedAt = joinedAt,
+                LeftAt = now,
+                OrbsEarned = orbsEarned
+            };
+            await _uow.VoiceSessions.AddAsync(session);
+            await _uow.SaveChangesAsync();
         }
 
         public async Task SendWebRtcOffer(string targetUserId, string sdp)
@@ -319,10 +384,12 @@ namespace peeposredemption.API.Hubs
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            // Voice cleanup
+            // Voice cleanup — LeaveByConnectionId now returns count before removal for orb eligibility
             var removed = _voiceTracker.LeaveByConnectionId(Context.ConnectionId);
-            foreach (var (channelId, participant) in removed)
+            foreach (var (channelId, participant, countBefore) in removed)
             {
+                await PersistVoiceSessionAsync(channelId, participant, countBefore);
+
                 await Clients.Group($"voice:{channelId}")
                     .SendAsync("VoiceUserLeft", new { participant.UserId });
 
