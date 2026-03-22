@@ -228,6 +228,17 @@ connection.on("ReceiveChannelMessage", (msg) => {
     document.getElementById("messages")?.appendChild(el);
     if (typeof window.applyEmojiRendering === 'function') window.applyEmojiRendering();
     scrollToBottom();
+
+    // Play sound on @mention or @everyone (not for own messages)
+    const notMyMessage = typeof currentUserId === 'undefined' || msg.authorId !== currentUserId;
+    if (notMyMessage) {
+        const lower = msg.content.toLowerCase();
+        const mentionPattern = (typeof currentUsername !== 'undefined' && currentUsername)
+            ? '@' + currentUsername.toLowerCase() : null;
+        if (lower.includes('@everyone') || (mentionPattern && lower.includes(mentionPattern))) {
+            playNotifSound();
+        }
+    }
 });
 
 connection.on("ReceiveDirectMessage", (msg) => {
