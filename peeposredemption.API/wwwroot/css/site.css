@@ -375,7 +375,22 @@ button { cursor: pointer; font-family: inherit; }
     display: flex;
     flex-direction: column;
     gap: 8px;
+    position: relative;
 }
+.welcome-banner-dismiss {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #72767d;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 3px;
+    line-height: 1;
+}
+.welcome-banner-dismiss:hover { color: #dcddde; background: #3a3c41; }
 .welcome-invite-banner-text { font-size: 13px; color: #dcddde; display: flex; flex-direction: column; gap: 2px; }
 .welcome-invite-banner-text strong { color: #fff; font-size: 14px; }
 .welcome-invite-banner-text span { color: #949ba4; font-size: 12px; }

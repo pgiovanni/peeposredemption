@@ -21,7 +21,7 @@
 
         @if (Model.InviteLink != null)
         {
-            <div class="invite-section">
+            <div class="invite-section" id="invite-section">
                 <span class="invite-label">Invite</span>
                 <a href="@Model.InviteLink" class="invite-link" title="@Model.InviteLink">Copy Link</a>
             </div>
@@ -190,6 +190,20 @@
         }
         else
         {
+            @if (Model.WelcomeBannerUrl != null)
+            {
+                <div class="welcome-invite-banner" id="welcome-invite-banner">
+                    <button class="welcome-banner-dismiss" id="invite-dismiss" title="Dismiss">&#x2715;</button>
+                    <div class="welcome-invite-banner-text">
+                        <strong>Invite your friends!</strong>
+                        <span>Share your link — when friends sign up through it, you earn referral credit.</span>
+                    </div>
+                    <div class="welcome-invite-banner-link">
+                        <input class="welcome-invite-banner-input" value="@Model.WelcomeBannerUrl" readonly />
+                        <button class="btn-primary btn-sm" onclick="navigator.clipboard.writeText('@Model.WelcomeBannerUrl');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)">Copy</button>
+                    </div>
+                </div>
+            }
             <!-- Text Channel Messages -->
             <div id="messages" class="messages-container">
                 @foreach (var msg in Model.Messages)
@@ -309,6 +323,20 @@
 </div>
 
 @section Scripts {
+    <script>
+        // Invite banner dismiss (per-server, persisted in localStorage)
+        const _inviteSection = document.getElementById('invite-section');
+        const _inviteBanner = document.getElementById('welcome-invite-banner');
+        const _inviteDismiss = document.getElementById('invite-dismiss');
+        const _inviteKey = 'invite-dismissed-@Model.ServerId';
+        function _dismissInvite() {
+            if (_inviteSection) _inviteSection.style.display = 'none';
+            if (_inviteBanner) _inviteBanner.style.display = 'none';
+            localStorage.setItem(_inviteKey, '1');
+        }
+        if (localStorage.getItem(_inviteKey)) _dismissInvite();
+        _inviteDismiss?.addEventListener('click', _dismissInvite);
+    </script>
     <script>
         let channelId = '@Model.ChannelId';
         const serverId = '@Model.ServerId';
