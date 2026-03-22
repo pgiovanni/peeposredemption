@@ -367,6 +367,30 @@ button { cursor: pointer; font-family: inherit; }
 .invite-link { color: #5865f2; font-weight: 600; }
 .invite-link:hover { text-decoration: underline; }
 
+/* Welcome invite banner (personal server, <10 members) */
+.welcome-invite-banner {
+    background: linear-gradient(135deg, #2c2f3a 0%, #23272a 100%);
+    border-bottom: 1px solid #3d4147;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.welcome-invite-banner-text { font-size: 13px; color: #dcddde; display: flex; flex-direction: column; gap: 2px; }
+.welcome-invite-banner-text strong { color: #fff; font-size: 14px; }
+.welcome-invite-banner-text span { color: #949ba4; font-size: 12px; }
+.welcome-invite-banner-link { display: flex; gap: 8px; align-items: center; }
+.welcome-invite-banner-input {
+    flex: 1;
+    background: #1e1f22;
+    border: 1px solid #3d4147;
+    border-radius: 4px;
+    color: #b5bac1;
+    font-size: 12px;
+    padding: 6px 10px;
+    font-family: monospace;
+}
+
 /* ===== COL 3: CONTENT AREA ===== */
 .content-area {
     flex: 1;
@@ -2631,8 +2655,7 @@ img.emoji {
 /* ===== MENTION HIGHLIGHTING ===== */
 .message.message-mentioned {
     background: rgba(250, 168, 26, 0.08);
-    border-left: 3px solid #faa81a;
-    padding-left: 13px;
+    box-shadow: inset 3px 0 0 #faa81a;
 }
 .message.message-mentioned:hover { background: rgba(250, 168, 26, 0.12); }
 .mention-text {
