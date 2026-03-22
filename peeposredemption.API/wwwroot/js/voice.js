@@ -467,7 +467,9 @@
 
     disconnectBtn.addEventListener('click', () => {
         leaveVoice();
-        window.location.href = `/App/Channel?channelId=${channelId}&serverId=${serverId}`;
+        // Navigate to a text channel so the page doesn't reload this voice channel and auto-rejoin
+        const firstTextChannel = document.querySelector('.channel-item[data-channel-type="0"]');
+        window.location.href = firstTextChannel ? firstTextChannel.href : '/App/Index';
     });
 
     async function leaveVoice() {
