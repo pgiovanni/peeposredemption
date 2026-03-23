@@ -18,6 +18,7 @@
         @if (Model.CurrentUserRole == ServerRole.Owner)
         {
             <a href="#server" class="channel-item settings-nav" data-tab="server">Server</a>
+            <a href="#security" class="channel-item settings-nav" data-tab="security">Security</a>
         }
         <a href="#audit" class="channel-item settings-nav" data-tab="audit">Audit Log</a>
     </div>
@@ -201,7 +202,47 @@
                         </form>
                         <div class="emoji-hint">PNG, JPEG, WebP, or GIF · Max 15MB · Recommended: 128x128</div>
                     </section>
+                    <section class="settings-section" style="margin-top:24px">
+                        <h3 class="settings-heading">VISIBILITY</h3>
+                        <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px">
+                            <span style="color:#dcddde">Private server</span>
+                            <label class="toggle-switch" style="margin:0">
+                                <input type="checkbox" id="private-server-toggle" @(Model.IsPrivate ? "checked" : "") />
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span id="private-server-status" style="color:#72767d;font-size:13px">
+                                @(Model.IsPrivate ? "On — invite prompts are hidden" : "Off — invite prompts show until 5 members")
+                            </span>
+                        </div>
+                    </section>
                 </div>
+            }
+
+            <!-- Security Tab (Owner only) -->
+            @if (Model.CurrentUserRole == ServerRole.Owner)
+            {
+            <div class="settings-tab" id="tab-security">
+                <section class="settings-section">
+                    <h3 class="settings-heading">MODERATION SECURITY</h3>
+                    <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px">
+                        <span style="color:#dcddde">Require MFA for moderators</span>
+                        <label class="toggle-switch" style="margin:0">
+                            <input type="checkbox" id="require-mfa-toggle" @(Model.RequireMfaForModerators ? "checked" : "") />
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span id="require-mfa-status" style="color:#72767d;font-size:13px">
+                            @(Model.RequireMfaForModerators ? "Enabled — mods without MFA cannot take moderation actions" : "Disabled")
+                        </span>
+                    </div>
+                </section>
+
+                <section class="settings-section" style="margin-top:24px">
+                    <h3 class="settings-heading">ALT DETECTION</h3>
+                    <p style="color:#72767d;font-size:13px;margin-bottom:12px">Confidence-scored alt account pairs within this server (score ≥ 40).</p>
+                    <button id="load-server-alt-suspects" class="btn btn-sm">Load Alt Suspects</button>
+                    <div id="server-alt-suspects-container" style="margin-top:12px"></div>
+                </section>
+            </div>
             }
 
             <!-- Audit Log Tab -->
@@ -260,5 +301,83 @@
         const d = new Date(el.dataset.utc);
         el.textContent = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     });
+
+    // Security tab — MFA toggle
+    const mfaToggle = document.getElementById('require-mfa-toggle');
+    if (mfaToggle) {
+        const jwt = document.querySelector('meta[name="jwt"]')?.content;
+        const serverId = '@Model.ServerId';
+        mfaToggle.addEventListener('change', async () => {
+            const enabled = mfaToggle.checked;
+            const res = await fetch('/api/servers/' + serverId + '/require-mfa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+                body: JSON.stringify({ enabled })
+            });
+            const status = document.getElementById('require-mfa-status');
+            if (res.ok) {
+                status.textContent = enabled
+                    ? 'Enabled — mods without MFA cannot take moderation actions'
+                    : 'Disabled';
+                status.style.color = enabled ? '#3ba55c' : '#72767d';
+            } else {
+                mfaToggle.checked = !enabled;
+                status.textContent = 'Failed to update. Try again.';
+                status.style.color = '#ed4245';
+            }
+        });
+
+        // Private server toggle
+        const privateToggle = document.getElementById('private-server-toggle');
+        if (privateToggle) {
+            privateToggle.addEventListener('change', async () => {
+                const enabled = privateToggle.checked;
+                const res = await fetch('/api/servers/' + serverId + '/private', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+                    body: JSON.stringify({ enabled })
+                });
+                const status = document.getElementById('private-server-status');
+                if (res.ok) {
+                    status.textContent = enabled ? 'On — invite prompts are hidden' : 'Off — invite prompts show until 5 members';
+                    status.style.color = enabled ? '#3ba55c' : '#72767d';
+                } else {
+                    privateToggle.checked = !enabled;
+                    status.textContent = 'Failed to update. Try again.';
+                    status.style.color = '#ed4245';
+                }
+            });
+        }
+
+        // Alt detection
+        const altBtn = document.getElementById('load-server-alt-suspects');
+        if (altBtn) {
+            altBtn.addEventListener('click', async () => {
+                const container = document.getElementById('server-alt-suspects-container');
+                container.innerHTML = '<p style="color:#949ba4">Loading…</p>';
+                const res = await fetch('/api/moderation/alt-suspects?serverId=' + serverId, {
+                    headers: { 'Authorization': 'Bearer ' + jwt }
+                });
+                if (!res.ok) { container.innerHTML = '<p style="color:#ed4245">Failed to load.</p>'; return; }
+                const pairs = await res.json();
+                if (!pairs.length) {
+                    container.innerHTML = '<p style="color:#3ba55c">No alt suspects detected in this server.</p>';
+                    return;
+                }
+                let html = '<table class="audit-table" style="width:100%"><thead><tr><th>User A</th><th>User B</th><th>Score</th><th>Signals</th></tr></thead><tbody>';
+                pairs.forEach(p => {
+                    const scoreColor = p.score >= 80 ? '#ed4245' : p.score >= 60 ? '#faa61a' : '#dcddde';
+                    html += `<tr>
+                        <td>${p.userAName}</td>
+                        <td>${p.userBName}</td>
+                        <td style="font-weight:bold;color:${scoreColor}">${p.score}%</td>
+                        <td style="font-size:12px;color:#949ba4">${p.matchReasons.join(' · ')}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            });
+        }
+    }
 </script>
 }

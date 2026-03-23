@@ -124,6 +124,14 @@
             </div>
         </section>
 
+        <!-- Alt Detection Panel -->
+        <section class="settings-section" style="margin-top:24px">
+            <h3 class="settings-heading">ALT DETECTION — CONFIDENCE SCORES</h3>
+            <p style="color:#72767d;margin-bottom:12px;font-size:13px">Pairs with score ≥ 40 are shown. Score is capped at 99.</p>
+            <button id="load-alt-suspects-btn" class="btn btn-sm">Load Alt Suspects</button>
+            <div id="alt-suspects-container" style="margin-top:12px"></div>
+        </section>
+
         <!-- User Detail Panel -->
         <div id="detail-panel" style="display:none;margin-top:24px">
             <section class="settings-section">
@@ -240,9 +248,39 @@
             // Fingerprints
             if (data.fingerprints.length) {
                 html += '<h4 style="margin:12px 0 8px;color:#f2f3f5">Fingerprints</h4>';
-                html += '<table class="audit-table" style="width:100%"><thead><tr><th>Hash</th><th>Date</th></tr></thead><tbody>';
-                data.fingerprints.forEach(f => {
-                    html += `<tr><td style="font-family:monospace;font-size:11px">${f.fingerprintHash}</td><td>${new Date(f.createdAt).toLocaleString()}</td></tr>`;
+                html += '<table class="audit-table" style="width:100%"><thead><tr><th>Hash</th><th>Date</th><th>Details</th></tr></thead><tbody>';
+                data.fingerprints.forEach((f, i) => {
+                    let detailsHtml = '—';
+                    if (f.rawComponents) {
+                        try {
+                            const c = JSON.parse(f.rawComponents);
+                            const labels = {
+                                webglRenderer: 'GPU',
+                                webglVendor: 'GPU Vendor',
+                                screenWidth: 'Screen W',
+                                screenHeight: 'Screen H',
+                                colorDepth: 'Color Depth',
+                                timezoneOffset: 'Timezone Offset',
+                                language: 'Language',
+                                platform: 'Platform',
+                                hardwareConcurrency: 'CPU Cores'
+                            };
+                            const rows = Object.entries(labels)
+                                .filter(([k]) => c[k] !== undefined && c[k] !== '')
+                                .map(([k, label]) => `<tr><td style="color:#949ba4;padding:2px 8px 2px 0">${label}</td><td style="font-family:monospace;font-size:11px">${c[k]}</td></tr>`)
+                                .join('');
+                            const expandId = `fp-expand-${i}`;
+                            detailsHtml = `<button onclick="const el=document.getElementById('${expandId}');el.style.display=el.style.display==='none'?'block':'none'" class="btn btn-sm">Expand</button>
+                                <div id="${expandId}" style="display:none;margin-top:6px;background:#1e1f22;border-radius:6px;padding:8px">
+                                    <table style="border-collapse:collapse">${rows}</table>
+                                </div>`;
+                        } catch (_) {}
+                    }
+                    html += `<tr>
+                        <td style="font-family:monospace;font-size:11px">${f.fingerprintHash}</td>
+                        <td>${new Date(f.createdAt).toLocaleString()}</td>
+                        <td>${detailsHtml}</td>
+                    </tr>`;
                 });
                 html += '</tbody></table>';
             }
@@ -327,6 +365,31 @@
         if (res.ok) {
             document.getElementById('sessions-content').innerHTML = '<p style="color:#949ba4">All sessions revoked.</p>';
         }
+    });
+
+    // ── Alt Detection ──
+    document.getElementById('load-alt-suspects-btn').addEventListener('click', async () => {
+        const container = document.getElementById('alt-suspects-container');
+        container.innerHTML = '<p style="color:#949ba4">Loading…</p>';
+        const res = await fetch('/api/admin/alt-suspects', { headers });
+        if (!res.ok) { container.innerHTML = '<p style="color:#ed4245">Failed to load.</p>'; return; }
+        const pairs = await res.json();
+        if (!pairs.length) {
+            container.innerHTML = '<p style="color:#3ba55c">No alt suspects detected.</p>';
+            return;
+        }
+        let html = '<table class="audit-table" style="width:100%"><thead><tr><th>User A</th><th>User B</th><th>Score</th><th>Signals</th></tr></thead><tbody>';
+        pairs.forEach(p => {
+            const scoreColor = p.score >= 80 ? '#ed4245' : p.score >= 60 ? '#faa61a' : '#dcddde';
+            html += `<tr>
+                <td><a href="/App/Admin/SecurityAdmin?highlight=${p.userAId}" style="color:#00b0f4">${p.userAName}</a></td>
+                <td><a href="/App/Admin/SecurityAdmin?highlight=${p.userBId}" style="color:#00b0f4">${p.userBName}</a></td>
+                <td style="font-weight:bold;color:${scoreColor}">${p.score}%</td>
+                <td style="font-size:12px;color:#949ba4">${p.matchReasons.join(' · ')}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
     });
 </script>
 }
