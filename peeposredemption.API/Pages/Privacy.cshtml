@@ -6,7 +6,7 @@
 <script>document.body.classList.add('auth-page');</script>
 <div style="max-width:900px;margin:0 auto;padding:40px 16px;color:#dcddde;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.7">
     <h1 style="color:#f2f3f5;margin-bottom:8px">Privacy Policy</h1>
-    <p style="color:#72767d;margin-bottom:32px">Last updated: March 17, 2026</p>
+    <p style="color:#72767d;margin-bottom:32px">Last updated: March 22, 2026 (rev. 2)</p>
 
     <p>Torvex ("we," "us," or "our") operates the website at <strong>torvex.app</strong>. This page explains what information we collect, how we use it, and your choices.</p>
 
@@ -28,7 +28,13 @@
     <p>We check whether your connection is coming through a VPN or Tor. We don't block these connections — we just note it for security review if needed.</p>
 
     <h3 style="color:#f2f3f5">Browser Fingerprinting</h3>
-    <p>If an account is flagged for security review, we may collect a fingerprint of your browser's settings (like screen size, timezone, and language). This is <strong>only done for flagged accounts</strong>, not everyone.</p>
+    <p>When you're logged in, we collect a fingerprint of your browser's technical settings — such as screen resolution, timezone, language, and graphics hardware. This is used solely for security purposes: detecting ban evasion and linking accounts that may belong to the same person. We do not use it for advertising or tracking across other websites.</p>
+
+    <h3 style="color:#f2f3f5">Interaction Patterns</h3>
+    <p>We analyse metadata about who you interact with on the platform — such as who you mention, message, or react to — to detect ban evasion. We do not read the content of your messages for this purpose. This analysis looks at social connection patterns only, and is used solely to identify accounts that may belong to a previously banned user.</p>
+
+    <h3 style="color:#f2f3f5">Phone Number (Optional)</h3>
+    <p>You may optionally add a phone number to your account for account recovery purposes. If our systems detect that a new registration may be evading a ban, phone verification may be required before the account is activated. Phone numbers are never shared with third parties or used for marketing.</p>
 
     <h2 style="color:#f2f3f5;margin-top:32px">2. How We Use It</h2>
     <ul>
@@ -49,6 +55,7 @@
         <li><strong>Resend</strong> — sends emails (confirmations, notifications)</li>
         <li><strong>Cloudflare R2</strong> — stores uploaded images (avatars, emojis, banners)</li>
         <li><strong>ip-api.com</strong> — checks if an IP is a VPN (no personal data shared)</li>
+        <li><strong>Klipy</strong> — powers GIF search and embedding</li>
     </ul>
 
     <h2 style="color:#f2f3f5;margin-top:32px">5. How Long We Keep Your Data</h2>

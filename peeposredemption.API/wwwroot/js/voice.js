@@ -124,11 +124,15 @@
                     peer.audioEl.autoplay = true;
                     document.body.appendChild(peer.audioEl);
                 }
-                peer.audioEl.srcObject = stream;
+                // Use a dedicated stream for the audio element so the AudioContext
+                // used in speaking detection doesn't interfere with playback.
+                const audioStream = new MediaStream([e.track]);
+                peer.audioEl.srcObject = audioStream;
                 peer.audioEl.muted = isDeafened;
+                peer.audioEl.play().catch(() => {});
 
-                // Speaking detection
-                setupSpeakingDetection(remoteUserId, stream);
+                // Speaking detection gets its own stream clone
+                setupSpeakingDetection(remoteUserId, new MediaStream([e.track]));
             }
         };
 

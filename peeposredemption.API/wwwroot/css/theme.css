@@ -1,0 +1,205 @@
+/*
+ * TORTOISE THEME — dev only
+ * Palette: near-black dark brown → rich amber → gold highlights
+ * To remove: delete this file and the <link> in _Layout.cshtml
+ */
+
+/* ── Accent overrides — teal / cyan ── */
+:root { --cyan: #00BFA5; --cyan-dark: #009e8a; --cyan-light: #33ccb8; }
+
+/* Primary action buttons */
+.btn-primary { background: linear-gradient(135deg, #00BFA5, #00ACC1); color: #fff; border: none; }
+.btn-primary:hover { background: linear-gradient(135deg, #00a896, #0099ad); }
+
+/* Daily claim button */
+.btn-daily-claim { background: linear-gradient(135deg, #00BFA5, #00ACC1) !important; }
+.btn-daily-claim:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(0, 191, 165, 0.4) !important; }
+.btn-daily-claim.claimed, .btn-daily-claim:disabled { background: #4e5058 !important; }
+
+/* Send button */
+.message-input-area button[type=submit],
+.message-input-area button:not(.icon-btn) { background: #00BFA5; }
+.message-input-area button[type=submit]:hover,
+.message-input-area button:not(.icon-btn):hover { background: #009e8a; }
+
+/* Emoji / GIF / Gift icon buttons — teal tint */
+#emoji-picker-toggle, #gif-picker-toggle, #gift-toggle {
+    color: #00BFA5;
+}
+#emoji-picker-toggle:hover, #gif-picker-toggle:hover, #gift-toggle:hover {
+    color: #33ccb8;
+    background: rgba(0, 191, 165, 0.1);
+}
+
+/* Avatar fallbacks */
+.friend-avatar { background: #00BFA5; color: #fff; }
+.message-avatar-fallback { background: #00BFA5; color: #fff; }
+.member-avatar { background: #00BFA5; color: #fff; }
+
+/* Torvex home icon T */
+.home-icon { color: #00BFA5; }
+.home-icon:hover { background: #00BFA5; color: #fff; }
+
+/* Server icon active/hover */
+.server-icon:hover, .server-icon.active { background: #00BFA5; }
+.server-add-btn:hover { background: #00BFA5; color: #fff; }
+
+/* Links — only specific elements, not usernames/nav */
+.invite-link { color: #00BFA5; }
+.invite-link:hover { color: #33ccb8; }
+
+/* Emoji picker active tab */
+.emoji-picker-tab.active, .emoji-tab.active { color: #00BFA5; border-bottom-color: #00BFA5; }
+
+/* Notification badge */
+.notif-badge { background: #00ACC1; }
+
+/* Unread badge / DM badge */
+.unread-badge, .dm-unread-badge { background: #00ACC1; }
+
+/* Badge standard pill */
+.badge-standard { background: #00BFA5; }
+
+/* Role: moderator */
+.role-moderator { background: #00BFA5; }
+
+/* Context menu hover */
+.context-menu-item:hover { background: #00BFA5; color: #fff; }
+
+/* Message mention highlight */
+.message-mention { background: rgba(0, 191, 165, 0.1); border-left: 2px solid #00BFA5; }
+.message-highlight { background: rgba(0, 172, 193, 0.15) !important; }
+
+/* My own DM author name */
+.message.mine .message-author { color: #00BFA5; }
+
+/* Reply bar accent */
+.message-reply-ref { border-left-color: #00BFA5; color: #00BFA5; }
+.reply-bar { border-left-color: #00BFA5; }
+
+/* Active channel indicator / notif dot */
+.channel-item.active::before { background: #00BFA5; }
+
+/* Input focus ring — all inputs */
+input:focus, textarea:focus, select:focus,
+input[type=text]:focus, input[type=email]:focus, input[type=password]:focus {
+    border-color: #00BFA5 !important;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 191, 165, 0.2);
+}
+
+/* Invite message preview link */
+.invite-msg-url { color: #00BFA5; }
+
+/* Social state count */
+.social-state-count { color: #00BFA5; }
+
+/* Progress bars / orb shop highlights */
+.progress-fill, .shop-card:hover { border-color: #00BFA5; }
+
+/* Scrollbar thumb hover */
+::-webkit-scrollbar-thumb:hover { background: #00BFA5; }
+
+/* Shared animated border + glow mixin */
+.animated-border-btn {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+    position: relative;
+    transition: box-shadow 0.25s ease, transform 0.15s ease;
+}
+.animated-border-btn::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3ba55c, #00BFA5, #3ba55c);
+    background-size: 200% 100%;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    animation: btn-border-spin 2s linear infinite paused;
+}
+.animated-border-btn:hover {
+    box-shadow: 0 0 14px rgba(59, 165, 92, 0.55), 0 0 28px rgba(0, 191, 165, 0.25);
+    transform: translateY(-1px);
+}
+.animated-border-btn:hover::before {
+    opacity: 1;
+    animation-play-state: running;
+}
+
+/* Copy invite link button */
+.welcome-cta-main {
+    background: #3ba55c;
+    color: #fff;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    transition: box-shadow 0.25s ease, transform 0.15s ease, background 0.15s;
+}
+.welcome-cta-main::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3ba55c, #00BFA5, #3ba55c);
+    background-size: 200% 100%;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    animation: btn-border-spin 2s linear infinite paused;
+}
+.welcome-cta-main:hover {
+    background: #2d8b4a;
+    box-shadow: 0 0 14px rgba(59, 165, 92, 0.55), 0 0 28px rgba(0, 191, 165, 0.25);
+    transform: translateY(-1px);
+}
+.welcome-cta-main:hover::before {
+    opacity: 1;
+    animation-play-state: running;
+}
+
+/* Invite page server icon */
+.invite-server-icon { background: linear-gradient(135deg, #00BFA5, #00ACC1); }
+
+/* Add Friends button on home screen */
+.welcome-add-friend-btn {
+    background: #3ba55c;
+    color: #fff;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+    position: relative;
+    transition: box-shadow 0.25s ease, transform 0.15s ease;
+}
+.welcome-add-friend-btn::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #3ba55c, #00BFA5, #3ba55c);
+    background-size: 200% 100%;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    animation: btn-border-spin 2s linear infinite paused;
+}
+.welcome-add-friend-btn:hover {
+    background: #2d8b4a;
+    color: #fff;
+    box-shadow: 0 0 14px rgba(59, 165, 92, 0.55), 0 0 28px rgba(0, 191, 165, 0.25);
+    transform: translateY(-1px);
+}
+.welcome-add-friend-btn:hover::before {
+    opacity: 1;
+    animation-play-state: running;
+}
+@keyframes btn-border-spin {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+/* Selection */
+::selection { background: rgba(0, 191, 165, 0.35); }
