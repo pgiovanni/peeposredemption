@@ -31,12 +31,14 @@ namespace peeposredemption.Application.Features.Messages.Commands
             if (parentalLink is { AccountFrozen: true })
                 throw new InvalidOperationException("Your account is frozen by parental controls.");
 
-            // Mute enforcement
+            // Membership + mute enforcement
             var channel = await _uow.Channels.GetByIdAsync(cmd.ChannelId);
             if (channel != null)
             {
                 var member = await _uow.Servers.GetMemberAsync(channel.ServerId, cmd.AuthorId);
-                if (member is { IsMuted: true })
+                if (member == null)
+                    throw new InvalidOperationException("You are not a member of this server.");
+                if (member.IsMuted)
                 {
                     if (member.MutedUntil.HasValue && member.MutedUntil.Value <= DateTime.UtcNow)
                     {
@@ -50,7 +52,13 @@ namespace peeposredemption.Application.Features.Messages.Commands
                 }
             }
 
-            if (_scanner.ContainsMaliciousLink(cmd.Content))
+            // Skip link scan for pure image/GIF URLs (CDN media, not IP loggers)
+            var isMediaUrl = System.Text.RegularExpressions.Regex.IsMatch(
+                cmd.Content.Trim(),
+                @"^https?://[^\s]+\.(gif|png|jpg|jpeg|webp)(\?[^\s]*)?$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (!isMediaUrl && _scanner.ContainsMaliciousLink(cmd.Content))
             {
                 _ = _email.SendMaliciousLinkAlertAsync(cmd.AuthorUsername, cmd.ChannelId, cmd.Content);
                 throw new InvalidOperationException("Message contains a blocked link.");
