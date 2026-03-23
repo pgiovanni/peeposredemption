@@ -1,9 +1,19 @@
 @page "{code}"
 @model peeposredemption.API.Pages.App.InviteModel
+@{
+    ViewData["Title"] = $"Join {Model.ServerName}";
+    Layout = "_Layout";
+}
 
-<div id="invite-box">
-    <h2>You've been invited to join <strong>@Model.ServerName</strong></h2>
-    <form method="post">
-        <button type="submit">Accept Invite</button>
-    </form>
+<div class="invite-page">
+    <div class="invite-card">
+        <div class="invite-server-icon">@Model.ServerName.Substring(0, 1).ToUpper()</div>
+        <p class="invite-eyebrow">You've been invited to join</p>
+        <h1 class="invite-server-name">@Model.ServerName</h1>
+        <form method="post" class="invite-actions">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn-primary invite-accept-btn">Accept Invite</button>
+        </form>
+        <a href="/App/Index" class="invite-decline">Not now</a>
+    </div>
 </div>

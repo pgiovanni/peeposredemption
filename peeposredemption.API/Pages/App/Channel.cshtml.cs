@@ -48,6 +48,7 @@ public class ChannelModel : PageModel
     public List<MessageDto> Messages { get; set; } = new();
     public List<ChannelDto> Channels { get; set; } = new();
     public string? InviteLink { get; set; }
+    public string? WelcomeBannerUrl { get; set; }
     public ServerRole CurrentUserRole { get; set; } = ServerRole.Member;
     public long OrbBalance { get; set; }
     public int ChannelType { get; set; }
@@ -118,6 +119,13 @@ public class ChannelModel : PageModel
         var currentUser = await _uow.Users.GetByIdAsync(userId);
         OrbBalance = currentUser?.OrbBalance ?? 0;
         CurrentUsername = currentUser?.Username ?? "";
+
+        // Welcome banner: show for servers under 5 members, unless the server is marked private
+        if (members.Count < 5 && InviteLink != null && !(currentServer?.IsPrivate ?? false))
+        {
+            var refCode = await _uow.Referrals.GetCodeByOwnerIdAsync(userId);
+            WelcomeBannerUrl = refCode != null ? $"{InviteLink}?ref={refCode.Code}" : InviteLink;
+        }
 
         return Page();
     }

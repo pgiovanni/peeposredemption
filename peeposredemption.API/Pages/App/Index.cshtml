@@ -196,7 +196,9 @@
                     var inviteMsg = $"Yo I made a group on Torvex\u2014join up so we can try it\n{inviteLink}";
                 }
 
-                <!-- 1. PRIMARY BLOCK -->
+                <!-- 1. PRIMARY BLOCK — only shown until 5 friends -->
+                @if (Model.Friends.Count < 5)
+                {
                 <div class="welcome-invite-block">
                     <div class="welcome-icon">👋</div>
                     <h2>Your group is empty</h2>
@@ -209,6 +211,7 @@
                     </button>
                     <span class="welcome-helper-text">Works best with 2–3 people</span>
                 </div>
+                }
 
                 <!-- 2. INVITE MESSAGE (visible preview) -->
                 <div class="invite-message-preview">

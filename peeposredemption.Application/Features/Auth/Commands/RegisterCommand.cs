@@ -11,7 +11,7 @@ using System.Text;
 
 namespace peeposredemption.Application.Features.Auth.Commands
 {
-    public record RegisterCommand(string Username, string Email, string Password, DateTime? DateOfBirth = null, string? ReferralCode = null)
+    public record RegisterCommand(string Username, string Email, string Password, DateTime? DateOfBirth = null, string? ReferralCode = null, string? InviteCode = null)
      : IRequest<Guid>;
 
     public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Guid>
@@ -82,6 +82,46 @@ namespace peeposredemption.Application.Features.Auth.Commands
                     });
                 }
             }
+
+            // Create personal server for the new user
+            var personalServer = new Server
+            {
+                Name = $"{cmd.Username}'s Server",
+                OwnerId = user.Id
+            };
+            await _uow.Servers.AddAsync(personalServer);
+            var generalChannel = new Channel { ServerId = personalServer.Id, Name = "general" };
+            await _uow.Channels.AddAsync(generalChannel);
+            await _uow.Servers.AddMemberAsync(new ServerMember
+            {
+                ServerId = personalServer.Id,
+                UserId = user.Id,
+                Role = ServerRole.Owner
+            });
+
+            // Create a permanent invite for the personal server and store it as the welcome invite
+            var welcomeInvite = new ServerInvite { ServerId = personalServer.Id, CreatedByUserId = user.Id };
+            await _uow.ServerInvites.AddAsync(welcomeInvite);
+            personalServer.WelcomeInviteCode = welcomeInvite.Code;
+
+            // If the user arrived via a server invite link, auto-join that server
+            if (!string.IsNullOrWhiteSpace(cmd.InviteCode))
+            {
+                var serverInvite = await _uow.ServerInvites.GetByCodeAsync(cmd.InviteCode);
+                if (serverInvite != null)
+                {
+                    var alreadyMember = await _uow.Servers.IsMemberAsync(serverInvite.ServerId, user.Id);
+                    if (!alreadyMember)
+                    {
+                        await _uow.Servers.AddMemberAsync(new ServerMember
+                        {
+                            ServerId = serverInvite.ServerId,
+                            UserId = user.Id
+                        });
+                    }
+                }
+            }
+
             await _uow.SaveChangesAsync();
 
             var baseUrl = _config["AppBaseUrl"] ?? "https://localhost:443";
