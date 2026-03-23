@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Caching.Memory;
 using Resend;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
@@ -95,7 +96,7 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(o => o.EnableDetailedErrors = true);
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();
 
@@ -387,7 +388,7 @@ app.MapPost("/api/referral/track-click", async (HttpContext ctx, peeposredemptio
 }).AllowAnonymous();
 
 // Moderation API endpoints
-app.MapPost("/api/moderation/kick", async (HttpContext ctx, IMediator mediator) =>
+app.MapPost("/api/moderation/kick", async (HttpContext ctx, IMediator mediator, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
 {
     var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     if (uid == null) return Results.Unauthorized();
@@ -395,15 +396,25 @@ app.MapPost("/api/moderation/kick", async (HttpContext ctx, IMediator mediator) 
     if (body == null) return Results.BadRequest();
     try
     {
+        var serverId = Guid.Parse(body.ServerId);
+        var actorId = Guid.Parse(uid);
+        // MFA enforcement check
+        var server = await uow.Servers.GetByIdAsync(serverId);
+        if (server?.RequireMfaForModerators == true)
+        {
+            var actor = await uow.Users.GetByIdAsync(actorId);
+            if (actor != null && !actor.IsMfaEnabled)
+                return Results.Json(new { error = "This server requires MFA to use moderation powers." }, statusCode: 403);
+        }
         await mediator.Send(new peeposredemption.Application.Features.Moderation.Commands.KickMemberCommand(
-            Guid.Parse(body.ServerId), Guid.Parse(uid), Guid.Parse(body.TargetUserId)));
+            serverId, actorId, Guid.Parse(body.TargetUserId)));
         return Results.Ok();
     }
     catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
     catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
 }).RequireAuthorization();
 
-app.MapPost("/api/moderation/ban", async (HttpContext ctx, IMediator mediator) =>
+app.MapPost("/api/moderation/ban", async (HttpContext ctx, IMediator mediator, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
 {
     var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     if (uid == null) return Results.Unauthorized();
@@ -411,8 +422,44 @@ app.MapPost("/api/moderation/ban", async (HttpContext ctx, IMediator mediator) =
     if (body == null) return Results.BadRequest();
     try
     {
+        var serverId = Guid.Parse(body.ServerId);
+        var actorId = Guid.Parse(uid);
+        var targetId = Guid.Parse(body.TargetUserId);
+
+        // MFA enforcement check
+        var server = await uow.Servers.GetByIdAsync(serverId);
+        if (server?.RequireMfaForModerators == true)
+        {
+            var actor = await uow.Users.GetByIdAsync(actorId);
+            if (actor != null && !actor.IsMfaEnabled)
+                return Results.Json(new { error = "This server requires MFA to use moderation powers." }, statusCode: 403);
+        }
+
         await mediator.Send(new peeposredemption.Application.Features.Moderation.Commands.BanMemberCommand(
-            Guid.Parse(body.ServerId), Guid.Parse(uid), Guid.Parse(body.TargetUserId)));
+            serverId, actorId, targetId));
+
+        // Ban device + fingerprint signals for the banned user
+        var devices = await uow.UserDevices.GetByUserIdAsync(targetId);
+        foreach (var device in devices)
+        {
+            device.IsBanned = true;
+        }
+
+        var fingerprints = await uow.UserFingerprints.GetByUserIdAsync(targetId);
+        foreach (var fp in fingerprints)
+        {
+            var alreadyBanned = await uow.BannedFingerprints.IsBannedAsync(fp.FingerprintHash);
+            if (!alreadyBanned)
+            {
+                await uow.BannedFingerprints.AddAsync(new peeposredemption.Domain.Entities.BannedFingerprint
+                {
+                    FingerprintHash = fp.FingerprintHash,
+                    BannedByUserId = actorId
+                });
+            }
+        }
+        await uow.SaveChangesAsync();
+
         return Results.Ok();
     }
     catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
@@ -435,7 +482,7 @@ app.MapPost("/api/moderation/unban", async (HttpContext ctx, IMediator mediator)
     catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
 }).RequireAuthorization();
 
-app.MapPost("/api/moderation/mute", async (HttpContext ctx, IMediator mediator) =>
+app.MapPost("/api/moderation/mute", async (HttpContext ctx, IMediator mediator, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
 {
     var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     if (uid == null) return Results.Unauthorized();
@@ -443,8 +490,20 @@ app.MapPost("/api/moderation/mute", async (HttpContext ctx, IMediator mediator) 
     if (body == null) return Results.BadRequest();
     try
     {
+        var serverId = Guid.Parse(body.ServerId);
+        var actorId = Guid.Parse(uid);
+
+        // MFA enforcement check
+        var server = await uow.Servers.GetByIdAsync(serverId);
+        if (server?.RequireMfaForModerators == true)
+        {
+            var actor = await uow.Users.GetByIdAsync(actorId);
+            if (actor != null && !actor.IsMfaEnabled)
+                return Results.Json(new { error = "This server requires MFA to use moderation powers." }, statusCode: 403);
+        }
+
         await mediator.Send(new peeposredemption.Application.Features.Moderation.Commands.MuteUserCommand(
-            Guid.Parse(body.ServerId), Guid.Parse(uid), Guid.Parse(body.TargetUserId), body.DurationMinutes));
+            serverId, actorId, Guid.Parse(body.TargetUserId), body.DurationMinutes));
         return Results.Ok();
     }
     catch (UnauthorizedAccessException ex) { return Results.Json(new { error = ex.Message }, statusCode: 403); }
@@ -553,12 +612,25 @@ app.MapPost("/api/admin/artists/payout", async (HttpContext ctx, IMediator media
 }).RequireAuthorization();
 
 // Security — fingerprint submission
-app.MapPost("/api/security/fingerprint", async (HttpContext ctx, IMediator mediator) =>
+app.MapPost("/api/security/fingerprint", async (HttpContext ctx, IMediator mediator, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
 {
     var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     if (uid == null) return Results.Unauthorized();
     var body = await ctx.Request.ReadFromJsonAsync<FingerprintRequest>();
     if (body == null || string.IsNullOrEmpty(body.FingerprintHash)) return Results.BadRequest();
+
+    // Check if fingerprint is banned — flag account as suspicious
+    var isBanned = await uow.BannedFingerprints.IsBannedAsync(body.FingerprintHash);
+    if (isBanned)
+    {
+        var user = await uow.Users.GetByIdAsync(Guid.Parse(uid));
+        if (user != null && !user.IsSuspicious)
+        {
+            user.IsSuspicious = true;
+            await uow.SaveChangesAsync();
+        }
+    }
+
     await mediator.Send(new peeposredemption.Application.Features.Security.Commands.SubmitFingerprintCommand(
         Guid.Parse(uid), body.FingerprintHash, body.RawComponents));
     return Results.Ok();
@@ -685,6 +757,98 @@ app.MapPost("/api/auth/mfa/disable", async (HttpContext ctx, IMediator mediator)
     catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
 }).RequireAuthorization().DisableAntiforgery();
 
+// Alt suspects — admin view (all users) — cached 5 min to prevent O(n²) DoS
+app.MapGet("/api/admin/alt-suspects", async (HttpContext ctx, IMediator mediator, IConfiguration config, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var cached = cache.GetOrCreate("alt_suspects_global", e =>
+    {
+        e.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+        return (List<peeposredemption.Application.Features.Security.Queries.AltSuspectPairDto>?)null;
+    });
+    if (cached != null) return Results.Ok(cached);
+    var result = await mediator.Send(new peeposredemption.Application.Features.Security.Queries.GetAltSuspectsQuery());
+    cache.Set("alt_suspects_global", result, TimeSpan.FromMinutes(5));
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+// Alt suspects — server owner view (members of their server only) — cached 5 min
+app.MapGet("/api/moderation/alt-suspects", async (HttpContext ctx, IMediator mediator, peeposredemption.Domain.Interfaces.IUnitOfWork uow, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var serverIdStr = ctx.Request.Query["serverId"].ToString();
+    if (!Guid.TryParse(serverIdStr, out var serverId)) return Results.BadRequest();
+    var role = await uow.Servers.GetMemberRoleAsync(serverId, Guid.Parse(uid));
+    if (role < peeposredemption.Domain.Entities.ServerRole.Admin) return Results.Forbid();
+    var cacheKey = $"alt_suspects_{serverId}";
+    var cached = cache.GetOrCreate(cacheKey, e =>
+    {
+        e.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+        return (List<peeposredemption.Application.Features.Security.Queries.AltSuspectPairDto>?)null;
+    });
+    if (cached != null) return Results.Ok(cached);
+    var result = await mediator.Send(new peeposredemption.Application.Features.Security.Queries.GetAltSuspectsQuery(serverId));
+    cache.Set(cacheKey, result, TimeSpan.FromMinutes(5));
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+// Report message — creates a TrustSafety support ticket
+app.MapPost("/api/report/message", async (HttpContext ctx, IMediator mediator, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+
+    // Rate limit: 5 reports per user per hour
+    var rateKey = $"report_user_{uid}";
+    var reportCount = cache.GetOrCreate(rateKey, e => { e.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1); return 0; });
+    if (reportCount >= 5)
+        return Results.Json(new { error = "You have submitted too many reports. Please try again later." }, statusCode: 429);
+    cache.Set(rateKey, reportCount + 1, TimeSpan.FromHours(1));
+
+    var body = await ctx.Request.ReadFromJsonAsync<ReportMessageRequest>();
+    if (body == null || body.MessageId == Guid.Empty) return Results.BadRequest();
+    try
+    {
+        await mediator.Send(new peeposredemption.Application.Features.Security.Commands.ReportMessageCommand(
+            Guid.Parse(uid), body.MessageId, body.Reason, body.Note));
+        return Results.Ok();
+    }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization().DisableAntiforgery();
+
+// Toggle RequireMfaForModerators on a server (server owner only)
+app.MapPost("/api/servers/{serverId:guid}/require-mfa", async (Guid serverId, HttpContext ctx, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var role = await uow.Servers.GetMemberRoleAsync(serverId, Guid.Parse(uid));
+    if (role != peeposredemption.Domain.Entities.ServerRole.Owner) return Results.Forbid();
+    var server = await uow.Servers.GetByIdAsync(serverId);
+    if (server == null) return Results.NotFound();
+    var body = await ctx.Request.ReadFromJsonAsync<RequireMfaToggleRequest>();
+    if (body == null) return Results.BadRequest();
+    server.RequireMfaForModerators = body.Enabled;
+    await uow.SaveChangesAsync();
+    return Results.Ok(new { server.RequireMfaForModerators });
+}).RequireAuthorization().DisableAntiforgery();
+
+// Toggle IsPrivate on a server (server owner only)
+app.MapPost("/api/servers/{serverId:guid}/private", async (Guid serverId, HttpContext ctx, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var role = await uow.Servers.GetMemberRoleAsync(serverId, Guid.Parse(uid));
+    if (role != peeposredemption.Domain.Entities.ServerRole.Owner) return Results.Forbid();
+    var server = await uow.Servers.GetByIdAsync(serverId);
+    if (server == null) return Results.NotFound();
+    var body = await ctx.Request.ReadFromJsonAsync<PrivateServerToggleRequest>();
+    if (body == null) return Results.BadRequest();
+    server.IsPrivate = body.Enabled;
+    await uow.SaveChangesAsync();
+    return Results.Ok(new { server.IsPrivate });
+}).RequireAuthorization().DisableAntiforgery();
+
 // ICE servers endpoint for WebRTC — generates ephemeral TURN credentials via HMAC-SHA1
 app.MapGet("/api/ice-servers", (IConfiguration config) =>
 {
@@ -738,3 +902,6 @@ record MfaVerifyRequest(string MfaPendingToken, string Code);
 record MfaConfirmRequest(string Secret, string Code);
 record MfaDisableRequest(string Code);
 record ReferralClickRequest(string Code);
+record ReportMessageRequest(Guid MessageId, string Reason, string? Note);
+record RequireMfaToggleRequest(bool Enabled);
+record PrivateServerToggleRequest(bool Enabled);

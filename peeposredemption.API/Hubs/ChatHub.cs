@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using peeposredemption.API.Infrastructure;
 using peeposredemption.Application.Features.Game.Commands;
+using peeposredemption.Application.DTOs.Messages;
 using peeposredemption.Application.Features.Messages.Commands;
 using peeposredemption.Application.Features.Moderation.Commands;
 using peeposredemption.Application.Features.Orbs.Commands;
@@ -21,16 +22,26 @@ namespace peeposredemption.API.Hubs
         private readonly IUnitOfWork _uow;
         private readonly VoiceStateTracker _voiceTracker;
         private readonly PresenceTracker _presenceTracker;
-        public ChatHub(IMediator mediator, IUnitOfWork uow, VoiceStateTracker voiceTracker, PresenceTracker presenceTracker)
+        private readonly ILogger<ChatHub> _logger;
+        public ChatHub(IMediator mediator, IUnitOfWork uow, VoiceStateTracker voiceTracker, PresenceTracker presenceTracker, ILogger<ChatHub> logger)
         {
             _mediator = mediator;
             _uow = uow;
             _voiceTracker = voiceTracker;
             _presenceTracker = presenceTracker;
+            _logger = logger;
         }
 
-        private Guid CurrentUserId =>
-            Guid.Parse(Context.User!.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        private Guid CurrentUserId
+        {
+            get
+            {
+                var claim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!Guid.TryParse(claim, out var id))
+                    throw new HubException("Invalid user context.");
+                return id;
+            }
+        }
 
         private string CurrentUsername =>
             Context.User!.FindFirst(ClaimTypes.Name)!.Value;
@@ -41,11 +52,22 @@ namespace peeposredemption.API.Hubs
             return user?.DisplayOrUsername ?? CurrentUsername;
         }
 
-        public async Task JoinChannel(Guid serverId, Guid channelId) =>
+        public async Task JoinChannel(Guid serverId, Guid channelId)
+        {
+            var channel = await _uow.Channels.GetByIdAsync(channelId);
+            if (channel == null || channel.ServerId != serverId)
+                throw new HubException("Channel not found.");
+            var isMember = await _uow.Servers.IsMemberAsync(serverId, CurrentUserId);
+            if (!isMember)
+                throw new HubException("You are not a member of this server.");
             await Groups.AddToGroupAsync(Context.ConnectionId, $"channel:{channelId}");
+        }
 
         public async Task SendChannelMessage(Guid channelId, string content, Guid? replyToMessageId = null)
         {
+            if (string.IsNullOrWhiteSpace(content))
+                throw new InvalidOperationException("Message content cannot be empty.");
+
             // Slash command interception for RPG game system
             if (content.StartsWith("/"))
             {
@@ -72,8 +94,17 @@ namespace peeposredemption.API.Hubs
 
             var displayName = await GetDisplayNameAsync();
 
-            var dto = await _mediator.Send(
-                new SendMessageCommand(channelId, CurrentUserId, displayName, content, replyToMessageId));
+            MessageDto dto;
+            try
+            {
+                dto = await _mediator.Send(
+                    new SendMessageCommand(channelId, CurrentUserId, displayName, content, replyToMessageId));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SendMessageCommand failed: channel={ChannelId} content=[{Content}]", channelId, content);
+                throw;
+            }
             await Clients.Group($"channel:{channelId}")
                 .SendAsync("ReceiveChannelMessage", dto);
 
@@ -209,6 +240,9 @@ namespace peeposredemption.API.Hubs
             var channel = await _uow.Channels.GetByIdAsync(channelId);
             if (channel == null || channel.Type != ChannelType.Voice)
                 throw new HubException("Not a voice channel.");
+            var isMember = await _uow.Servers.IsMemberAsync(channel.ServerId, CurrentUserId);
+            if (!isMember)
+                throw new HubException("You are not a member of this server.");
 
             var user = await _uow.Users.GetByIdAsync(CurrentUserId);
             var displayName = user?.DisplayOrUsername ?? CurrentUsername;
