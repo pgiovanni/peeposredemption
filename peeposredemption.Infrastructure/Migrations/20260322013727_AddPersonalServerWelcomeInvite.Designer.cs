@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using peeposredemption.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using peeposredemption.Infrastructure.Persistence;
 namespace peeposredemption.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260322013727_AddPersonalServerWelcomeInvite")]
+    partial class AddPersonalServerWelcomeInvite
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -335,36 +338,6 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("StatKey", "Threshold");
 
                     b.ToTable("badge_definitions");
-                });
-
-            modelBuilder.Entity("peeposredemption.Domain.Entities.BannedFingerprint", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("BannedByUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("banned_by_user_id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("FingerprintHash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("fingerprint_hash");
-
-                    b.HasKey("Id")
-                        .HasName("p_k_banned_fingerprints");
-
-                    b.HasIndex("BannedByUserId");
-
-                    b.HasIndex("FingerprintHash");
-
-                    b.ToTable("banned_fingerprints");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.BannedMember", b =>
@@ -1707,10 +1680,6 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("icon_url");
 
-                    b.Property<bool>("IsPrivate")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_private");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text")
@@ -1719,10 +1688,6 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid")
                         .HasColumnName("owner_id");
-
-                    b.Property<bool>("RequireMfaForModerators")
-                        .HasColumnType("boolean")
-                        .HasColumnName("require_mfa_for_moderators");
 
                     b.Property<int>("StorageTier")
                         .HasColumnType("integer")
@@ -1915,14 +1880,6 @@ namespace peeposredemption.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("description");
-
-                    b.Property<Guid?>("ReportedMessageId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("reported_message_id");
-
-                    b.Property<Guid?>("ReportedUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("reported_user_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -2455,18 +2412,6 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasConstraintName("f_k_artist_submissions__users_user_id");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("peeposredemption.Domain.Entities.BannedFingerprint", b =>
-                {
-                    b.HasOne("peeposredemption.Domain.Entities.User", "BannedBy")
-                        .WithMany()
-                        .HasForeignKey("BannedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("f_k_banned_fingerprints__users_banned_by_id");
-
-                    b.Navigation("BannedBy");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.BannedMember", b =>

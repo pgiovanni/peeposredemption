@@ -341,13 +341,13 @@
         let channelId = '@Model.ChannelId';
         const serverId = '@Model.ServerId';
         let isVoiceChannel = @(Model.ChannelType == 1 ? "true" : "false");
-        const channelName = '@Model.ChannelName';
+        const channelName = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ChannelName));
         const canDeleteMessages = @((Model.CurrentUserRole >= peeposredemption.Domain.Entities.ServerRole.Moderator).ToString().ToLower());
         const memberUsernames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberUsernames));
         const memberData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MemberData));
         const currentUserRole = @((int)Model.CurrentUserRole);
         const currentUserId = '@Model.CurrentUserId';
-        const currentUsername = '@Model.CurrentUsername';
+        const currentUsername = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CurrentUsername));
     </script>
     <script src="~/js/chat.js" asp-append-version="true"></script>
     @if (Model.ChannelType == 1)
@@ -400,7 +400,7 @@
                 }
             });
             // Highlight messages that mention the current user
-            highlightServerRenderedMentions();
+            try { highlightServerRenderedMentions(); } catch(e) { console.error('highlightServerRenderedMentions:', e); }
             // Wire up click-to-scroll for server-rendered reply refs
             document.querySelectorAll('.message-reply-ref[data-reply-to]').forEach(ref => {
                 ref.addEventListener('click', () => {
@@ -441,7 +441,7 @@
 
         function applyEmojiRendering() {
             document.querySelectorAll('.message-content').forEach(el => {
-                if (!el.dataset.emojiRendered) {
+                if (!el.dataset.emojiRendered && !el.dataset.gifRendered) {
                     el.innerHTML = renderEmojis(el.textContent);
                     el.dataset.emojiRendered = '1';
                 }
@@ -747,17 +747,22 @@
             results.forEach(r => {
                 const gif = r.media_formats?.gif || r.media_formats?.tinygif;
                 if (!gif) return;
+                const gifUrl = gif.url;
                 const preview = r.media_formats?.tinygif || gif;
                 const img = document.createElement('img');
                 img.src = preview.url;
                 img.alt = r.title || 'GIF';
                 img.className = 'gif-thumb';
                 img.loading = 'lazy';
-                img.addEventListener('click', () => {
-                    // Send the full-size GIF URL as the message
-                    connection.invoke('SendChannelMessage', channelId, gif.url);
-                    gifPicker.classList.add('hidden');
-                    gifSearch.value = '';
+                img.addEventListener('click', async () => {
+                    if (!gifUrl) return;
+                    try {
+                        await connection.invoke('SendChannelMessage', channelId, gifUrl, null);
+                        gifPicker.classList.add('hidden');
+                        gifSearch.value = '';
+                    } catch (err) {
+                        console.error('Failed to send GIF:', err);
+                    }
                 });
                 gifGrid.appendChild(img);
             });
@@ -790,6 +795,7 @@
         }
 
         window.applyGifEmbedding = applyGifEmbedding;
+        applyGifEmbedding(); // run immediately for server-rendered messages
 
         // ── Orb Gift system ─────────────────────────────────────
         const giftModal = document.getElementById('gift-modal');
@@ -954,6 +960,9 @@
                         lastDateKey = key;
                     }
                 });
+                // Apply emoji and GIF rendering if available
+                if (typeof window.applyEmojiRendering === 'function') window.applyEmojiRendering();
+                else if (typeof window.applyGifEmbedding === 'function') window.applyGifEmbedding();
             }
 
             async function switchToTextChannel(newChannelId, newChannelName, href) {

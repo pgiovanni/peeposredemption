@@ -19,7 +19,9 @@ public class GetUserServersQueryHandler : IRequestHandler<GetUserServersQuery, L
         return servers.Select(s => new ServerDto(
             s.Id,
             s.Name,
-            s.IconUrl
+            s.IconUrl,
+            s.WelcomeInviteCode,
+            s.IsPrivate
         )).ToList();
     }
 }
