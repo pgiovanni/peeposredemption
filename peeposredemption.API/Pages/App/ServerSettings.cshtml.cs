@@ -38,6 +38,8 @@ public class ServerSettingsModel : PageModel
     public string? ServerName { get; set; }
     public string? ServerIconUrl { get; set; }
     public string? StatusMessage { get; set; }
+    public bool RequireMfaForModerators { get; set; }
+    public bool IsPrivate { get; set; }
 
     public async Task<IActionResult> OnGetAsync(Guid serverId, bool upgraded = false)
     {
@@ -60,6 +62,8 @@ public class ServerSettingsModel : PageModel
                 EmojiLimit = StorageLimits.GetLimit(server.StorageTier);
                 ServerName = server.Name;
                 ServerIconUrl = server.IconUrl;
+                RequireMfaForModerators = server.RequireMfaForModerators;
+                IsPrivate = server.IsPrivate;
             }
         }
         catch (UnauthorizedAccessException) { return Forbid(); }

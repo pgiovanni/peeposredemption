@@ -178,10 +178,10 @@ function highlightMentions(el) {
     const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     el.innerHTML = escaped.replace(/@(\w+)/g, (match, username) => {
         const member = (typeof memberData !== 'undefined' && Array.isArray(memberData))
-            ? memberData.find(m => m.username.toLowerCase() === username.toLowerCase())
+            ? memberData.find(m => m.Username?.toLowerCase() === username.toLowerCase())
             : null;
         if (member) {
-            return `<a class="mention-text" href="/App/Profile?userId=${member.id}">@${username}</a>`;
+            return `<a class="mention-text" href="/App/Profile?userId=${member.Id}">@${username}</a>`;
         }
         return `<span class="mention-text">@${username}</span>`;
     });
@@ -442,9 +442,13 @@ document.getElementById("message-form")?.addEventListener("submit", async (e) =>
         const mention = '@' + _replyState.authorName;
         if (!content.startsWith(mention)) content = mention + ' ' + content;
     }
-    await connection.invoke('SendChannelMessage', channelId, content, replyId);
-    input.value = '';
-    clearReplyState();
+    try {
+        await connection.invoke('SendChannelMessage', channelId, content, replyId);
+        input.value = '';
+        clearReplyState();
+    } catch (err) {
+        console.error('Failed to send message:', err);
+    }
 });
 
 document.getElementById("dm-form")?.addEventListener("submit", async (e) => {
@@ -677,7 +681,7 @@ function renderGameMessage(type, data) {
 
 function gameCmd(cmd) {
     if (typeof connection !== 'undefined' && typeof channelId !== 'undefined') {
-        connection.invoke('SendChannelMessage', channelId, cmd);
+        connection.invoke('SendChannelMessage', channelId, cmd, null);
     }
 }
 
@@ -794,6 +798,14 @@ function statRow(name, base, bonus) {
             addItem('Duel', '⚔️', () => {
                 if (typeof gameCmd === 'function') gameCmd(`/duel @${authorName}`);
             });
+        }
+
+        // -- Report (non-self) --
+        if (!isSelf && messageId) {
+            addSeparator();
+            addItem('Report Message', '🚩', () => {
+                showReportModal(messageId);
+            }, 'context-menu-danger');
         }
 
         // -- Moderation actions --
@@ -915,3 +927,65 @@ function statRow(name, base, bonus) {
         if (_longPressTimer) { clearTimeout(_longPressTimer); _longPressTimer = null; }
     }, { passive: true });
 })();
+
+// ── Report Message Modal ──────────────────────────────────────────────────────
+function showReportModal(messageId) {
+    const existing = document.getElementById('report-modal-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'report-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+
+    overlay.innerHTML = `
+        <div style="background:#313338;border-radius:8px;padding:24px;width:360px;max-width:90vw">
+            <h3 style="margin:0 0 16px;color:#f2f3f5;font-size:16px">Report Message</h3>
+            <label style="color:#b5bac1;font-size:13px;display:block;margin-bottom:6px">Reason</label>
+            <select id="report-reason-select" style="width:100%;background:#1e1f22;color:#dcddde;border:1px solid #4e5058;border-radius:4px;padding:8px;margin-bottom:12px">
+                <option value="Spam">Spam</option>
+                <option value="Harassment">Harassment</option>
+                <option value="Hate Speech">Hate Speech</option>
+                <option value="Other">Other</option>
+            </select>
+            <label style="color:#b5bac1;font-size:13px;display:block;margin-bottom:6px">Additional note (optional)</label>
+            <input id="report-note-input" type="text" maxlength="200" placeholder="Add context..."
+                style="width:100%;box-sizing:border-box;background:#1e1f22;color:#dcddde;border:1px solid #4e5058;border-radius:4px;padding:8px;margin-bottom:16px" />
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button id="report-cancel-btn" class="btn btn-sm" style="background:#4e5058">Cancel</button>
+                <button id="report-submit-btn" class="btn btn-sm btn-danger">Submit Report</button>
+            </div>
+            <p id="report-status" style="margin:8px 0 0;font-size:13px;color:#3ba55c;display:none"></p>
+        </div>`;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById('report-cancel-btn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+    document.getElementById('report-submit-btn').addEventListener('click', async () => {
+        const reason = document.getElementById('report-reason-select').value;
+        const note = document.getElementById('report-note-input').value.trim() || null;
+        const status = document.getElementById('report-status');
+
+        try {
+            const resp = await fetch('/api/report/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messageId, reason, note })
+            });
+            if (resp.ok) {
+                status.textContent = 'Report submitted. Thank you.';
+                status.style.display = 'block';
+                setTimeout(() => overlay.remove(), 1500);
+            } else {
+                status.textContent = 'Failed to submit report. Please try again.';
+                status.style.color = '#ed4245';
+                status.style.display = 'block';
+            }
+        } catch {
+            status.textContent = 'Network error. Please try again.';
+            status.style.color = '#ed4245';
+            status.style.display = 'block';
+        }
+    });
+}
