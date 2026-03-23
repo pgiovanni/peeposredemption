@@ -9,6 +9,9 @@
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public StorageTier StorageTier { get; set; } = StorageTier.Free;
+        public string? WelcomeInviteCode { get; set; }
+        public bool RequireMfaForModerators { get; set; } = false;
+        public bool IsPrivate { get; set; } = false;
 
         public User Owner { get; set; } = null!;
         public ICollection<Channel> Channels { get; set; } = new List<Channel>();

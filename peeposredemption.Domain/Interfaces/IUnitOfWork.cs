@@ -62,6 +62,7 @@ namespace peeposredemption.Domain.Interfaces
         IUserDeviceRepository UserDevices { get; }
         IUserIpLogRepository UserIpLogs { get; }
         IUserFingerprintRepository UserFingerprints { get; }
+        IBannedFingerprintRepository BannedFingerprints { get; }
 
         Task<int> SaveChangesAsync();
     }
