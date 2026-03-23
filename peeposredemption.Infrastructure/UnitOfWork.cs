@@ -66,6 +66,7 @@ namespace peeposredemption.Infrastructure
         public IUserDeviceRepository UserDevices { get; }
         public IUserIpLogRepository UserIpLogs { get; }
         public IUserFingerprintRepository UserFingerprints { get; }
+        public IBannedFingerprintRepository BannedFingerprints { get; }
 
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
@@ -109,7 +110,8 @@ namespace peeposredemption.Infrastructure
             IIpBanRepository ipBans,
             IUserDeviceRepository userDevices,
             IUserIpLogRepository userIpLogs,
-            IUserFingerprintRepository userFingerprints)
+            IUserFingerprintRepository userFingerprints,
+            IBannedFingerprintRepository bannedFingerprints)
         {
             _db = db;
             Users = users;
@@ -157,6 +159,7 @@ namespace peeposredemption.Infrastructure
             UserDevices = userDevices;
             UserIpLogs = userIpLogs;
             UserFingerprints = userFingerprints;
+            BannedFingerprints = bannedFingerprints;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

@@ -67,6 +67,7 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<UserDevice> UserDevices { get; set; }
         public DbSet<UserIpLog> UserIpLogs { get; set; }
         public DbSet<UserFingerprint> UserFingerprints { get; set; }
+        public DbSet<BannedFingerprint> BannedFingerprints { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -576,6 +577,17 @@ namespace peeposredemption.Infrastructure.Persistence
                 .WithMany()
                 .HasForeignKey(f => f.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // BannedFingerprint — unique hash prevents race condition duplicates
+            modelBuilder.Entity<BannedFingerprint>()
+                .HasIndex(b => b.FingerprintHash)
+                .IsUnique();
+
+            modelBuilder.Entity<BannedFingerprint>()
+                .HasOne(b => b.BannedBy)
+                .WithMany()
+                .HasForeignKey(b => b.BannedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
         // Converts PascalCase to snake_case

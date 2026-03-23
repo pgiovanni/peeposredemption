@@ -12,5 +12,7 @@ public class SupportTicket
     public string Description { get; set; } = string.Empty;
     public SupportTicketStatus Status { get; set; } = SupportTicketStatus.Open;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public Guid? ReportedMessageId { get; set; }
+    public Guid? ReportedUserId { get; set; }
     public User User { get; set; } = null!;
 }
