@@ -16,7 +16,7 @@ public record UserSecurityInfoDto(
 
 public record IpLogDto(string IpAddress, bool IsVpn, bool IsTor, DateTime SeenAt);
 public record DeviceDto(Guid DeviceId, DateTime FirstSeenAt, DateTime LastSeenAt, bool IsBanned);
-public record FingerprintDto(string FingerprintHash, DateTime CreatedAt);
+public record FingerprintDto(string FingerprintHash, DateTime CreatedAt, string? RawComponents);
 public record LinkedAccountDto(Guid UserId, string Username, string MatchType, string MatchValue);
 
 public class GetUserSecurityInfoQueryHandler : IRequestHandler<GetUserSecurityInfoQuery, UserSecurityInfoDto>
@@ -67,7 +67,7 @@ public class GetUserSecurityInfoQueryHandler : IRequestHandler<GetUserSecurityIn
             user.IsSuspicious,
             ipLogs.Select(l => new IpLogDto(l.IpAddress, l.IsVpn, l.IsTor, l.SeenAt)).ToList(),
             devices.Select(d => new DeviceDto(d.DeviceId, d.FirstSeenAt, d.LastSeenAt, d.IsBanned)).ToList(),
-            fingerprints.Select(f => new FingerprintDto(f.FingerprintHash, f.CreatedAt)).ToList(),
+            fingerprints.Select(f => new FingerprintDto(f.FingerprintHash, f.CreatedAt, f.RawComponents)).ToList(),
             linked.Values.ToList());
     }
 }
