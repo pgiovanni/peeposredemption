@@ -7,6 +7,7 @@ using peeposredemption.API.Infrastructure;
 
 namespace peeposredemption.API.Pages.Auth;
 
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class MfaVerifyModel : PageModel
 {
     private readonly IMediator _mediator;
