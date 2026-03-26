@@ -14,10 +14,18 @@ public class SubmitFingerprintCommandHandler : IRequestHandler<SubmitFingerprint
 
     public async Task<Unit> Handle(SubmitFingerprintCommand cmd, CancellationToken ct)
     {
-        // Deduplicate — skip if same user+hash already exists
+        // Deduplicate — skip if same user+hash already exists, but backfill rawComponents if missing
         var existing = await _uow.UserFingerprints.GetByUserIdAsync(cmd.UserId);
-        if (existing.Any(f => f.FingerprintHash == cmd.FingerprintHash))
+        var match = existing.FirstOrDefault(f => f.FingerprintHash == cmd.FingerprintHash);
+        if (match != null)
+        {
+            if (match.RawComponents == null && cmd.RawComponents != null)
+            {
+                match.RawComponents = cmd.RawComponents;
+                await _uow.SaveChangesAsync();
+            }
             return Unit.Value;
+        }
 
         await _uow.UserFingerprints.AddAsync(new UserFingerprint
         {

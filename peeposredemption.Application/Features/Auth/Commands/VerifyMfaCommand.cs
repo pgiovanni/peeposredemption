@@ -53,8 +53,9 @@ public class VerifyMfaCommandHandler : IRequestHandler<VerifyMfaCommand, LoginRe
             verified = totp.VerifyTotp(code, out _, new VerificationWindow(previous: 1, future: 1));
         }
 
-        // If not a valid TOTP, try recovery code
-        if (!verified && !string.IsNullOrEmpty(user.MfaRecoveryCodes))
+        // If not a valid TOTP, try recovery code (skip if input looks like a TOTP — avoids slow BCrypt on mistyped codes)
+        var looksLikeTotp = code.Length == 6 && code.All(char.IsDigit);
+        if (!verified && !looksLikeTotp && !string.IsNullOrEmpty(user.MfaRecoveryCodes))
         {
             var hashedCodes = JsonSerializer.Deserialize<List<string>>(user.MfaRecoveryCodes) ?? new();
             var matchIndex = hashedCodes.FindIndex(h => BCrypt.Net.BCrypt.Verify(code, h));
