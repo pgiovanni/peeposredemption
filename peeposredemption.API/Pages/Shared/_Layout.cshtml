@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/game.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
-    <meta name="jwt" content="@Context.Request.Cookies["jwt"]" />
+    <meta name="jwt" content="@(Context.Items["CurrentJwt"] as string ?? Context.Request.Cookies["jwt"])" />
     <meta name="gif-key" content="@(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(Context.RequestServices)["Klipy:ApiKey"])" />
 
     @{

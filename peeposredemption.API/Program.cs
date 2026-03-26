@@ -112,6 +112,7 @@ app.Use(async (context, next) =>
     if (!string.IsNullOrEmpty(token))
     {
         context.Request.Headers["Authorization"] = $"Bearer {token}";
+        context.Items["CurrentJwt"] = token;
     }
     else if (!string.IsNullOrEmpty(context.Request.Cookies["refreshToken"])
              && !context.Request.Path.StartsWithSegments("/api/auth/refresh")
@@ -139,6 +140,7 @@ app.Use(async (context, next) =>
                 MaxAge = TimeSpan.FromDays(30)
             });
             context.Request.Headers["Authorization"] = $"Bearer {result.Token}";
+            context.Items["CurrentJwt"] = result.Token;
         }
         catch
         {
@@ -237,24 +239,21 @@ app.MapPost("/api/sessions/revoke-others", async (HttpContext ctx, IMediator med
 // Admin session management
 app.MapGet("/api/admin/sessions/{userId:guid}", async (Guid userId, HttpContext ctx, IMediator mediator, IConfiguration config) =>
 {
-    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    if (uid == null || uid != config["AdminUserId"]) return Results.Forbid();
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
     var sessions = await mediator.Send(new peeposredemption.Application.Features.Sessions.GetActiveSessionsQuery(userId));
     return Results.Ok(sessions);
 }).RequireAuthorization();
 
 app.MapDelete("/api/admin/sessions/{userId:guid}/{tokenId:guid}", async (Guid userId, Guid tokenId, HttpContext ctx, IMediator mediator, IConfiguration config) =>
 {
-    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    if (uid == null || uid != config["AdminUserId"]) return Results.Forbid();
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
     var ok = await mediator.Send(new peeposredemption.Application.Features.Sessions.RevokeSessionCommand(tokenId, userId));
     return ok ? Results.Ok() : Results.NotFound();
 }).RequireAuthorization();
 
 app.MapPost("/api/admin/sessions/{userId:guid}/revoke-all", async (Guid userId, HttpContext ctx, IMediator mediator, IConfiguration config) =>
 {
-    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    if (uid == null || uid != config["AdminUserId"]) return Results.Forbid();
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
     var uow = ctx.RequestServices.GetRequiredService<peeposredemption.Domain.Interfaces.IUnitOfWork>();
     await uow.RefreshTokens.RevokeAllForUserAsync(userId);
     await uow.SaveChangesAsync();
