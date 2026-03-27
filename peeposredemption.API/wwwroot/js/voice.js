@@ -20,21 +20,9 @@
     let isScreenSharing = false;
     let joined = false;
 
-    // Shared AudioContext — created on first user gesture so browser autoplay policy allows it
-    let _audioCtx = null;
-    function getAudioCtx() {
-        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (_audioCtx.state === 'suspended') _audioCtx.resume();
-        return _audioCtx;
-    }
-    // Prime the context on first interaction with any voice control button
-    [muteBtn, deafenBtn, cameraBtn, screenBtn, disconnectBtn].forEach(btn => {
-        btn?.addEventListener('click', () => getAudioCtx(), { once: true });
-    });
-
     function playVoiceSound(type) {
         try {
-            const ctx = getAudioCtx();
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const notes = type === 'join' ? [660, 880] : [880, 660];
             notes.forEach((freq, i) => {
                 const osc = ctx.createOscillator();
@@ -44,12 +32,13 @@
                 osc.type = 'sine';
                 osc.frequency.value = freq;
                 const start = ctx.currentTime + i * 0.12;
-                gain.gain.setValueAtTime(0.18, start);
-                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.18);
+                gain.gain.setValueAtTime(0.5, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
                 osc.start(start);
-                osc.stop(start + 0.18);
+                osc.stop(start + 0.25);
             });
-        } catch (_) {}
+            setTimeout(() => ctx.close(), 1000);
+        } catch (e) { console.warn('playVoiceSound failed:', e); }
     }
 
     // Focus state
@@ -629,6 +618,7 @@
             }
             await connection.invoke('JoinVoiceChannel', channelId);
             joined = true;
+            playVoiceSound('join');
             window.__voice.joined = true;
             window.__voice.channelId = channelId;
             window.__voice.channelName = (typeof channelName !== 'undefined' ? channelName : '');
