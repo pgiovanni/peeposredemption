@@ -106,6 +106,21 @@ var app = builder.Build();
 app.UseMiddleware<IpBanMiddleware>();
 app.UseMiddleware<DeviceIdMiddleware>();
 
+// Catch antiforgery 400s and redirect to login with a helpful message instead of blank Chrome error page
+app.Use(async (context, next) =>
+{
+    await next();
+    if (context.Response.StatusCode == 400 && context.Response.ContentLength is null or 0
+        && context.Request.Method == "POST"
+        && (context.Request.Path.StartsWithSegments("/Auth/Login")
+            || context.Request.Path.StartsWithSegments("/Auth/Register")
+            || context.Request.Path.StartsWithSegments("/Auth/MfaVerify")))
+    {
+        var path = context.Request.Path.Value ?? "/Auth/Login";
+        context.Response.Redirect($"{path}?error=session");
+    }
+});
+
 app.Use(async (context, next) =>
 {
     var token = context.Request.Cookies["jwt"];
