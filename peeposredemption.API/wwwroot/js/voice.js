@@ -20,6 +20,27 @@
     let isScreenSharing = false;
     let joined = false;
 
+    // Join/leave sounds via Web Audio API (no files needed)
+    function playVoiceSound(type) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const notes = type === 'join' ? [660, 880] : [880, 660];
+            notes.forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                const start = ctx.currentTime + i * 0.12;
+                gain.gain.setValueAtTime(0.18, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.18);
+                osc.start(start);
+                osc.stop(start + 0.18);
+            });
+        } catch (_) {}
+    }
+
     // Focus state
     let focusedUserId = null;
     let voiceFilmstrip = null;
@@ -291,6 +312,7 @@
     });
 
     connection.on('VoiceUserJoined', (user) => {
+        if (user.userId !== currentUserId) playVoiceSound('join');
         // Clean up any stale peer/tile from a previous connection (e.g. reconnect after crash)
         const stale = peers[user.userId];
         if (stale) {
@@ -317,6 +339,7 @@
     });
 
     connection.on('VoiceUserLeft', (data) => {
+        if (data.userId !== currentUserId) playVoiceSound('leave');
         const peer = peers[data.userId];
         if (peer) {
             peer.pc.close();
