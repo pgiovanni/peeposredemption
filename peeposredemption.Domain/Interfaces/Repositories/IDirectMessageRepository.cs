@@ -14,6 +14,8 @@ namespace peeposredemption.Domain.Interfaces.Repositories
         Task<Dictionary<Guid, int>> GetUnreadCountBySenderAsync(Guid userId);
         Task MarkConversationReadAsync(Guid recipientId, Guid senderId);
         Task<Dictionary<Guid, DateTime>> GetLastMessageTimePerFriendAsync(Guid userId);
+        Task<List<Guid>> GetDistinctRecipientsAsync(Guid senderId);
+        Task<int> GetRecentRecipientCountAsync(Guid senderId, DateTime since);
     }
 
 }

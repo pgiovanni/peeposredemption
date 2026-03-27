@@ -10,4 +10,5 @@ public interface IVoiceSessionRepository
     Task<double> GetTotalHoursAsync(Guid userId);
     Task<long> GetTotalOrbsEarnedAsync(Guid userId);
     Task<List<(Guid ServerId, double Hours, long Orbs)>> GetBreakdownByServerAsync(Guid userId);
+    Task<int[]> GetHourlyActivityAsync(Guid userId);
 }

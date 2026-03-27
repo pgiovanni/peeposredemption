@@ -68,6 +68,7 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<UserIpLog> UserIpLogs { get; set; }
         public DbSet<UserFingerprint> UserFingerprints { get; set; }
         public DbSet<BannedFingerprint> BannedFingerprints { get; set; }
+        public DbSet<AltSuspicion> AltSuspicions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -587,6 +588,35 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasOne(b => b.BannedBy)
                 .WithMany()
                 .HasForeignKey(b => b.BannedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ── Behavioral Analysis ────────────────────────────────────────
+
+            // Performance indexes for behavioral queries
+            modelBuilder.Entity<DirectMessage>()
+                .HasIndex(dm => new { dm.SenderId, dm.SentAt });
+
+            modelBuilder.Entity<DirectMessage>()
+                .HasIndex(dm => new { dm.RecipientId, dm.SentAt });
+
+            modelBuilder.Entity<Message>()
+                .HasIndex(m => new { m.AuthorId, m.SentAt });
+
+            // AltSuspicion
+            modelBuilder.Entity<AltSuspicion>()
+                .HasIndex(s => new { s.UserId1, s.UserId2 })
+                .IsUnique();
+
+            modelBuilder.Entity<AltSuspicion>()
+                .HasOne(s => s.User1)
+                .WithMany()
+                .HasForeignKey(s => s.UserId1)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AltSuspicion>()
+                .HasOne(s => s.User2)
+                .WithMany()
+                .HasForeignKey(s => s.UserId2)
                 .OnDelete(DeleteBehavior.Restrict);
         }
 

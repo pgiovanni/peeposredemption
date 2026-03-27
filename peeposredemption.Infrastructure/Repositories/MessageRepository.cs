@@ -34,6 +34,19 @@ namespace peeposredemption.Infrastructure.Repositories
 
         public Task<Message?> GetByIdAsync(Guid messageId) =>
             _db.Messages.FirstOrDefaultAsync(m => m.Id == messageId);
+
+        public async Task<int[]> GetHourlyActivityAsync(Guid userId)
+        {
+            var counts = await _db.Messages
+                .Where(m => m.AuthorId == userId && !m.IsDeleted)
+                .GroupBy(m => m.SentAt.Hour)
+                .Select(g => new { Hour = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var result = new int[24];
+            foreach (var c in counts) result[c.Hour] = c.Count;
+            return result;
+        }
     }
 
 }

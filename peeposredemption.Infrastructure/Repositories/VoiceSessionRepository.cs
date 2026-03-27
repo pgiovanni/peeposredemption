@@ -57,4 +57,16 @@ public class VoiceSessionRepository : IVoiceSessionRepository
                 g.Sum(s => s.OrbsEarned)))
             .ToList();
     }
+
+    public async Task<int[]> GetHourlyActivityAsync(Guid userId)
+    {
+        var hours = await _db.VoiceSessions
+            .Where(s => s.UserId == userId)
+            .Select(s => s.JoinedAt.Hour)
+            .ToListAsync();
+
+        var result = new int[24];
+        foreach (var h in hours) result[h]++;
+        return result;
+    }
 }

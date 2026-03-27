@@ -63,6 +63,7 @@ namespace peeposredemption.Domain.Interfaces
         IUserIpLogRepository UserIpLogs { get; }
         IUserFingerprintRepository UserFingerprints { get; }
         IBannedFingerprintRepository BannedFingerprints { get; }
+        IAltSuspicionRepository AltSuspicions { get; }
 
         Task<int> SaveChangesAsync();
     }

@@ -461,6 +461,20 @@ document.getElementById("dm-form")?.addEventListener("submit", async (e) => {
 
 // Message deletion now handled via context menu (right-click / long-press)
 
+// ── Burst / Rate Limit Warning ─────────────────────────────────
+connection.on("BurstWarning", (message) => {
+    // Show a transient toast in the message area
+    const container = document.getElementById("messages");
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = 'system-message burst-warning';
+    el.style.cssText = 'color:#faa61a;font-size:13px;padding:4px 12px;font-style:italic;';
+    el.textContent = '⚠ ' + message;
+    container.appendChild(el);
+    scrollToBottom();
+    setTimeout(() => el.remove(), 5000);
+});
+
 // ── RPG Game Message Handler ────────────────────────────────────
 connection.on("ReceiveGameMessage", (msg) => {
     const container = document.getElementById("messages");

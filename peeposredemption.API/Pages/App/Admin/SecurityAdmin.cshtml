@@ -124,12 +124,72 @@
             </div>
         </section>
 
-        <!-- Alt Detection Panel -->
+        <!-- Alt Detection Panel (heuristic, live compute) -->
         <section class="settings-section" style="margin-top:24px">
             <h3 class="settings-heading">ALT DETECTION — CONFIDENCE SCORES</h3>
             <p style="color:#72767d;margin-bottom:12px;font-size:13px">Pairs with score ≥ 40 are shown. Score is capped at 99.</p>
             <button id="load-alt-suspects-btn" class="btn btn-sm">Load Alt Suspects</button>
             <div id="alt-suspects-container" style="margin-top:12px"></div>
+        </section>
+
+        <!-- Alt Suspicions Panel (DB-persisted, from Run Alt Scan) -->
+        <section class="settings-section" style="margin-top:24px">
+            <h3 class="settings-heading">ALT SUSPICIONS — REVIEW QUEUE</h3>
+            <p style="color:#72767d;margin-bottom:12px;font-size:13px">Pending pairs from last scan. Run scan to populate.</p>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+                <button id="run-alt-scan-btn" class="btn btn-sm">Run Alt Scan</button>
+                <button id="load-alt-suspicions-btn" class="btn btn-sm">Load Pending</button>
+            </div>
+            <div id="run-scan-status" style="display:none;font-size:13px;color:#faa61a;margin-bottom:8px"></div>
+            <div id="alt-suspicions-container"></div>
+        </section>
+
+        <!-- Scam Flags Panel -->
+        <section class="settings-section" style="margin-top:24px">
+            <h3 class="settings-heading">SCAM FLAGS</h3>
+            <p style="color:#72767d;margin-bottom:12px;font-size:13px">Users automatically flagged as suspicious by scam detection.</p>
+            @if (Model.ScamFlags.Any())
+            {
+                <div class="admin-table-wrap">
+                <table class="audit-table" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Account Age</th>
+                            <th>DMs (24h)</th>
+                            <th>Tor</th>
+                            <th>VPN</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in Model.ScamFlags)
+                        {
+                            <tr>
+                                <td>@u.Username</td>
+                                <td>@u.AccountAgeDays days</td>
+                                <td>@u.DmsSentLast24h</td>
+                                <td>@(u.IsTor ? "YES" : "—")</td>
+                                <td>@(u.IsVpn ? "YES" : "—")</td>
+                                <td style="display:flex;gap:4px;flex-wrap:wrap">
+                                    <button class="btn btn-sm toggle-suspicious-btn"
+                                            data-id="@u.UserId"
+                                            data-current="true">Unflag</button>
+                                    @if (!string.IsNullOrEmpty(u.LastIp))
+                                    {
+                                        <button class="btn btn-sm btn-danger ban-user-ip-btn" data-ip="@u.LastIp">Ban IP</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+            else
+            {
+                <p style="color:#3ba55c">No scam flags.</p>
+            }
         </section>
 
         <!-- User Detail Panel -->
@@ -367,7 +427,7 @@
         }
     });
 
-    // ── Alt Detection ──
+    // ── Alt Detection (heuristic) ──
     document.getElementById('load-alt-suspects-btn').addEventListener('click', async () => {
         const container = document.getElementById('alt-suspects-container');
         container.innerHTML = '<p style="color:#949ba4">Loading…</p>';
@@ -391,5 +451,71 @@
         html += '</tbody></table>';
         container.innerHTML = html;
     });
+
+    // ── Alt Scan + Suspicions Queue ──
+    document.getElementById('run-alt-scan-btn').addEventListener('click', async () => {
+        const status = document.getElementById('run-scan-status');
+        status.style.display = 'block';
+        status.textContent = 'Running scan… this may take a moment.';
+        const res = await fetch('/api/admin/security/run-alt-scan', { method: 'POST', headers });
+        if (!res.ok) { status.textContent = 'Scan failed.'; status.style.color = '#ed4245'; return; }
+        const data = await res.json();
+        status.style.color = '#3ba55c';
+        status.textContent = `Scan complete. ${data.newRecords} new suspicion record(s) added.`;
+    });
+
+    document.getElementById('load-alt-suspicions-btn').addEventListener('click', loadAltSuspicions);
+
+    async function loadAltSuspicions() {
+        const container = document.getElementById('alt-suspicions-container');
+        container.innerHTML = '<p style="color:#949ba4">Loading…</p>';
+        const res = await fetch('/api/admin/alt-suspicions', { headers });
+        if (!res.ok) { container.innerHTML = '<p style="color:#ed4245">Failed to load.</p>'; return; }
+        const items = await res.json();
+        if (!items.length) {
+            container.innerHTML = '<p style="color:#3ba55c">No pending suspicions. Run a scan first.</p>';
+            return;
+        }
+
+        let html = `<table class="audit-table" style="width:100%">
+            <thead><tr><th>User 1</th><th>User 2</th><th>Score</th><th>Signals</th><th>Detected</th><th>Actions</th></tr></thead>
+            <tbody>`;
+        items.forEach(s => {
+            const scoreColor = s.score >= 80 ? '#ed4245' : s.score >= 60 ? '#faa61a' : '#dcddde';
+            html += `<tr data-suspicion-id="${s.id}">
+                <td style="color:#00b0f4">${s.username1}</td>
+                <td style="color:#00b0f4">${s.username2}</td>
+                <td style="font-weight:bold;color:${scoreColor}">${s.score}</td>
+                <td style="font-size:11px;color:#949ba4">${s.signals.join(' · ')}</td>
+                <td style="font-size:12px">${new Date(s.detectedAt).toLocaleDateString()}</td>
+                <td style="display:flex;gap:4px;flex-wrap:wrap">
+                    <button class="btn btn-sm review-suspicion-btn" data-action="confirm" data-id="${s.id}" style="color:#3ba55c">Confirm</button>
+                    <button class="btn btn-sm review-suspicion-btn" data-action="dismiss" data-id="${s.id}">Dismiss</button>
+                    <button class="btn btn-sm btn-danger review-suspicion-btn" data-action="ban" data-id="${s.id}">Ban Both</button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+
+        container.querySelectorAll('.review-suspicion-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.id;
+                const action = btn.dataset.action;
+                if (action === 'ban' && !confirm('Flag both users as suspicious?')) return;
+                const res = await fetch(`/api/admin/alt-suspicions/${id}/review`, {
+                    method: 'POST', headers, body: JSON.stringify({ action })
+                });
+                if (res.ok) {
+                    btn.closest('tr').remove();
+                    if (!container.querySelector('tr')) {
+                        container.innerHTML = '<p style="color:#3ba55c">All suspicions reviewed.</p>';
+                    }
+                } else {
+                    alert('Action failed.');
+                }
+            });
+        });
+    }
 </script>
 }

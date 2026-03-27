@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Caching.Memory;
 using peeposredemption.API.Infrastructure;
 using peeposredemption.Application.Features.Game.Commands;
 using peeposredemption.Application.DTOs.Messages;
@@ -22,14 +23,43 @@ namespace peeposredemption.API.Hubs
         private readonly IUnitOfWork _uow;
         private readonly VoiceStateTracker _voiceTracker;
         private readonly PresenceTracker _presenceTracker;
+        private readonly IMemoryCache _cache;
         private readonly ILogger<ChatHub> _logger;
-        public ChatHub(IMediator mediator, IUnitOfWork uow, VoiceStateTracker voiceTracker, PresenceTracker presenceTracker, ILogger<ChatHub> logger)
+        public ChatHub(IMediator mediator, IUnitOfWork uow, VoiceStateTracker voiceTracker, PresenceTracker presenceTracker, IMemoryCache cache, ILogger<ChatHub> logger)
         {
             _mediator = mediator;
             _uow = uow;
             _voiceTracker = voiceTracker;
             _presenceTracker = presenceTracker;
+            _cache = cache;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Sliding-window burst detection. Returns true if the message should be dropped.
+        /// Key format: burst_{type}:{userId} → Queue of timestamps in last window.
+        /// </summary>
+        private bool IsBursting(string keyPrefix, Guid userId, int limit, int windowSeconds)
+        {
+            var key = $"{keyPrefix}:{userId}";
+            var now = DateTime.UtcNow;
+            var cutoff = now.AddSeconds(-windowSeconds);
+
+            var timestamps = _cache.GetOrCreate(key, e =>
+            {
+                e.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(windowSeconds + 5);
+                return new Queue<DateTime>();
+            })!;
+
+            // Evict old entries outside the window
+            while (timestamps.Count > 0 && timestamps.Peek() < cutoff)
+                timestamps.Dequeue();
+
+            if (timestamps.Count >= limit)
+                return true; // burst threshold exceeded
+
+            timestamps.Enqueue(now);
+            return false;
         }
 
         private Guid CurrentUserId
@@ -67,6 +97,13 @@ namespace peeposredemption.API.Hubs
         {
             if (string.IsNullOrWhiteSpace(content))
                 throw new InvalidOperationException("Message content cannot be empty.");
+
+            // Burst detection: 8 messages per 10 seconds
+            if (IsBursting("burst_ch", CurrentUserId, 8, 10))
+            {
+                await Clients.Caller.SendAsync("BurstWarning", "You're sending messages too fast. Please slow down.");
+                return;
+            }
 
             // Slash command interception for RPG game system
             if (content.StartsWith("/"))
@@ -174,6 +211,13 @@ namespace peeposredemption.API.Hubs
 
         public async Task SendDirectMessage(Guid recipientId, string content)
         {
+            // Burst detection: 5 DMs per 10 seconds
+            if (IsBursting("burst_dm", CurrentUserId, 5, 10))
+            {
+                await Clients.Caller.SendAsync("BurstWarning", "You're sending DMs too fast. Please slow down.");
+                return;
+            }
+
             var dto = await _mediator.Send(
                 new SendDirectMessageCommand(CurrentUserId, recipientId, content));
             var senderDisplay = await GetDisplayNameAsync();
@@ -274,8 +318,8 @@ namespace peeposredemption.API.Hubs
                 p.UserId, p.DisplayName, p.AvatarUrl, p.IsMuted, p.IsDeafened, p.IsCameraOn
             }));
 
-            // Broadcast updated sidebar count to the text channel group too
-            await Clients.Group($"channel:{channelId}")
+            // Broadcast updated sidebar to all server members
+            await Clients.Group($"server:{channel.ServerId}")
                 .SendAsync("VoiceChannelState", new { ChannelId = channelId, Participants = participants.Select(p => new { p.UserId, p.DisplayName, p.AvatarUrl }) });
         }
 
@@ -292,9 +336,10 @@ namespace peeposredemption.API.Hubs
             await Clients.Group($"voice:{channelId}")
                 .SendAsync("VoiceUserLeft", new { UserId = CurrentUserId });
 
-            // Update sidebar
+            // Update sidebar for all server members
+            var channel = await _uow.Channels.GetByIdAsync(channelId);
             var remaining = _voiceTracker.GetParticipants(channelId);
-            await Clients.Group($"channel:{channelId}")
+            await Clients.Group($"server:{channel!.ServerId}")
                 .SendAsync("VoiceChannelState", new { ChannelId = channelId, Participants = remaining.Select(p => new { p.UserId, p.DisplayName, p.AvatarUrl }) });
         }
 
@@ -427,8 +472,9 @@ namespace peeposredemption.API.Hubs
                 await Clients.Group($"voice:{channelId}")
                     .SendAsync("VoiceUserLeft", new { participant.UserId });
 
+                var channel = await _uow.Channels.GetByIdAsync(channelId);
                 var remaining = _voiceTracker.GetParticipants(channelId);
-                await Clients.Group($"channel:{channelId}")
+                await Clients.Group($"server:{channel!.ServerId}")
                     .SendAsync("VoiceChannelState", new { ChannelId = channelId, Participants = remaining.Select(p => new { p.UserId, p.DisplayName, p.AvatarUrl }) });
             }
 

@@ -792,6 +792,32 @@ app.MapGet("/api/moderation/alt-suspects", async (HttpContext ctx, IMediator med
     return Results.Ok(result);
 }).RequireAuthorization();
 
+// ── Alt Detection Service (on-demand scan) ──────────────────────────
+app.MapPost("/api/admin/security/run-alt-scan", async (HttpContext ctx, peeposredemption.Application.Services.IAltDetectionService altSvc, IConfiguration config) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var newRecords = await altSvc.RunScanAsync();
+    return Results.Ok(new { newRecords });
+}).RequireAuthorization().DisableAntiforgery();
+
+// ── Alt Suspicions from DB (pending review) ──────────────────────────
+app.MapGet("/api/admin/alt-suspicions", async (HttpContext ctx, IMediator mediator, IConfiguration config) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var result = await mediator.Send(new peeposredemption.Application.Features.Security.Queries.GetAltSuspicionsQuery());
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+// ── Review alt suspicion (confirm / dismiss / ban) ───────────────────
+app.MapPost("/api/admin/alt-suspicions/{id:guid}/review", async (Guid id, HttpContext ctx, IMediator mediator, IConfiguration config) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var body = await ctx.Request.ReadFromJsonAsync<AltReviewRequest>();
+    if (body == null) return Results.BadRequest();
+    var ok = await mediator.Send(new peeposredemption.Application.Features.Security.Commands.ReviewAltSuspicionCommand(id, body.Action));
+    return ok ? Results.Ok() : Results.NotFound();
+}).RequireAuthorization().DisableAntiforgery();
+
 // Report message — creates a TrustSafety support ticket
 app.MapPost("/api/report/message", async (HttpContext ctx, IMediator mediator, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
 {
@@ -830,6 +856,18 @@ app.MapPost("/api/servers/{serverId:guid}/require-mfa", async (Guid serverId, Ht
     server.RequireMfaForModerators = body.Enabled;
     await uow.SaveChangesAsync();
     return Results.Ok(new { server.RequireMfaForModerators });
+}).RequireAuthorization().DisableAntiforgery();
+
+// Reorder servers for the current user
+app.MapPost("/api/servers/reorder", async (HttpContext ctx, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var body = await ctx.Request.ReadFromJsonAsync<ServerReorderRequest>();
+    if (body == null || body.ServerIds.Count == 0) return Results.BadRequest();
+    await uow.Servers.ReorderServersAsync(Guid.Parse(uid), body.ServerIds);
+    await uow.SaveChangesAsync();
+    return Results.Ok();
 }).RequireAuthorization().DisableAntiforgery();
 
 // Toggle IsPrivate on a server (server owner only)
@@ -904,3 +942,5 @@ record ReferralClickRequest(string Code);
 record ReportMessageRequest(Guid MessageId, string Reason, string? Note);
 record RequireMfaToggleRequest(bool Enabled);
 record PrivateServerToggleRequest(bool Enabled);
+record AltReviewRequest(string Action); // "confirm" | "dismiss" | "ban"
+record ServerReorderRequest(List<Guid> ServerIds);

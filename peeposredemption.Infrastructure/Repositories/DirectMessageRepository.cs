@@ -61,6 +61,20 @@ namespace peeposredemption.Infrastructure.Repositories
                 .ToListAsync();
             return rows.ToDictionary(r => r.FriendId, r => r.LastTime);
         }
+
+        public async Task<List<Guid>> GetDistinctRecipientsAsync(Guid senderId) =>
+            await _db.DirectMessages
+                .Where(dm => dm.SenderId == senderId)
+                .Select(dm => dm.RecipientId)
+                .Distinct()
+                .ToListAsync();
+
+        public async Task<int> GetRecentRecipientCountAsync(Guid senderId, DateTime since) =>
+            await _db.DirectMessages
+                .Where(dm => dm.SenderId == senderId && dm.SentAt >= since)
+                .Select(dm => dm.RecipientId)
+                .Distinct()
+                .CountAsync();
     }
 
 }

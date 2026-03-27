@@ -21,6 +21,7 @@ public class SecurityAdminModel : PageModel
 
     public List<IpBanDto> IpBans { get; set; } = new();
     public List<UserSecuritySummary> Users { get; set; } = new();
+    public List<UserSecuritySummary> ScamFlags { get; set; } = new();
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -28,7 +29,6 @@ public class SecurityAdminModel : PageModel
 
         IpBans = await _mediator.Send(new GetIpBansQuery());
 
-        // Load all users with basic security info
         var allUsers = await _uow.Users.GetAllAsync();
         foreach (var user in allUsers)
         {
@@ -36,21 +36,34 @@ public class SecurityAdminModel : PageModel
             var devices = await _uow.UserDevices.GetByUserIdAsync(user.Id);
             var lastIp = ipLogs.FirstOrDefault();
 
-            Users.Add(new UserSecuritySummary
+            var summary = new UserSecuritySummary
             {
                 UserId = user.Id,
                 Username = user.Username,
                 IsSuspicious = user.IsSuspicious,
+                AccountAgeDays = (int)(DateTime.UtcNow - user.CreatedAt).TotalDays,
                 LastIp = lastIp?.IpAddress,
                 IsVpn = lastIp?.IsVpn ?? false,
                 IsTor = lastIp?.IsTor ?? false,
                 DeviceCount = devices.Select(d => d.DeviceId).Distinct().Count(),
                 LoginCount = ipLogs.Count,
                 LastSeen = lastIp?.SeenAt
-            });
+            };
+
+            Users.Add(summary);
         }
 
         Users = Users.OrderByDescending(u => u.LastSeen).ToList();
+
+        // Scam flags: suspicious users with recent DM activity info
+        foreach (var u in Users.Where(u => u.IsSuspicious))
+        {
+            var since = DateTime.UtcNow.AddHours(-24);
+            var dmCount = await _uow.DirectMessages.GetRecentRecipientCountAsync(u.UserId, since);
+            u.DmsSentLast24h = dmCount;
+            ScamFlags.Add(u);
+        }
+
         return Page();
     }
 
@@ -66,11 +79,13 @@ public class SecurityAdminModel : PageModel
         public Guid UserId { get; set; }
         public string Username { get; set; } = "";
         public bool IsSuspicious { get; set; }
+        public int AccountAgeDays { get; set; }
         public string? LastIp { get; set; }
         public bool IsVpn { get; set; }
         public bool IsTor { get; set; }
         public int DeviceCount { get; set; }
         public int LoginCount { get; set; }
         public DateTime? LastSeen { get; set; }
+        public int DmsSentLast24h { get; set; }
     }
 }

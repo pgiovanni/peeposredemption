@@ -77,8 +77,11 @@ namespace peeposredemption.Infrastructure
             services.AddScoped<IUserIpLogRepository, UserIpLogRepository>();
             services.AddScoped<IUserFingerprintRepository, UserFingerprintRepository>();
             services.AddScoped<IBannedFingerprintRepository, BannedFingerprintRepository>();
+            services.AddScoped<IAltSuspicionRepository, AltSuspicionRepository>();
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            services.AddScoped<IAltDetectionService, AltDetectionService>();
 
             services.AddScoped<IR2StorageService, R2StorageService>();
             services.AddScoped<IStripeService, StripeService>();
