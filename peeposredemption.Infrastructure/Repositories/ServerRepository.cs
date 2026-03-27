@@ -20,8 +20,23 @@ namespace peeposredemption.Infrastructure.Repositories
         public Task<List<Server>> GetUserServersAsync(Guid userId) =>
             _db.ServerMembers
                 .Where(sm => sm.UserId == userId)
+                .OrderBy(sm => sm.SortOrder)
+                .ThenBy(sm => sm.JoinedAt)
                 .Select(sm => sm.Server)
                 .ToListAsync();
+
+        public async Task ReorderServersAsync(Guid userId, List<Guid> serverIds)
+        {
+            var members = await _db.ServerMembers
+                .Where(sm => sm.UserId == userId && serverIds.Contains(sm.ServerId))
+                .ToListAsync();
+
+            for (int i = 0; i < serverIds.Count; i++)
+            {
+                var member = members.FirstOrDefault(m => m.ServerId == serverIds[i]);
+                if (member != null) member.SortOrder = i;
+            }
+        }
 
         public Task<bool> IsMemberAsync(Guid serverId, Guid userId) =>
             _db.ServerMembers.AnyAsync(sm => sm.ServerId == serverId && sm.UserId == userId);

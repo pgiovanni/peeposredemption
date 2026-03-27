@@ -11,6 +11,7 @@
         public ServerRole Role { get; set; } = ServerRole.Member;
         public bool IsMuted { get; set; }
         public DateTime? MutedUntil { get; set; }
+        public int SortOrder { get; set; } = 0;
         public User User { get; set; }
         public Server Server { get; set; }
     }

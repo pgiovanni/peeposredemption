@@ -21,7 +21,8 @@
         <a href="/App/Channel?channelId=@channelId&serverId=@server.Id"
            class="server-icon @(Model.ActiveServerId == server.Id ? "active" : "")"
            title="@server.Name"
-           data-server-id="@server.Id">
+           data-server-id="@server.Id"
+           draggable="true">
             @if (server.IconUrl != null)
             {
                 <img src="@server.IconUrl" alt="@server.Name" />
@@ -78,4 +79,63 @@
     document.getElementById('modal-backdrop').addEventListener('click', () => {
         document.getElementById('create-server-modal').classList.add('hidden');
     });
+
+    // ── Server Drag-and-Drop Reordering ─────────────────────────────
+    (function () {
+        let dragSrc = null;
+
+        function getServerIcons() {
+            return Array.from(document.querySelectorAll('#server-list a.server-icon[data-server-id]'));
+        }
+
+        function bindDrag(el) {
+            el.addEventListener('dragstart', e => {
+                dragSrc = el;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', el.dataset.serverId);
+                setTimeout(() => el.classList.add('dragging'), 0);
+            });
+            el.addEventListener('dragend', () => {
+                el.classList.remove('dragging');
+                document.querySelectorAll('#server-list a.server-icon').forEach(i => i.classList.remove('drag-over'));
+                dragSrc = null;
+            });
+            el.addEventListener('dragover', e => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragSrc && dragSrc !== el) {
+                    document.querySelectorAll('#server-list a.server-icon').forEach(i => i.classList.remove('drag-over'));
+                    el.classList.add('drag-over');
+                }
+            });
+            el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+            el.addEventListener('drop', e => {
+                e.preventDefault();
+                el.classList.remove('drag-over');
+                if (!dragSrc || dragSrc === el) return;
+
+                // Reorder in DOM
+                const list = document.getElementById('server-list');
+                const icons = getServerIcons();
+                const srcIdx = icons.indexOf(dragSrc);
+                const dstIdx = icons.indexOf(el);
+                if (srcIdx < dstIdx) {
+                    el.after(dragSrc);
+                } else {
+                    el.before(dragSrc);
+                }
+
+                // Persist new order
+                const newOrder = getServerIcons().map(i => i.dataset.serverId);
+                const jwt = document.querySelector('meta[name="jwt"]')?.content;
+                fetch('/api/servers/reorder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+                    body: JSON.stringify({ serverIds: newOrder })
+                });
+            });
+        }
+
+        getServerIcons().forEach(bindDrag);
+    })();
 </script>

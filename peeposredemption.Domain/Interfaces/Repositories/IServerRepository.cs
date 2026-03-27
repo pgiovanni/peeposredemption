@@ -14,6 +14,7 @@ namespace peeposredemption.Domain.Interfaces.Repositories
         Task RemoveMemberAsync(Guid serverId, Guid userId);
         Task<ServerRole?> GetMemberRoleAsync(Guid serverId, Guid userId);
         Task<List<ServerMember>> GetServerMembersAsync(Guid serverId);
+        Task ReorderServersAsync(Guid userId, List<Guid> serverIds);
     }
 
 }
