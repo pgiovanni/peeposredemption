@@ -22,7 +22,8 @@ public class ChannelModel : PageModel
     private readonly IMediator _mediator;
     private readonly IUnitOfWork _uow;
     private readonly PresenceTracker _presenceTracker;
-    public ChannelModel(IMediator mediator, IUnitOfWork uow, PresenceTracker presenceTracker) { _mediator = mediator; _uow = uow; _presenceTracker = presenceTracker; }
+    private readonly VoiceStateTracker _voiceTracker;
+    public ChannelModel(IMediator mediator, IUnitOfWork uow, PresenceTracker presenceTracker, VoiceStateTracker voiceTracker) { _mediator = mediator; _uow = uow; _presenceTracker = presenceTracker; _voiceTracker = voiceTracker; }
 
     public List<string> MemberUsernames { get; set; } = new();
     public List<MemberInfo> MemberData { get; set; } = new();
@@ -52,6 +53,7 @@ public class ChannelModel : PageModel
     public ServerRole CurrentUserRole { get; set; } = ServerRole.Member;
     public long OrbBalance { get; set; }
     public int ChannelType { get; set; }
+    public Dictionary<Guid, List<(Guid UserId, string DisplayName, string? AvatarUrl)>> InitialVoiceParticipants { get; set; } = new();
 
     public async Task<IActionResult> OnGetAsync(Guid channelId, Guid serverId)
     {
@@ -119,6 +121,13 @@ public class ChannelModel : PageModel
         var currentUser = await _uow.Users.GetByIdAsync(userId);
         OrbBalance = currentUser?.OrbBalance ?? 0;
         CurrentUsername = currentUser?.Username ?? "";
+
+        // Pre-populate voice channel participant lists for sidebar display
+        foreach (var ch in Channels.Where(c => c.Type == 1))
+        {
+            var parts = _voiceTracker.GetParticipants(ch.Id);
+            InitialVoiceParticipants[ch.Id] = parts.Select(p => (p.UserId, p.DisplayName, p.AvatarUrl)).ToList();
+        }
 
         // Welcome banner: show for servers under 5 members, unless the server is marked private
         if (members.Count < 5 && InviteLink != null && !(currentServer?.IsPrivate ?? false))

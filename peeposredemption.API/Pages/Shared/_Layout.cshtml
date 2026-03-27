@@ -20,6 +20,9 @@
         var seoImage = "https://torvex.app/images/og-preview.png";
     }
     <meta name="description" content="@seoDescription" />
+    @if (ViewData["NoIndex"] is true) {
+        <meta name="robots" content="noindex, nofollow" />
+    }
     <link rel="canonical" href="@seoUrl" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Torvex" />

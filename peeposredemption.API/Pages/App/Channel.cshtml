@@ -77,7 +77,25 @@
             </div>
             @if (ch.Type == 1)
             {
-                <div class="voice-sidebar-participants" data-voice-channel="@ch.Id"></div>
+                <div class="voice-sidebar-participants" data-voice-channel="@ch.Id">
+                    @if (Model.InitialVoiceParticipants.TryGetValue(ch.Id, out var initParts))
+                    {
+                        @foreach (var p in initParts)
+                        {
+                            <div class="voice-sidebar-user">
+                                @if (!string.IsNullOrEmpty(p.AvatarUrl))
+                                {
+                                    <img src="@p.AvatarUrl" class="voice-sidebar-avatar" alt="" />
+                                }
+                                else
+                                {
+                                    <div class="voice-sidebar-avatar voice-sidebar-avatar-fallback">@p.DisplayName[0].ToString().ToUpper()</div>
+                                }
+                                <span>@p.DisplayName</span>
+                            </div>
+                        }
+                    }
+                </div>
             }
         }
         <div id="voice-bar" class="voice-bar hidden">
@@ -1029,6 +1047,12 @@
                     const type = parseInt(link.dataset.channelType ?? '0');
                     const id = link.dataset.channelId;
                     const name = link.dataset.channelName || '';
+                    // Already in this voice channel — do nothing
+                    if (type === 1 && window.__voice && window.__voice.joined && id === window.__voice.channelId) {
+                        e.preventDefault();
+                        return;
+                    }
+                    // Clicking a text channel while in voice — AJAX switch, stay in voice
                     if (window.__voice && window.__voice.joined && type === 0 && id !== channelId) {
                         e.preventDefault();
                         await switchToTextChannel(id, name, link.href);
