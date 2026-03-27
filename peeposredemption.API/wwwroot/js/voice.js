@@ -20,10 +20,21 @@
     let isScreenSharing = false;
     let joined = false;
 
-    // Join/leave sounds via Web Audio API (no files needed)
+    // Shared AudioContext — created on first user gesture so browser autoplay policy allows it
+    let _audioCtx = null;
+    function getAudioCtx() {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume();
+        return _audioCtx;
+    }
+    // Prime the context on first interaction with any voice control button
+    [muteBtn, deafenBtn, cameraBtn, screenBtn, disconnectBtn].forEach(btn => {
+        btn?.addEventListener('click', () => getAudioCtx(), { once: true });
+    });
+
     function playVoiceSound(type) {
         try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const ctx = getAudioCtx();
             const notes = type === 'join' ? [660, 880] : [880, 660];
             notes.forEach((freq, i) => {
                 const osc = ctx.createOscillator();
