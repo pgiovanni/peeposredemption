@@ -48,7 +48,7 @@ namespace peeposredemption.Application.Features.Auth.Commands
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(cmd.Password),
                 EmailConfirmationtoken = confirmationToken,
                 ReferredByCodeId = referredByCodeId,
-                DateOfBirth = cmd.DateOfBirth?.Date
+                DateOfBirth = cmd.DateOfBirth.HasValue ? DateTime.SpecifyKind(cmd.DateOfBirth.Value.Date, DateTimeKind.Utc) : null
             };
 
             await _uow.Users.AddAsync(user);
