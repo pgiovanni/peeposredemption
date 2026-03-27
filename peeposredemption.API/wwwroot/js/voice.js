@@ -20,6 +20,50 @@
     let isScreenSharing = false;
     let joined = false;
 
+    // Focus state
+    let focusedUserId = null;
+    let voiceFilmstrip = null;
+
+    function updateGridCount() {
+        const inGrid = grid.querySelectorAll('.voice-tile').length;
+        const inFilm = voiceFilmstrip ? voiceFilmstrip.querySelectorAll('.voice-tile').length : 0;
+        grid.dataset.count = String(inGrid + inFilm);
+    }
+
+    function focusTile(userId) {
+        if (focusedUserId === userId) { unfocusTile(); return; }
+        if (focusedUserId !== null) unfocusTile();
+
+        focusedUserId = userId;
+        grid.classList.add('voice-grid--has-focus');
+
+        // Create filmstrip after grid, before controls
+        voiceFilmstrip = document.createElement('div');
+        voiceFilmstrip.className = 'voice-filmstrip';
+        const controls = document.getElementById('voice-controls');
+        grid.parentNode.insertBefore(voiceFilmstrip, controls);
+
+        // Move non-focused tiles to filmstrip
+        [...grid.querySelectorAll('.voice-tile')].forEach(tile => {
+            if (tile.id !== `tile-${userId}`) voiceFilmstrip.appendChild(tile);
+        });
+
+        document.getElementById(`tile-${userId}`)?.classList.add('voice-tile--focused');
+    }
+
+    function unfocusTile() {
+        if (focusedUserId === null) return;
+        document.getElementById(`tile-${focusedUserId}`)?.classList.remove('voice-tile--focused');
+        if (voiceFilmstrip) {
+            [...voiceFilmstrip.querySelectorAll('.voice-tile')].forEach(tile => grid.appendChild(tile));
+            voiceFilmstrip.remove();
+            voiceFilmstrip = null;
+        }
+        grid.classList.remove('voice-grid--has-focus');
+        focusedUserId = null;
+        updateGridCount();
+    }
+
     // Expose voice state globally so other code can detect we're in voice
     window.__voice = { joined: false, channelId: null, channelName: null, leave: null };
 
@@ -80,7 +124,9 @@
         statusIcons.className = 'voice-tile-status';
         tile.appendChild(statusIcons);
 
+        tile.addEventListener('click', () => focusTile(userId));
         grid.appendChild(tile);
+        updateGridCount();
         return { tile, video, avatar, nameTag, statusIcons };
     }
 
@@ -154,6 +200,13 @@
         };
 
         pc.onconnectionstatechange = () => {
+            const peer = peers[remoteUserId];
+            if (!peer) return;
+            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                // Hide frozen video, show avatar while waiting for reconnect
+                peer.videoEl.classList.add('hidden');
+                peer.avatarEl.classList.remove('hidden');
+            }
             if (pc.connectionState === 'failed') {
                 pc.restartIce();
             }
@@ -174,7 +227,7 @@
             let speaking = false;
 
             function check() {
-                if (!peers[userId]) return; // stop if peer removed
+                if (userId !== currentUserId && !peers[userId]) return; // stop if remote peer removed
                 analyser.getByteFrequencyData(data);
                 const avg = data.reduce((a, b) => a + b, 0) / data.length;
                 const nowSpeaking = avg > 20;
@@ -193,8 +246,11 @@
     // ── SignalR voice handlers ──────────────────────────
 
     connection.on('VoiceParticipantList', (participants) => {
-        // Clear grid, create tiles for everyone
+        // Clear grid, reset focus state
         grid.innerHTML = '';
+        if (voiceFilmstrip) { voiceFilmstrip.remove(); voiceFilmstrip = null; }
+        grid.classList.remove('voice-grid--has-focus');
+        focusedUserId = null;
         participants.forEach(p => {
             const tileData = createTile(p.userId, p.displayName, p.avatarUrl);
 
@@ -235,6 +291,16 @@
     });
 
     connection.on('VoiceUserJoined', (user) => {
+        // Clean up any stale peer/tile from a previous connection (e.g. reconnect after crash)
+        const stale = peers[user.userId];
+        if (stale) {
+            stale.pc.close();
+            if (stale.audioEl) stale.audioEl.remove();
+            delete peers[user.userId];
+        }
+        const staleT = document.getElementById(`tile-${user.userId}`);
+        if (staleT) staleT.remove();
+
         const tileData = createTile(user.userId, user.displayName, user.avatarUrl);
         const peerData = createPeerConnection(user.userId);
         peers[user.userId] = {
@@ -257,8 +323,11 @@
             if (peer.audioEl) peer.audioEl.remove();
             delete peers[data.userId];
         }
+        // If the focused user left, clear focus first
+        if (data.userId === focusedUserId) unfocusTile();
         const tile = document.getElementById(`tile-${data.userId}`);
         if (tile) tile.remove();
+        updateGridCount();
     });
 
     connection.on('ReceiveWebRtcOffer', async (data) => {
