@@ -64,6 +64,16 @@
             }
         </section>
 
+        <!-- Login Lockout -->
+        <section class="settings-section" style="margin-top:24px">
+            <h3 class="settings-heading">LOGIN LOCKOUT</h3>
+            <div class="admin-form-row">
+                <input type="text" id="lockout-ip-input" placeholder="IP address to unlock" class="settings-input" style="flex:1" />
+                <button id="clear-lockout-btn" class="btn btn-primary" style="white-space:nowrap">Clear Lockout</button>
+            </div>
+            <p id="lockout-msg" style="margin-top:8px;font-size:13px;color:#72767d;display:none"></p>
+        </section>
+
         <!-- User Security Overview -->
         <section class="settings-section" style="margin-top:24px">
             <h3 class="settings-heading">USER SECURITY</h3>
@@ -225,6 +235,19 @@
         document.querySelectorAll('#users-table tbody tr').forEach(row => {
             row.style.display = row.dataset.username.includes(q) ? '' : 'none';
         });
+    });
+
+    // Clear login lockout
+    document.getElementById('clear-lockout-btn').addEventListener('click', async () => {
+        const ip = document.getElementById('lockout-ip-input').value.trim();
+        const msg = document.getElementById('lockout-msg');
+        if (!ip) return;
+        const res = await fetch('/api/admin/security/clear-login-lockout', {
+            method: 'POST', headers, body: JSON.stringify({ ipAddress: ip })
+        });
+        msg.style.display = 'block';
+        msg.style.color = res.ok ? '#23a55a' : '#f04747';
+        msg.textContent = res.ok ? `Lockout cleared for ${ip}.` : 'Failed to clear lockout.';
     });
 
     // Ban IP

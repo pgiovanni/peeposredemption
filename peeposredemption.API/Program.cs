@@ -704,6 +704,15 @@ app.MapGet("/api/admin/security/user/{userId:guid}", async (Guid userId, HttpCon
     return Results.Ok(result);
 }).RequireAuthorization();
 
+app.MapPost("/api/admin/security/clear-login-lockout", (HttpContext ctx, IConfiguration config, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
+{
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
+    var body = ctx.Request.ReadFromJsonAsync<ClearLockoutRequest>().GetAwaiter().GetResult();
+    if (body == null || string.IsNullOrWhiteSpace(body.IpAddress)) return Results.BadRequest("IP required.");
+    cache.Remove($"login_fail:{body.IpAddress}");
+    return Results.Ok(new { cleared = true, ip = body.IpAddress });
+}).RequireAuthorization().DisableAntiforgery();
+
 app.MapGet("/api/admin/security/ip-bans", async (HttpContext ctx, IMediator mediator, IConfiguration config) =>
 {
     if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
@@ -948,6 +957,7 @@ record ModerationActionRequest(string ServerId, string TargetUserId);
 record MuteActionRequest(string ServerId, string TargetUserId, int DurationMinutes = 10);
 record FingerprintRequest(string FingerprintHash, string? RawComponents);
 record IpBanRequest(string IpAddress, string? Reason);
+record ClearLockoutRequest(string IpAddress);
 record DeviceBanRequest(Guid DeviceId);
 record ToggleSuspiciousRequest(Guid TargetUserId, bool IsSuspicious);
 record MfaVerifyRequest(string MfaPendingToken, string Code);
