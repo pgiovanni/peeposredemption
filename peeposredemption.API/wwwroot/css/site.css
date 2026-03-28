@@ -938,10 +938,13 @@ html:has(body.auth-page) {
 body.auth-page {
     overflow: auto;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 100vh;
     height: auto;
+    padding: 60px 16px 40px;
+    box-sizing: border-box;
 }
 
 .auth-container {
@@ -2439,7 +2442,7 @@ img.emoji {
     }
 
     /* Auth pages: responsive */
-    .auth-container { margin: 16px; }
+    .auth-container { width: 100%; }
 
     /* Profile responsive */
     .profile-container { padding: 16px; }
