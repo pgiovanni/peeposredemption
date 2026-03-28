@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 **/AppDbContextFactory.cs
 appsettings.Production.json
+.claude/
