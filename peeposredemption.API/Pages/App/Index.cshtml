@@ -13,14 +13,6 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <span>Direct Messages</span>
-            <form method="post" action="/Auth/Logout" style="display:contents">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="icon-btn" title="Log Out">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
-                    </svg>
-                </button>
-            </form>
             <button class="icon-btn" id="add-friend-toggle" title="Add Friend">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
@@ -98,12 +90,20 @@
         }
 
         <div class="sidebar-footer">
-            <a href="/App/Profile" title="Edit Profile">
+            <a href="/App/Profile" title="Edit Profile" style="flex:1; min-width:0;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                 </svg>
                 Profile
             </a>
+            <form method="post" action="/Auth/Logout" style="display:contents">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="icon-btn" title="Log Out">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                    </svg>
+                </button>
+            </form>
         </div>
     </div>
 
