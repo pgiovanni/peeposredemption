@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using peeposredemption.Application.Services;
@@ -9,18 +10,20 @@ namespace peeposredemption.API.Infrastructure;
 public class VpnDetectionService : BackgroundService, IVpnDetectionService
 {
     private const string TorExitListUrl = "https://check.torproject.org/torbulkexitlist";
-    private const string IpApiUrl = "http://ip-api.com/json";
+    private const string ProxyCheckUrl = "https://proxycheck.io/v2";
 
     private volatile HashSet<string> _torExitNodes = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, (bool IsVpn, bool IsTor, DateTime CachedAt)> _cache = new();
 
     private readonly IHttpClientFactory _http;
     private readonly ILogger<VpnDetectionService> _logger;
+    private readonly string? _apiKey;
 
-    public VpnDetectionService(IHttpClientFactory http, ILogger<VpnDetectionService> logger)
+    public VpnDetectionService(IHttpClientFactory http, ILogger<VpnDetectionService> logger, IConfiguration config)
     {
         _http = http;
         _logger = logger;
+        _apiKey = config["ProxyCheck:ApiKey"];
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -69,12 +72,13 @@ public class VpnDetectionService : BackgroundService, IVpnDetectionService
 
         try
         {
+            var keyParam = string.IsNullOrEmpty(_apiKey) ? "" : $"&key={_apiKey}";
             var client = _http.CreateClient();
-            var response = await client.GetStringAsync($"{IpApiUrl}/{ipAddress}?fields=proxy,hosting");
+            var response = await client.GetStringAsync($"{ProxyCheckUrl}/{ipAddress}?vpn=1{keyParam}");
             using var doc = JsonDocument.Parse(response);
             var root = doc.RootElement;
-            isVpn = (root.TryGetProperty("proxy", out var proxy) && proxy.GetBoolean()) ||
-                    (root.TryGetProperty("hosting", out var hosting) && hosting.GetBoolean());
+            if (root.TryGetProperty(ipAddress, out var ipData))
+                isVpn = ipData.TryGetProperty("proxy", out var proxy) && proxy.GetString() == "yes";
         }
         catch (Exception ex)
         {
