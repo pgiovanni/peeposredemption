@@ -2,5 +2,6 @@
   <Project Path="peeposredemption.API/peeposredemption.API.csproj" />
   <Project Path="peeposredemption.Application/peeposredemption.Application.csproj" />
   <Project Path="peeposredemption.Domain/peeposredemption.Domain.csproj" />
+  <Project Path="peeposredemption.E2ETests/peeposredemption.E2ETests.csproj" />
   <Project Path="peeposredemption.Infrastructure/peeposredemption.Infrastructure.csproj" />
 </Solution>
