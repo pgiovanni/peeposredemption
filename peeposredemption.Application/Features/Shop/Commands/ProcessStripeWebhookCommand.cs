@@ -24,6 +24,89 @@ namespace peeposredemption.Application.Features.Shop.Commands
         {
             var evt = _webhookService.ParseAndVerify(cmd.Payload, cmd.Signature);
 
+            // ── Subscription lifecycle events ──────────────────────────────
+
+            if (evt.Type == "checkout.session.completed" && evt.SubscriptionId != null)
+            {
+                // Gold subscription checkout completed — activate the pending record
+                var sub = evt.SessionId != null
+                    ? await _uow.GoldSubscriptions.GetByStripeSessionIdAsync(evt.SessionId)
+                    : null;
+
+                if (sub != null && sub.Status == SubscriptionStatus.Pending)
+                {
+                    sub.StripeSubscriptionId = evt.SubscriptionId;
+                    sub.Status = SubscriptionStatus.Active;
+                    sub.StartedAt = DateTime.UtcNow;
+                    sub.NextBillingAt = DateTime.UtcNow.AddMonths(1);
+                    sub.LastOrbCreditAt = DateTime.UtcNow;
+
+                    var user = await _uow.Users.GetByIdAsync(sub.UserId);
+                    if (user != null)
+                        await CreditGoldOrbsAsync(user, "Torvex Gold subscription — welcome bonus");
+
+                    await _uow.SaveChangesAsync();
+                }
+                return;
+            }
+
+            if (evt.Type == "customer.subscription.updated" && evt.SubscriptionId != null)
+            {
+                var sub = await _uow.GoldSubscriptions.GetByStripeSubscriptionIdAsync(evt.SubscriptionId);
+                if (sub != null)
+                {
+                    if (evt.SubscriptionStatus == "active") sub.Status = SubscriptionStatus.Active;
+                    else if (evt.SubscriptionStatus == "past_due") sub.Status = SubscriptionStatus.PastDue;
+                    else if (evt.SubscriptionStatus == "canceled") sub.Status = SubscriptionStatus.Expired;
+
+                    if (evt.PeriodStart.HasValue)
+                        sub.NextBillingAt = evt.PeriodStart.Value.AddMonths(1);
+
+                    // Credit renewal orbs — only once per billing period (idempotency guard)
+                    if (evt.SubscriptionStatus == "active" && evt.PeriodStart.HasValue)
+                    {
+                        var periodStartDate = evt.PeriodStart.Value.Date;
+                        var lastCreditDate = sub.LastOrbCreditAt?.Date;
+                        if (lastCreditDate == null || lastCreditDate < periodStartDate)
+                        {
+                            var user = await _uow.Users.GetByIdAsync(sub.UserId);
+                            if (user != null)
+                            {
+                                await CreditGoldOrbsAsync(user, "Torvex Gold monthly renewal bonus");
+                                sub.LastOrbCreditAt = evt.PeriodStart.Value;
+                            }
+                        }
+                    }
+
+                    await _uow.SaveChangesAsync();
+                }
+                return;
+            }
+
+            if (evt.Type == "customer.subscription.deleted" && evt.SubscriptionId != null)
+            {
+                var sub = await _uow.GoldSubscriptions.GetByStripeSubscriptionIdAsync(evt.SubscriptionId);
+                if (sub != null)
+                {
+                    sub.Status = SubscriptionStatus.Expired;
+                    await _uow.SaveChangesAsync();
+                }
+                return;
+            }
+
+            if (evt.Type == "invoice.payment_failed" && evt.SubscriptionId != null)
+            {
+                var sub = await _uow.GoldSubscriptions.GetByStripeSubscriptionIdAsync(evt.SubscriptionId);
+                if (sub != null)
+                {
+                    sub.Status = SubscriptionStatus.PastDue;
+                    await _uow.SaveChangesAsync();
+                }
+                return;
+            }
+
+            // ── One-time payment events ────────────────────────────────────
+
             if (evt.Type != "checkout.session.completed" || evt.SessionId == null)
                 return;
 
@@ -81,6 +164,19 @@ namespace peeposredemption.Application.Features.Shop.Commands
             }
 
             await _uow.SaveChangesAsync();
+        }
+
+        private async Task CreditGoldOrbsAsync(User user, string description)
+        {
+            const int goldOrbBonus = 500;
+            await _uow.OrbTransactions.AddAsync(new OrbTransaction
+            {
+                UserId = user.Id,
+                Amount = goldOrbBonus,
+                Type = OrbTransactionType.GoldRenewal,
+                Description = description
+            });
+            user.OrbBalance += goldOrbBonus;
         }
 
         private async Task TryAttributeReferralAsync(User purchaser, string stripeSessionId, long amountCents)

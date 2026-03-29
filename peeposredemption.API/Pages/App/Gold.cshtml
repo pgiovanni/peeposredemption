@@ -1,0 +1,177 @@
+@page
+@model peeposredemption.API.Pages.App.GoldModel
+@{
+    ViewData["Title"] = "Torvex Gold";
+    var sub = Model.Subscription;
+    var isActive = sub?.IsActive ?? false;
+    var isCancelled = sub?.Status == "Cancelled";
+    var isPastDue = sub?.Status == "PastDue";
+}
+
+<div class="app-shell">
+    <partial name="_ServerList" model="Model.ServerList" />
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <span>Torvex Gold</span>
+        </div>
+        <a href="/App/Index" class="dm-item">&#x2190; Back to Home</a>
+        <a href="/App/OrbShop" class="dm-item">Orb Shop</a>
+        <a href="/App/Wallet" class="dm-item">Wallet</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span class="gold-crown-icon">&#x1F451;</span>
+            <span>Torvex Gold</span>
+        </div>
+
+        <div class="gold-page-container">
+
+            @if (Model.ShowActivatedBanner)
+            {
+                <div class="gold-banner gold-banner--success">
+                    Welcome to Torvex Gold! 500 bonus orbs have been added to your balance.
+                </div>
+            }
+
+            @if (isPastDue)
+            {
+                <div class="gold-banner gold-banner--warn">
+                    Your last payment failed. Please update your payment method in Stripe to keep your Gold benefits.
+                </div>
+            }
+
+            <div class="gold-hero">
+                <div class="gold-hero-icon">&#x1F451;</div>
+                <h1 class="gold-hero-title">Torvex Gold</h1>
+                <p class="gold-hero-subtitle">$4.99 / month</p>
+            </div>
+
+            <div class="gold-perks">
+                <div class="gold-perk">
+                    <span class="gold-perk-icon">&#x1F3C5;</span>
+                    <div>
+                        <strong>Gold Badge</strong>
+                        <p>A shiny gold badge next to your name in chat and on your profile.</p>
+                    </div>
+                </div>
+                <div class="gold-perk">
+                    <span class="gold-perk-icon">&#x2728;</span>
+                    <div>
+                        <strong>Animated Avatar Border</strong>
+                        <p>An animated gradient ring around your avatar that turns heads.</p>
+                    </div>
+                </div>
+                <div class="gold-perk">
+                    <span class="gold-perk-icon">&#x1FA99;</span>
+                    <div>
+                        <strong>500 Monthly Orbs</strong>
+                        <p>Receive 500 orbs every month on renewal, plus 500 on sign-up.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gold-status-card">
+                @if (isActive || isCancelled)
+                {
+                    <div class="gold-status-row">
+                        <span class="gold-status-label">Status</span>
+                        @if (isActive && !isCancelled)
+                        {
+                            <span class="gold-status-badge gold-status-badge--active">Active</span>
+                        }
+                        else if (isCancelled)
+                        {
+                            <span class="gold-status-badge gold-status-badge--cancelled">Cancels at period end</span>
+                        }
+                    </div>
+
+                    @if (sub?.NextBillingAt.HasValue == true)
+                    {
+                        <div class="gold-status-row">
+                            <span class="gold-status-label">
+                                @(isCancelled ? "Access until" : "Next billing date")
+                            </span>
+                            <span class="gold-status-value" data-utc="@sub.NextBillingAt.Value.ToString("O")">
+                                @sub.NextBillingAt.Value.ToString("MMMM d, yyyy")
+                            </span>
+                        </div>
+                    }
+
+                    @if (isActive && !isCancelled)
+                    {
+                        <button class="btn-danger gold-cancel-btn" id="cancelGoldBtn">Cancel Subscription</button>
+                        <p class="gold-cancel-note">You'll keep Gold until the end of your billing period.</p>
+                    }
+                }
+                else
+                {
+                    <p class="gold-not-subscribed">You don't have an active Torvex Gold subscription.</p>
+                    <button class="btn-primary gold-subscribe-btn" id="subscribeGoldBtn">
+                        Subscribe for $4.99/mo
+                    </button>
+                }
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Format billing date in user's local timezone
+        document.querySelectorAll('[data-utc]').forEach(el => {
+            const d = new Date(el.dataset.utc);
+            el.textContent = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        });
+
+        const subscribeBtn = document.getElementById('subscribeGoldBtn');
+        if (subscribeBtn) {
+            subscribeBtn.addEventListener('click', async () => {
+                subscribeBtn.disabled = true;
+                subscribeBtn.textContent = 'Redirecting...';
+                try {
+                    const resp = await fetch('/api/gold/subscribe', { method: 'POST' });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        window.location.href = data.url;
+                    } else {
+                        const err = await resp.json().catch(() => ({}));
+                        subscribeBtn.textContent = err.error || 'Error — try again';
+                        subscribeBtn.disabled = false;
+                    }
+                } catch {
+                    subscribeBtn.textContent = 'Error — try again';
+                    subscribeBtn.disabled = false;
+                }
+            });
+        }
+
+        const cancelBtn = document.getElementById('cancelGoldBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', async () => {
+                if (!confirm('Cancel your Torvex Gold subscription? You will keep access until the end of the current billing period.'))
+                    return;
+                cancelBtn.disabled = true;
+                cancelBtn.textContent = 'Cancelling...';
+                try {
+                    const resp = await fetch('/api/gold/cancel', { method: 'POST' });
+                    if (resp.ok) {
+                        window.location.reload();
+                    } else {
+                        const err = await resp.json().catch(() => ({}));
+                        cancelBtn.textContent = err.error || 'Error — try again';
+                        cancelBtn.disabled = false;
+                    }
+                } catch {
+                    cancelBtn.textContent = 'Error — try again';
+                    cancelBtn.disabled = false;
+                }
+            });
+        }
+    </script>
+}

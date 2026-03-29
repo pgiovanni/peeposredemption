@@ -70,6 +70,12 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<BannedFingerprint> BannedFingerprints { get; set; }
         public DbSet<AltSuspicion> AltSuspicions { get; set; }
 
+        // Torvex Gold
+        public DbSet<TorvexGoldSubscription> GoldSubscriptions { get; set; }
+
+        // Message attachments
+        public DbSet<MessageAttachment> MessageAttachments { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Force snake_case so Windows dev and Linux prod behave identically
@@ -618,6 +624,38 @@ namespace peeposredemption.Infrastructure.Persistence
                 .WithMany()
                 .HasForeignKey(s => s.UserId2)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ── Torvex Gold ────────────────────────────────────────────────
+            modelBuilder.Entity<TorvexGoldSubscription>()
+                .HasOne(g => g.User)
+                .WithMany(u => u.GoldSubscriptions)
+                .HasForeignKey(g => g.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TorvexGoldSubscription>()
+                .HasIndex(g => g.UserId);
+
+            modelBuilder.Entity<TorvexGoldSubscription>()
+                .HasIndex(g => g.StripeSubscriptionId);
+
+            // ── Message Attachments ────────────────────────────────────────
+            modelBuilder.Entity<MessageAttachment>()
+                .HasOne(a => a.Message)
+                .WithMany(m => m.Attachments)
+                .HasForeignKey(a => a.MessageId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<MessageAttachment>()
+                .HasOne(a => a.Uploader)
+                .WithMany()
+                .HasForeignKey(a => a.UploaderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MessageAttachment>()
+                .HasIndex(a => a.MessageId);
+
+            modelBuilder.Entity<MessageAttachment>()
+                .HasIndex(a => a.UploaderId);
         }
 
         // Converts PascalCase to snake_case

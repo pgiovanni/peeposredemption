@@ -17,7 +17,8 @@ public enum OrbTransactionType
     MarketplaceSale = 12,
     MarketplacePurchase = 13,
     BadgeReward = 14,
-    VoiceReward = 15
+    VoiceReward = 15,
+    GoldRenewal = 16
 }
 
 public class OrbTransaction

@@ -79,11 +79,18 @@ namespace peeposredemption.Infrastructure
             services.AddScoped<IBannedFingerprintRepository, BannedFingerprintRepository>();
             services.AddScoped<IAltSuspicionRepository, AltSuspicionRepository>();
 
+            // Torvex Gold
+            services.AddScoped<ITorvexGoldSubscriptionRepository, TorvexGoldSubscriptionRepository>();
+
+            // Message attachments
+            services.AddScoped<IMessageAttachmentRepository, MessageAttachmentRepository>();
+
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             services.AddScoped<IAltDetectionService, AltDetectionService>();
 
             services.AddScoped<IR2StorageService, R2StorageService>();
+            services.AddScoped<IImageProcessingService, ImageProcessingService>();
             services.AddScoped<IStripeService, StripeService>();
             services.AddScoped<IStripeWebhookService, StripeWebhookService>();
 

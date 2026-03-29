@@ -69,6 +69,12 @@ namespace peeposredemption.Infrastructure
         public IBannedFingerprintRepository BannedFingerprints { get; }
         public IAltSuspicionRepository AltSuspicions { get; }
 
+        // Torvex Gold
+        public ITorvexGoldSubscriptionRepository GoldSubscriptions { get; }
+
+        // Message attachments
+        public IMessageAttachmentRepository MessageAttachments { get; }
+
         public UnitOfWork(AppDbContext db,
             IUserRepository users, IServerRepository servers,
             IMessageRepository messages, IDirectMessageRepository directMessages,
@@ -113,7 +119,9 @@ namespace peeposredemption.Infrastructure
             IUserIpLogRepository userIpLogs,
             IUserFingerprintRepository userFingerprints,
             IBannedFingerprintRepository bannedFingerprints,
-            IAltSuspicionRepository altSuspicions)
+            IAltSuspicionRepository altSuspicions,
+            ITorvexGoldSubscriptionRepository goldSubscriptions,
+            IMessageAttachmentRepository messageAttachments)
         {
             _db = db;
             Users = users;
@@ -163,6 +171,8 @@ namespace peeposredemption.Infrastructure
             UserFingerprints = userFingerprints;
             BannedFingerprints = bannedFingerprints;
             AltSuspicions = altSuspicions;
+            GoldSubscriptions = goldSubscriptions;
+            MessageAttachments = messageAttachments;
         }
 
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();

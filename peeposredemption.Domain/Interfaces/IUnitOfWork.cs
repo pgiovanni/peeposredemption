@@ -65,6 +65,12 @@ namespace peeposredemption.Domain.Interfaces
         IBannedFingerprintRepository BannedFingerprints { get; }
         IAltSuspicionRepository AltSuspicions { get; }
 
+        // Torvex Gold
+        ITorvexGoldSubscriptionRepository GoldSubscriptions { get; }
+
+        // Message attachments
+        IMessageAttachmentRepository MessageAttachments { get; }
+
         Task<int> SaveChangesAsync();
     }
 

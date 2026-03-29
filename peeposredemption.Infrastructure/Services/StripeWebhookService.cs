@@ -30,6 +30,9 @@ namespace peeposredemption.Infrastructure.Services
             string? serverId = null;
             string? userId = null;
             long amountTotal = 0;
+            string? subscriptionId = null;
+            string? subscriptionStatus = null;
+            DateTime? periodStart = null;
 
             if (stripeEvent.Data.Object is Session session)
             {
@@ -37,9 +40,23 @@ namespace peeposredemption.Infrastructure.Services
                 session.Metadata?.TryGetValue("serverId", out serverId);
                 session.Metadata?.TryGetValue("userId", out userId);
                 amountTotal = session.AmountTotal ?? 0;
+                subscriptionId = session.SubscriptionId;
+            }
+            else if (stripeEvent.Data.Object is Subscription sub)
+            {
+                subscriptionId = sub.Id;
+                subscriptionStatus = sub.Status;
+                // CurrentPeriodStart removed in Stripe SDK v48 — get from first subscription item
+                var firstItem = sub.Items?.Data?.FirstOrDefault();
+                if (firstItem?.CurrentPeriodStart != default)
+                    periodStart = firstItem?.CurrentPeriodStart;
+            }
+            else if (stripeEvent.Data.Object is Invoice invoice)
+            {
+                subscriptionId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
             }
 
-            return new StripeWebhookEvent(stripeEvent.Type, sessionId, serverId, userId, amountTotal);
+            return new StripeWebhookEvent(stripeEvent.Type, sessionId, serverId, userId, amountTotal, subscriptionId, subscriptionStatus, periodStart);
         }
     }
 }

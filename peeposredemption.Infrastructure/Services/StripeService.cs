@@ -8,9 +8,12 @@ namespace peeposredemption.Infrastructure.Services
 {
     public class StripeService : IStripeService
     {
+        private readonly string _goldPriceId;
+
         public StripeService(IConfiguration config)
         {
             StripeConfiguration.ApiKey = config["Stripe:SecretKey"];
+            _goldPriceId = config["Stripe:GoldPriceId"] ?? string.Empty;
         }
 
         public async Task<StripeCheckoutResult> CreateStorageUpgradeSessionAsync(
@@ -97,6 +100,44 @@ namespace peeposredemption.Infrastructure.Services
             var service = new SessionService();
             var session = await service.CreateAsync(options);
             return new StripeCheckoutResult(session.Id, session.Url);
+        }
+
+        public async Task<StripeCheckoutResult> CreateGoldSubscriptionSessionAsync(
+            Guid userId, string successUrl, string cancelUrl)
+        {
+            var options = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        Price = _goldPriceId,
+                        Quantity = 1
+                    }
+                },
+                Mode = "subscription",
+                SuccessUrl = successUrl,
+                CancelUrl = cancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    { "type", "gold" },
+                    { "userId", userId.ToString() }
+                }
+            };
+
+            var service = new SessionService();
+            var session = await service.CreateAsync(options);
+            return new StripeCheckoutResult(session.Id, session.Url);
+        }
+
+        public async Task CancelSubscriptionAsync(string stripeSubscriptionId)
+        {
+            var service = new SubscriptionService();
+            await service.UpdateAsync(stripeSubscriptionId, new SubscriptionUpdateOptions
+            {
+                CancelAtPeriodEnd = true
+            });
         }
     }
 }

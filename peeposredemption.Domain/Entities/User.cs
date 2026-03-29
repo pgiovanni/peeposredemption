@@ -43,4 +43,5 @@ public class User
     public ICollection<DirectMessage> ReceivedDirectMessages { get; set; }
     public ICollection<ParentalLink> ParentalLinksAsChild { get; set; }
     public ICollection<ParentalLink> ParentalLinksAsParent { get; set; }
+    public ICollection<TorvexGoldSubscription> GoldSubscriptions { get; set; }
 }

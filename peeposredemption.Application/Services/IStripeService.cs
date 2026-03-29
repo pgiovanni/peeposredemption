@@ -8,5 +8,7 @@ namespace peeposredemption.Application.Services
     {
         Task<StripeCheckoutResult> CreateStorageUpgradeSessionAsync(Guid serverId, Guid userId, string serverName, StorageTier targetTier, string successUrl, string cancelUrl);
         Task<StripeCheckoutResult> CreateOrbPurchaseSessionAsync(Guid userId, int orbAmount, long priceCents, string successUrl, string cancelUrl);
+        Task<StripeCheckoutResult> CreateGoldSubscriptionSessionAsync(Guid userId, string successUrl, string cancelUrl);
+        Task CancelSubscriptionAsync(string stripeSubscriptionId);
     }
 }
