@@ -92,6 +92,30 @@ namespace peeposredemption.Application.Services
             }
         }
 
+        // Validates signature/issuer/audience but ignores expiry — used for account switching
+        public ClaimsPrincipal? ValidateTokenForSwitch(string token)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            try
+            {
+                var principal = handler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(_config["Jwt:Key"])),
+                    ValidateIssuer = true,
+                    ValidIssuer = _config["Jwt:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = _config["Jwt:Audience"],
+                    ValidateLifetime = false,
+                }, out _);
+                // Reject MFA-pending tokens
+                if (principal.FindFirst("purpose")?.Value == "mfa-pending") return null;
+                return principal;
+            }
+            catch { return null; }
+        }
+
         public static string HashToken(string rawToken)
         {
             var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));

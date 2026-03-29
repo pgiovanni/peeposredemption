@@ -19,10 +19,10 @@
         var channelId = Model.ServerDefaultChannels.GetValueOrDefault(server.Id);
         var serverUnread = Model.ServerUnreadCounts.GetValueOrDefault(server.Id, 0);
         <a href="/App/Channel?channelId=@channelId&serverId=@server.Id"
-           class="server-icon @(Model.ActiveServerId == server.Id ? "active" : "")"
+           class="server-icon @(Model.ActiveServerId == server.Id ? "active" : "") @(server.IsPersonal ? "personal-server" : "")"
            title="@server.Name"
            data-server-id="@server.Id"
-           draggable="true">
+           @(server.IsPersonal ? "data-personal=\"true\"" : "draggable=\"true\"")>
             @if (server.IconUrl != null)
             {
                 <img src="@server.IconUrl" alt="@server.Name" />
@@ -38,6 +38,11 @@
         </a>
     }
 
+    <div id="personal-server-tip" class="personal-server-tip hidden">
+        <span>This is your server — invite your friends!</span>
+        <button id="dismiss-personal-tip" aria-label="Dismiss">&times;</button>
+    </div>
+
     <a href="/App/Referral" class="server-icon" title="Referral Program" style="font-size:1.1rem">💰</a>
 
     <button class="server-icon add-server" id="open-create-server" title="Create a Server">
@@ -51,6 +56,26 @@
             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
         </svg>
     </a>
+</div>
+
+<!-- Switch Accounts Panel -->
+<div id="switch-accounts-overlay" class="switch-accounts-overlay hidden"></div>
+<div id="switch-accounts-panel" class="switch-accounts-panel">
+    <div class="switch-accounts-header">
+        <span>Accounts on this device</span>
+        <button id="close-switch-accounts" class="switch-accounts-close" aria-label="Close">&times;</button>
+    </div>
+    <div id="switch-accounts-list"></div>
+    <div class="switch-accounts-divider"></div>
+    <form method="post" action="/Auth/Logout" id="switch-logout-form" style="display:none">
+        @Html.AntiForgeryToken()
+    </form>
+    <button class="switch-accounts-add" id="switch-accounts-add-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
+        </svg>
+        Add Account
+    </button>
 </div>
 
 <!-- Create Server Modal -->
@@ -80,12 +105,35 @@
         document.getElementById('create-server-modal').classList.add('hidden');
     });
 
+    // ── Personal server invite tip ───────────────────────────────────
+    (function () {
+        const personalIcon = document.querySelector('#server-list a.server-icon[data-personal="true"]');
+        const tip = document.getElementById('personal-server-tip');
+        const dismiss = document.getElementById('dismiss-personal-tip');
+
+        if (personalIcon && tip && !localStorage.getItem('personalTipDismissed')) {
+            // Position tip next to the personal server icon
+            function positionTip() {
+                const rect = personalIcon.getBoundingClientRect();
+                tip.style.top = (rect.top + rect.height / 2) + 'px';
+            }
+            positionTip();
+            tip.classList.remove('hidden');
+        }
+
+        dismiss?.addEventListener('click', () => {
+            tip.classList.add('hidden');
+            localStorage.setItem('personalTipDismissed', '1');
+        });
+    })();
+
     // ── Server Drag-and-Drop Reordering ─────────────────────────────
     (function () {
         let dragSrc = null;
 
         function getServerIcons() {
-            return Array.from(document.querySelectorAll('#server-list a.server-icon[data-server-id]'));
+            // Exclude personal server from drag ordering
+            return Array.from(document.querySelectorAll('#server-list a.server-icon[data-server-id]:not([data-personal])'));
         }
 
         function bindDrag(el) {
@@ -115,7 +163,6 @@
                 if (!dragSrc || dragSrc === el) return;
 
                 // Reorder in DOM
-                const list = document.getElementById('server-list');
                 const icons = getServerIcons();
                 const srcIdx = icons.indexOf(dragSrc);
                 const dstIdx = icons.indexOf(el);
@@ -125,7 +172,7 @@
                     el.before(dragSrc);
                 }
 
-                // Persist new order
+                // Persist new order (personal server excluded — always first server-side)
                 const newOrder = getServerIcons().map(i => i.dataset.serverId);
                 const jwt = document.querySelector('meta[name="jwt"]')?.content;
                 fetch('/api/servers/reorder', {
@@ -137,5 +184,125 @@
         }
 
         getServerIcons().forEach(bindDrag);
+    })();
+
+    // ── Switch Accounts Panel ────────────────────────────────────────
+    (function () {
+        const STORE_KEY = 'torvex_accounts';
+        const panel     = document.getElementById('switch-accounts-panel');
+        const overlay   = document.getElementById('switch-accounts-overlay');
+        const list      = document.getElementById('switch-accounts-list');
+
+        // ── Helpers ──────────────────────────────────────────────────
+        function getAccounts() {
+            try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); } catch { return []; }
+        }
+        function saveAccounts(accounts) {
+            localStorage.setItem(STORE_KEY, JSON.stringify(accounts));
+        }
+        function decodeJwtPayload(token) {
+            try {
+                const b64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+                return JSON.parse(atob(b64));
+            } catch { return null; }
+        }
+
+        // ── Save current session into the store on every page load ───
+        const currentJwt = document.querySelector('meta[name="jwt"]')?.content;
+        if (currentJwt) {
+            const payload = decodeJwtPayload(currentJwt);
+            const userId  = payload?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+            const username = payload?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'];
+            if (userId && username) {
+                const accounts = getAccounts().filter(a => a.userId !== userId);
+                accounts.unshift({ userId, username, jwt: currentJwt, active: true });
+                saveAccounts(accounts);
+            }
+        }
+
+        // ── Render account list ──────────────────────────────────────
+        function renderAccounts() {
+            const accounts = getAccounts();
+            const currentPayload = currentJwt ? decodeJwtPayload(currentJwt) : null;
+            const currentUserId  = currentPayload?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+            list.innerHTML = '';
+            accounts.forEach(acc => {
+                const isActive = acc.userId === currentUserId;
+                const row = document.createElement('div');
+                row.className = 'switch-accounts-current' + (isActive ? '' : ' switch-accounts-inactive');
+                row.innerHTML = `
+                    <div class="switch-accounts-avatar">${acc.username[0].toUpperCase()}</div>
+                    <div class="switch-accounts-info" style="flex:1;min-width:0">
+                        <span class="switch-accounts-name">${acc.username}</span>
+                        <span class="switch-accounts-badge">${isActive ? 'Active' : 'Saved'}</span>
+                    </div>
+                    ${isActive
+                        ? `<button class="switch-accounts-logout-btn" data-logout-active>Log Out</button>`
+                        : `<button class="switch-accounts-logout-btn switch-btn" data-switch-jwt="${encodeURIComponent(acc.jwt)}" data-user-id="${acc.userId}">Switch</button>
+                           <button class="switch-accounts-remove-btn" data-remove-id="${acc.userId}" title="Remove">×</button>`
+                    }`;
+                list.appendChild(row);
+            });
+        }
+
+        // ── Panel open/close ─────────────────────────────────────────
+        function openPanel() {
+            renderAccounts();
+            overlay.classList.remove('hidden');
+            panel.classList.add('open');
+        }
+        function closePanel() {
+            panel.classList.remove('open');
+            overlay.classList.add('hidden');
+        }
+
+        document.addEventListener('click', e => {
+            if (e.target.closest('[data-switch-accounts]')) { e.preventDefault(); openPanel(); return; }
+
+            // Log out active account
+            if (e.target.closest('[data-logout-active]')) {
+                document.getElementById('switch-logout-form').submit();
+                return;
+            }
+
+            // Switch to inactive account
+            const switchBtn = e.target.closest('[data-switch-jwt]');
+            if (switchBtn) {
+                const jwt = decodeURIComponent(switchBtn.dataset.switchJwt);
+                switchBtn.textContent = '...';
+                switchBtn.disabled = true;
+                fetch('/api/auth/switch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jwt })
+                }).then(r => {
+                    if (r.ok) { window.location.href = '/App/Index'; }
+                    else {
+                        // Token too old / user deleted — remove from store
+                        const uid = switchBtn.dataset.userId;
+                        saveAccounts(getAccounts().filter(a => a.userId !== uid));
+                        renderAccounts();
+                    }
+                }).catch(() => { switchBtn.textContent = 'Switch'; switchBtn.disabled = false; });
+                return;
+            }
+
+            // Remove saved account from store (no server call needed)
+            const removeBtn = e.target.closest('[data-remove-id]');
+            if (removeBtn) {
+                const uid = removeBtn.dataset.removeId;
+                saveAccounts(getAccounts().filter(a => a.userId !== uid));
+                renderAccounts();
+                return;
+            }
+        });
+
+        document.getElementById('close-switch-accounts')?.addEventListener('click', closePanel);
+        overlay?.addEventListener('click', closePanel);
+
+        // "Add Account" — navigate to login without revoking anything
+        document.getElementById('switch-accounts-add-btn')?.addEventListener('click', () => {
+            window.location.href = '/Auth/Login?addAccount=true';
+        });
     })();
 </script>
