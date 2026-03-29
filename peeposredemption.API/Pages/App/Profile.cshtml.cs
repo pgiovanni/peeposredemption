@@ -15,11 +15,13 @@ public class ProfileModel : PageModel
 {
     private readonly IMediator _mediator;
     private readonly IUnitOfWork _uow;
+    private readonly ILogger<ProfileModel> _logger;
 
-    public ProfileModel(IMediator mediator, IUnitOfWork uow)
+    public ProfileModel(IMediator mediator, IUnitOfWork uow, ILogger<ProfileModel> logger)
     {
         _mediator = mediator;
         _uow = uow;
+        _logger = logger;
     }
 
     public ServerListViewModel ServerList { get; set; } = new();
@@ -104,9 +106,18 @@ public class ProfileModel : PageModel
 
             SaveSuccess = true;
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        catch (ArgumentException ex)
         {
             ErrorMessage = ex.Message;
+        }
+        catch (InvalidOperationException ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Profile save failed for user {UserId}", userId);
+            ErrorMessage = "Failed to save profile. Please try again.";
         }
 
         await LoadProfileAsync(userId.Value);
