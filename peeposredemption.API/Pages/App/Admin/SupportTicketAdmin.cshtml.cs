@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using peeposredemption.API.Infrastructure;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
 
@@ -8,12 +9,12 @@ namespace peeposredemption.API.Pages.App.Admin;
 public class SupportTicketAdminModel : PageModel
 {
     private readonly IUnitOfWork _uow;
-    private readonly string _adminEmail;
+    private readonly IConfiguration _config;
 
     public SupportTicketAdminModel(IUnitOfWork uow, IConfiguration config)
     {
         _uow = uow;
-        _adminEmail = config["Email:AdminEmail"] ?? string.Empty;
+        _config = config;
     }
 
     public List<SupportTicket> Tickets { get; set; } = new();
@@ -39,10 +40,5 @@ public class SupportTicketAdminModel : PageModel
         return RedirectToPage();
     }
 
-    private bool IsAdmin()
-    {
-        var emailClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-        return !string.IsNullOrEmpty(_adminEmail) &&
-               string.Equals(emailClaim, _adminEmail, StringComparison.OrdinalIgnoreCase);
-    }
+    private bool IsAdmin() => AdminAuthHelper.IsTorvexOwner(User, _config);
 }

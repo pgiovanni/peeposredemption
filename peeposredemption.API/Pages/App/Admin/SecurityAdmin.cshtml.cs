@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using peeposredemption.API.Infrastructure;
 using peeposredemption.Application.Features.Security.Queries;
 using peeposredemption.Domain.Interfaces;
 
@@ -10,13 +11,13 @@ public class SecurityAdminModel : PageModel
 {
     private readonly IMediator _mediator;
     private readonly IUnitOfWork _uow;
-    private readonly string _adminEmail;
+    private readonly IConfiguration _config;
 
     public SecurityAdminModel(IMediator mediator, IUnitOfWork uow, IConfiguration config)
     {
         _mediator = mediator;
         _uow = uow;
-        _adminEmail = config["Email:AdminEmail"] ?? string.Empty;
+        _config = config;
     }
 
     public List<IpBanDto> IpBans { get; set; } = new();
@@ -67,12 +68,7 @@ public class SecurityAdminModel : PageModel
         return Page();
     }
 
-    private bool IsTorvexOwner()
-    {
-        var emailClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-        return !string.IsNullOrEmpty(_adminEmail) &&
-               string.Equals(emailClaim, _adminEmail, StringComparison.OrdinalIgnoreCase);
-    }
+    private bool IsTorvexOwner() => AdminAuthHelper.IsTorvexOwner(User, _config);
 
     public class UserSecuritySummary
     {

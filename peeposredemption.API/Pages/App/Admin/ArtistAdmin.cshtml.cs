@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using peeposredemption.API.Infrastructure;
 using peeposredemption.Application.Features.Artists.Queries;
 using peeposredemption.Domain.Interfaces;
 
@@ -9,12 +10,12 @@ namespace peeposredemption.API.Pages.App.Admin;
 public class ArtistAdminModel : PageModel
 {
     private readonly IMediator _mediator;
-    private readonly string _adminEmail;
+    private readonly IConfiguration _config;
 
     public ArtistAdminModel(IMediator mediator, IConfiguration config)
     {
         _mediator = mediator;
-        _adminEmail = config["Email:AdminEmail"] ?? string.Empty;
+        _config = config;
     }
 
     public List<ArtistSummaryDto> Artists { get; set; } = new();
@@ -33,10 +34,5 @@ public class ArtistAdminModel : PageModel
         return Page();
     }
 
-    private bool IsAdmin()
-    {
-        var emailClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-        return !string.IsNullOrEmpty(_adminEmail) &&
-               string.Equals(emailClaim, _adminEmail, StringComparison.OrdinalIgnoreCase);
-    }
+    private bool IsAdmin() => AdminAuthHelper.IsTorvexOwner(User, _config);
 }
