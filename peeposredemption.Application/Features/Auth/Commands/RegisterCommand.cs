@@ -87,7 +87,8 @@ namespace peeposredemption.Application.Features.Auth.Commands
             var personalServer = new Server
             {
                 Name = $"{cmd.Username}'s Server",
-                OwnerId = user.Id
+                OwnerId = user.Id,
+                IsPersonal = true
             };
             await _uow.Servers.AddAsync(personalServer);
             var generalChannel = new Channel { ServerId = personalServer.Id, Name = "general" };

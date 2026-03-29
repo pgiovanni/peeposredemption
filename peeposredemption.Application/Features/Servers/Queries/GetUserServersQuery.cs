@@ -21,7 +21,8 @@ public class GetUserServersQueryHandler : IRequestHandler<GetUserServersQuery, L
             s.Name,
             s.IconUrl,
             s.WelcomeInviteCode,
-            s.IsPrivate
+            s.IsPrivate,
+            s.IsPersonal
         )).ToList();
     }
 }

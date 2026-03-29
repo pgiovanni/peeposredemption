@@ -20,7 +20,8 @@ namespace peeposredemption.Infrastructure.Repositories
         public Task<List<Server>> GetUserServersAsync(Guid userId) =>
             _db.ServerMembers
                 .Where(sm => sm.UserId == userId)
-                .OrderBy(sm => sm.SortOrder)
+                .OrderBy(sm => sm.Server.IsPersonal ? 0 : 1)
+                .ThenBy(sm => sm.SortOrder)
                 .ThenBy(sm => sm.JoinedAt)
                 .Select(sm => sm.Server)
                 .ToListAsync();
