@@ -9,7 +9,7 @@ using System.Text;
 
 namespace peeposredemption.Application.Features.Messages.Commands
 {
-    public record SendMessageCommand(Guid ChannelId, Guid AuthorId, string AuthorUsername, string Content, Guid? ReplyToMessageId = null)
+    public record SendMessageCommand(Guid ChannelId, Guid AuthorId, string AuthorUsername, string Content, Guid? ReplyToMessageId = null, Guid? PendingAttachmentId = null)
     : IRequest<MessageDto>;
 
     public class SendMessageCommandHandler : IRequestHandler<SendMessageCommand, MessageDto>
@@ -75,6 +75,23 @@ namespace peeposredemption.Application.Features.Messages.Commands
             await _uow.SaveChangesAsync();
             var author = await _uow.Users.GetByIdAsync(cmd.AuthorId);
 
+            // Link pending attachment to this message
+            string? attachmentUrl = null;
+            string? attachmentFileName = null;
+            string? attachmentContentType = null;
+            if (cmd.PendingAttachmentId.HasValue)
+            {
+                var attachment = await _uow.MessageAttachments.GetByIdAsync(cmd.PendingAttachmentId.Value);
+                if (attachment != null && attachment.UploaderId == cmd.AuthorId)
+                {
+                    attachment.MessageId = message.Id;
+                    await _uow.SaveChangesAsync();
+                    attachmentUrl = attachment.Url;
+                    attachmentFileName = attachment.FileName;
+                    attachmentContentType = attachment.ContentType;
+                }
+            }
+
             // Populate reply preview if replying
             string? replyAuthorUsername = null;
             string? replyContentPreview = null;
@@ -92,7 +109,7 @@ namespace peeposredemption.Application.Features.Messages.Commands
             }
 
             return new MessageDto(message.Id, message.AuthorId, cmd.AuthorUsername, message.Content, message.SentAt, false, author?.AvatarUrl,
-                cmd.ReplyToMessageId, replyAuthorUsername, replyContentPreview);
+                cmd.ReplyToMessageId, replyAuthorUsername, replyContentPreview, attachmentUrl, attachmentFileName, attachmentContentType);
         }
     }
 

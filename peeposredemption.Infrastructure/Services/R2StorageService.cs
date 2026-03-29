@@ -77,6 +77,22 @@ namespace peeposredemption.Infrastructure.Services
             return $"{_publicUrl}/{key}";
         }
 
+        public async Task<string> UploadAttachmentAsync(string key, Stream stream, string contentType)
+        {
+            var request = new PutObjectRequest
+            {
+                BucketName = _bucketName,
+                Key = $"attachments/{key}",
+                InputStream = stream,
+                ContentType = contentType,
+                CannedACL = S3CannedACL.PublicRead,
+                UseChunkEncoding = false
+            };
+
+            await _s3.PutObjectAsync(request);
+            return $"{_publicUrl}/attachments/{key}";
+        }
+
         public async Task DeleteEmojiAsync(string key)
         {
             var request = new DeleteObjectRequest

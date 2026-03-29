@@ -14,5 +14,8 @@ namespace peeposredemption.Application.DTOs.Messages
         string? AuthorAvatarUrl = null,
         Guid? ReplyToMessageId = null,
         string? ReplyToAuthorUsername = null,
-        string? ReplyToContentPreview = null);
+        string? ReplyToContentPreview = null,
+        string? AttachmentUrl = null,
+        string? AttachmentFileName = null,
+        string? AttachmentContentType = null);
 }

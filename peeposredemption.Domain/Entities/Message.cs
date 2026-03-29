@@ -14,6 +14,7 @@
         public Channel Channel { get; set; }
         public User Author { get; set; }
         public Message? ReplyToMessage { get; set; }
+        public ICollection<MessageAttachment> Attachments { get; set; } = new List<MessageAttachment>();
     }
 
 }

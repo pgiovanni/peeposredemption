@@ -93,7 +93,7 @@ namespace peeposredemption.API.Hubs
             await Groups.AddToGroupAsync(Context.ConnectionId, $"channel:{channelId}");
         }
 
-        public async Task SendChannelMessage(Guid channelId, string content, Guid? replyToMessageId = null)
+        public async Task SendChannelMessage(Guid channelId, string content, Guid? replyToMessageId = null, Guid? attachmentId = null)
         {
             if (string.IsNullOrWhiteSpace(content))
                 throw new InvalidOperationException("Message content cannot be empty.");
@@ -135,7 +135,7 @@ namespace peeposredemption.API.Hubs
             try
             {
                 dto = await _mediator.Send(
-                    new SendMessageCommand(channelId, CurrentUserId, displayName, content, replyToMessageId));
+                    new SendMessageCommand(channelId, CurrentUserId, displayName, content, replyToMessageId, attachmentId));
             }
             catch (Exception ex)
             {

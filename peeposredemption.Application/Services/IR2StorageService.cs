@@ -6,5 +6,6 @@ namespace peeposredemption.Application.Services
         Task DeleteEmojiAsync(string key);
         Task<string> UploadArtistSampleAsync(string key, Stream imageStream, string contentType);
         Task<string> UploadProfileImageAsync(string key, Stream imageStream, string contentType);
+        Task<string> UploadAttachmentAsync(string key, Stream stream, string contentType);
     }
 }

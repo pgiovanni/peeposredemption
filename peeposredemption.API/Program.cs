@@ -207,6 +207,48 @@ app.MapPost("/api/auth/refresh", async (HttpRequest req, IMediator mediator) =>
     }
 }).AllowAnonymous().DisableAntiforgery();
 
+// Account switcher — validates a stored JWT (ignores expiry), issues a fresh session
+app.MapPost("/api/auth/switch", async (HttpRequest req, IConfiguration config, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    var body = await req.ReadFromJsonAsync<SwitchAccountRequest>();
+    if (string.IsNullOrEmpty(body?.Jwt)) return Results.BadRequest();
+
+    var tokenService = new peeposredemption.Application.Services.TokenService(config);
+    var principal = tokenService.ValidateTokenForSwitch(body.Jwt);
+    if (principal == null) return Results.Unauthorized();
+
+    var userIdStr = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!Guid.TryParse(userIdStr, out var userId)) return Results.Unauthorized();
+
+    var user = await uow.Users.GetByIdAsync(userId);
+    if (user == null) return Results.Unauthorized();
+
+    var newJwt = tokenService.GenerateToken(user);
+    var newRefresh = tokenService.GenerateRefreshToken();
+    var ip = IpBanMiddleware.GetClientIp(req.HttpContext) ?? "unknown";
+    var ua = req.Headers.UserAgent.ToString();
+    await uow.RefreshTokens.AddAsync(new peeposredemption.Domain.Entities.RefreshToken
+    {
+        Token = peeposredemption.Application.Services.TokenService.HashToken(newRefresh),
+        UserId = userId,
+        ExpiresAt = DateTime.UtcNow.AddDays(30),
+        IpAddress = ip,
+        UserAgent = ua,
+    });
+    await uow.SaveChangesAsync();
+
+    req.HttpContext.Response.Cookies.Append("jwt", newJwt, new CookieOptions
+    {
+        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(15)
+    });
+    req.HttpContext.Response.Cookies.Append("refreshToken", newRefresh, new CookieOptions
+    {
+        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromDays(30)
+    });
+
+    return Results.Ok(new { jwt = newJwt, username = user.Username, avatarUrl = user.AvatarUrl });
+}).AllowAnonymous().DisableAntiforgery();
+
 // ── Channel messages (AJAX channel switching while in voice) ─────────────
 app.MapGet("/api/channels/{channelId:guid}/messages", async (Guid channelId, HttpContext ctx, peeposredemption.Domain.Interfaces.IUnitOfWork uow, IMediator mediator) =>
 {
@@ -219,6 +261,160 @@ app.MapGet("/api/channels/{channelId:guid}/messages", async (Guid channelId, Htt
     var messages = await mediator.Send(new peeposredemption.Application.Features.Messages.Queries.GetChannelMessagesQuery(channelId));
     return Results.Ok(messages);
 }).RequireAuthorization();
+
+// ── File attachment upload ──────────────────────────────────────────
+app.MapPost("/api/channels/{channelId:guid}/upload", async (
+    Guid channelId,
+    HttpContext ctx,
+    peeposredemption.Domain.Interfaces.IUnitOfWork uow,
+    peeposredemption.Application.Services.IR2StorageService r2,
+    peeposredemption.Application.Services.IImageProcessingService imgProc) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var userId = Guid.Parse(uid);
+
+    // Confirm channel exists and user is a member
+    var channel = await uow.Channels.GetByIdAsync(channelId);
+    if (channel == null) return Results.NotFound("Channel not found.");
+    if (!await uow.Servers.IsMemberAsync(channel.ServerId, userId))
+        return Results.Forbid();
+
+    // Read uploaded file
+    var form = await ctx.Request.ReadFormAsync();
+    var file = form.Files.GetFile("file");
+    if (file == null || file.Length == 0)
+        return Results.BadRequest(new { error = "No file provided." });
+
+    // Determine size limit: Gold users get 50MB, free users get 8MB
+    var goldSub = await uow.GoldSubscriptions.GetByUserIdAsync(userId);
+    var isGold = goldSub is { Status: peeposredemption.Domain.Entities.SubscriptionStatus.Active };
+    long maxBytes = isGold ? 50L * 1024 * 1024 : 8L * 1024 * 1024;
+
+    if (file.Length > maxBytes)
+    {
+        var limitMb = maxBytes / (1024 * 1024);
+        return Results.BadRequest(new { error = $"File too large. Limit: {limitMb}MB." });
+    }
+
+    // Allowed MIME types + magic byte signatures
+    var allowedImageMimes = new HashSet<string> { "image/jpeg", "image/png", "image/gif", "image/webp" };
+    var allowedAudioMimes = new HashSet<string> { "audio/mpeg", "audio/ogg", "audio/wav", "audio/wave", "audio/x-wav" };
+
+    // Magic byte signatures: mime → (offset, bytes)
+    var magicBytes = new Dictionary<string, (int offset, byte[] sig)>
+    {
+        ["image/jpeg"] = (0, new byte[] { 0xFF, 0xD8, 0xFF }),
+        ["image/png"]  = (0, new byte[] { 0x89, 0x50, 0x4E, 0x47 }),
+        ["image/gif"]  = (0, new byte[] { 0x47, 0x49, 0x46 }),
+        ["image/webp"] = (8, new byte[] { 0x57, 0x45, 0x42, 0x50 }),
+        ["audio/mpeg"] = (0, new byte[] { 0xFF, 0xFB }),      // MP3
+        ["audio/mpeg_id3"] = (0, new byte[] { 0x49, 0x44, 0x33 }), // ID3 MP3
+        ["audio/ogg"]  = (0, new byte[] { 0x4F, 0x67, 0x67, 0x53 }),
+        ["audio/wav"]  = (0, new byte[] { 0x52, 0x49, 0x46, 0x46 }),
+    };
+
+    var contentType = file.ContentType?.ToLower() ?? "";
+    var isImage = allowedImageMimes.Contains(contentType);
+    var isAudio = allowedAudioMimes.Contains(contentType);
+
+    if (!isImage && !isAudio)
+        return Results.BadRequest(new { error = "File type not allowed. Images and audio only." });
+
+    // Read file into memory for magic byte check (and processing)
+    using var ms = new MemoryStream();
+    await file.CopyToAsync(ms);
+    ms.Position = 0;
+    var header = ms.ToArray().Take(12).ToArray();
+
+    // Validate magic bytes — map audio/wav, audio/wave, audio/x-wav → "audio/wav"
+    var normalizedMime = contentType switch
+    {
+        "audio/wave" or "audio/x-wav" => "audio/wav",
+        "audio/mpeg" => header.Length >= 3 && header[0] == 0x49 ? "audio/mpeg_id3" : "audio/mpeg",
+        _ => contentType
+    };
+
+    var validMagic = false;
+    if (magicBytes.TryGetValue(normalizedMime, out var magic))
+    {
+        var slice = header.Skip(magic.offset).Take(magic.sig.Length).ToArray();
+        validMagic = slice.SequenceEqual(magic.sig);
+    }
+    // WEBP special case: needs both RIFF and WEBP markers
+    if (normalizedMime == "image/webp")
+    {
+        var riff = header.Take(4).ToArray();
+        var webp = header.Skip(8).Take(4).ToArray();
+        validMagic = riff.SequenceEqual(new byte[] { 0x52, 0x49, 0x46, 0x46 })
+                  && webp.SequenceEqual(new byte[] { 0x57, 0x45, 0x42, 0x50 });
+    }
+
+    if (!validMagic)
+        return Results.BadRequest(new { error = "File contents do not match its declared type." });
+
+    // Images: re-encode via ImageSharp to strip EXIF and neutralize polyglots
+    Stream uploadStream;
+    string uploadContentType;
+    if (isImage)
+    {
+        ms.Position = 0;
+        var (processed, processedType) = await imgProc.ProcessAsync(ms, contentType);
+        uploadStream = processed;
+        uploadContentType = processedType;
+    }
+    else
+    {
+        ms.Position = 0;
+        uploadStream = ms;
+        uploadContentType = contentType == "audio/wave" || contentType == "audio/x-wav" ? "audio/wav" : contentType;
+    }
+
+    // Generate unguessable key and upload
+    var key = Guid.NewGuid().ToString("N");
+    var ext = uploadContentType switch
+    {
+        "image/jpeg" => ".jpg",
+        "image/png"  => ".png",
+        "image/webp" => ".webp",
+        "audio/mpeg" => ".mp3",
+        "audio/ogg"  => ".ogg",
+        "audio/wav"  => ".wav",
+        _            => ""
+    };
+
+    string url;
+    try
+    {
+        url = await r2.UploadAttachmentAsync(key + ext, uploadStream, uploadContentType);
+    }
+    finally
+    {
+        await uploadStream.DisposeAsync();
+    }
+
+    // Save pending attachment record (MessageId = null until send)
+    var attachment = new peeposredemption.Domain.Entities.MessageAttachment
+    {
+        ChannelId = channelId,
+        UploaderId = userId,
+        R2Key = $"attachments/{key}{ext}",
+        Url = url,
+        FileName = file.FileName,
+        FileSize = file.Length,
+        ContentType = uploadContentType
+    };
+    await uow.MessageAttachments.AddAsync(attachment);
+    await uow.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        attachmentId = attachment.Id,
+        url = attachment.Url,
+        fileName = attachment.FileName,
+        contentType = attachment.ContentType
+    });
+}).RequireAuthorization().DisableAntiforgery();
 
 // ── Session management API ──────────────────────────────────────────
 app.MapGet("/api/sessions", async (HttpContext ctx, IMediator mediator) =>
@@ -376,6 +572,40 @@ app.MapPost("/api/orbs/gift", async (HttpContext ctx, IMediator mediator, peepos
         return Results.Ok(new { senderBalance = result.SenderNewBalance });
     }
     catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization();
+
+// Torvex Gold endpoints
+app.MapPost("/api/gold/subscribe", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var baseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+    try
+    {
+        var url = await mediator.Send(new peeposredemption.Application.Features.Shop.Commands.CreateGoldSubscriptionSessionCommand(Guid.Parse(uid), baseUrl));
+        return Results.Ok(new { url });
+    }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization();
+
+app.MapPost("/api/gold/cancel", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    try
+    {
+        await mediator.Send(new peeposredemption.Application.Features.Shop.Commands.CancelGoldSubscriptionCommand(Guid.Parse(uid)));
+        return Results.Ok();
+    }
+    catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization();
+
+app.MapGet("/api/gold/status", async (HttpContext ctx, IMediator mediator) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var result = await mediator.Send(new peeposredemption.Application.Features.Shop.Queries.GetGoldSubscriptionQuery(Guid.Parse(uid)));
+    return Results.Ok(result);
 }).RequireAuthorization();
 
 // Referral link tracking
@@ -596,10 +826,7 @@ app.MapGet("/api/artists/dashboard", async (HttpContext ctx, IMediator mediator,
 // Admin — view all artists + pending payouts
 app.MapGet("/api/admin/artists", async (HttpContext ctx, IMediator mediator, IConfiguration config) =>
 {
-    var emailClaim = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-    var adminEmail = config["Email:AdminEmail"] ?? string.Empty;
-    if (string.IsNullOrEmpty(adminEmail) || !string.Equals(emailClaim, adminEmail, StringComparison.OrdinalIgnoreCase))
-        return Results.Forbid();
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
     var result = await mediator.Send(new peeposredemption.Application.Features.Artists.Queries.GetAllArtistsQuery());
     return Results.Ok(result);
 }).RequireAuthorization();
@@ -607,10 +834,7 @@ app.MapGet("/api/admin/artists", async (HttpContext ctx, IMediator mediator, ICo
 // Admin — record a payout
 app.MapPost("/api/admin/artists/payout", async (HttpContext ctx, IMediator mediator, IConfiguration config, ArtistPayoutRequest body) =>
 {
-    var emailClaim = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-    var adminEmail = config["Email:AdminEmail"] ?? string.Empty;
-    if (string.IsNullOrEmpty(adminEmail) || !string.Equals(emailClaim, adminEmail, StringComparison.OrdinalIgnoreCase))
-        return Results.Forbid();
+    if (!IsTorvexOwner(ctx, config)) return Results.Forbid();
     var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
     if (uid == null) return Results.Unauthorized();
     try
@@ -720,13 +944,8 @@ app.MapGet("/api/admin/security/ip-bans", async (HttpContext ctx, IMediator medi
     return Results.Ok(result);
 }).RequireAuthorization();
 
-static bool IsTorvexOwner(HttpContext ctx, IConfiguration config)
-{
-    var emailClaim = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-    var adminEmail = config["Email:AdminEmail"] ?? string.Empty;
-    return !string.IsNullOrEmpty(adminEmail) &&
-           string.Equals(emailClaim, adminEmail, StringComparison.OrdinalIgnoreCase);
-}
+static bool IsTorvexOwner(HttpContext ctx, IConfiguration config) =>
+    AdminAuthHelper.IsTorvexOwner(ctx.User, config, ctx.Request.Headers);
 
 // MFA endpoints
 app.MapPost("/api/auth/mfa/verify", async (HttpContext ctx, IMediator mediator) =>
@@ -969,3 +1188,4 @@ record RequireMfaToggleRequest(bool Enabled);
 record PrivateServerToggleRequest(bool Enabled);
 record AltReviewRequest(string Action); // "confirm" | "dismiss" | "ban"
 record ServerReorderRequest(List<Guid> ServerIds);
+record SwitchAccountRequest(string Jwt);

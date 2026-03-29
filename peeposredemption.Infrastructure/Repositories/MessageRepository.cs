@@ -20,6 +20,7 @@ namespace peeposredemption.Infrastructure.Repositories
             var rows = await _db.Messages
                 .Include(m => m.Author)
                 .Include(m => m.ReplyToMessage).ThenInclude(r => r!.Author)
+                .Include(m => m.Attachments)
                 .Where(m => m.ChannelId == channelId)
                 .OrderByDescending(m => m.SentAt).ThenByDescending(m => m.Id)
                 .Skip((page - 1) * pageSize)

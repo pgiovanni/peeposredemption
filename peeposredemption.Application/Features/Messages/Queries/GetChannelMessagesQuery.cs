@@ -22,13 +22,18 @@ namespace peeposredemption.Application.Features.Messages.Queries
             var messages = await _uow.Messages
                 .GetChannelMessagesAsync(q.ChannelId, q.Page, q.PageSize);
             return messages
-                .Select(m => new MessageDto(m.Id, m.AuthorId, m.Author.DisplayOrUsername,
-                    m.IsDeleted ? "[message deleted]" : m.Content, m.SentAt, m.IsDeleted, m.Author.AvatarUrl,
-                    m.ReplyToMessageId,
-                    m.ReplyToMessage?.Author?.DisplayOrUsername,
-                    m.ReplyToMessage != null
-                        ? (m.ReplyToMessage.Content.Length > 100 ? m.ReplyToMessage.Content.Substring(0, 100) + "..." : m.ReplyToMessage.Content)
-                        : null))
+                .Select(m =>
+                {
+                    var att = m.Attachments.FirstOrDefault();
+                    return new MessageDto(m.Id, m.AuthorId, m.Author.DisplayOrUsername,
+                        m.IsDeleted ? "[message deleted]" : m.Content, m.SentAt, m.IsDeleted, m.Author.AvatarUrl,
+                        m.ReplyToMessageId,
+                        m.ReplyToMessage?.Author?.DisplayOrUsername,
+                        m.ReplyToMessage != null
+                            ? (m.ReplyToMessage.Content.Length > 100 ? m.ReplyToMessage.Content.Substring(0, 100) + "..." : m.ReplyToMessage.Content)
+                            : null,
+                        att?.Url, att?.FileName, att?.ContentType);
+                })
                 .ToList();
         }
     }

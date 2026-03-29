@@ -75,7 +75,7 @@ function shouldGroupMessage(authorId, sentAt) {
     return (new Date(sentAt) - new Date(lastTime)) < 5 * 60 * 1000;
 }
 
-function createMessageEl(author, content, time, isMine = false, id = null, authorId = null, authorAvatarUrl = null, sentAt = null, replyTo = null) {
+function createMessageEl(author, content, time, isMine = false, id = null, authorId = null, authorAvatarUrl = null, sentAt = null, replyTo = null, attachment = null) {
     const grouped = authorId && sentAt && shouldGroupMessage(authorId, sentAt);
     const div = document.createElement("div");
     div.className = "message" + (isMine ? " mine" : "") + (grouped ? " message-grouped" : "");
@@ -155,6 +155,29 @@ function createMessageEl(author, content, time, isMine = false, id = null, autho
     div.appendChild(authorEl);
     div.appendChild(contentEl);
 
+    // Attachment rendering
+    if (attachment && attachment.url) {
+        if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+            const img = document.createElement('img');
+            img.src = attachment.url;
+            img.alt = attachment.fileName || 'image';
+            img.className = 'msg-attachment-img';
+            img.loading = 'lazy';
+            img.addEventListener('click', () => window.open(attachment.url, '_blank'));
+            div.appendChild(img);
+        } else if (attachment.contentType && attachment.contentType.startsWith('audio/')) {
+            const audio = document.createElement('audio');
+            audio.controls = true;
+            audio.className = 'msg-attachment-audio';
+            audio.preload = 'metadata';
+            const source = document.createElement('source');
+            source.src = attachment.url;
+            source.type = attachment.contentType;
+            audio.appendChild(source);
+            div.appendChild(audio);
+        }
+    }
+
     return div;
 }
 
@@ -224,7 +247,8 @@ connection.on("ReceiveChannelMessage", (msg) => {
         authorUsername: msg.replyToAuthorUsername,
         contentPreview: msg.replyToContentPreview
     } : null;
-    const el = createMessageEl(msg.authorUsername, msg.content, formatTime(msg.sentAt), false, msg.id, msg.authorId, msg.authorAvatarUrl, msg.sentAt, replyTo);
+    const attachment = msg.attachmentUrl ? { url: msg.attachmentUrl, fileName: msg.attachmentFileName, contentType: msg.attachmentContentType } : null;
+    const el = createMessageEl(msg.authorUsername, msg.content, formatTime(msg.sentAt), false, msg.id, msg.authorId, msg.authorAvatarUrl, msg.sentAt, replyTo, attachment);
     document.getElementById("messages")?.appendChild(el);
     if (typeof window.applyEmojiRendering === 'function') window.applyEmojiRendering();
     scrollToBottom();
@@ -434,8 +458,9 @@ function clearReplyState() {
 document.getElementById("message-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = document.getElementById("message-input");
-    if (!input.value.trim()) return;
-    let content = input.value;
+    const attachmentId = typeof window._getAttachmentId === 'function' ? window._getAttachmentId() : null;
+    if (!input.value.trim() && !attachmentId) return;
+    let content = input.value.trim();
     const replyId = _replyState?.messageId || null;
     // Prepend @mention for reply ping
     if (_replyState && _replyState.authorName) {
@@ -443,9 +468,10 @@ document.getElementById("message-form")?.addEventListener("submit", async (e) =>
         if (!content.startsWith(mention)) content = mention + ' ' + content;
     }
     try {
-        await connection.invoke('SendChannelMessage', channelId, content, replyId);
+        await connection.invoke('SendChannelMessage', channelId, content, replyId, attachmentId ?? null);
         input.value = '';
         clearReplyState();
+        if (typeof window._clearAttachment === 'function') window._clearAttachment();
     } catch (err) {
         console.error('Failed to send message:', err);
     }

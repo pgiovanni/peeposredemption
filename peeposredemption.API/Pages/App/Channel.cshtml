@@ -113,12 +113,25 @@
         </div>
 
         <div class="sidebar-footer">
-            <a href="/App/Profile" title="Edit Profile">
+            <a href="/App/Profile" title="Edit Profile" style="flex:1; min-width:0;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                 </svg>
                 Profile
             </a>
+            <button class="icon-btn" title="Switch Accounts" data-switch-accounts>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                </svg>
+            </button>
+            <form method="post" action="/Auth/Logout" style="display:contents">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="icon-btn" title="Log Out">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                    </svg>
+                </button>
+            </form>
         </div>
     </div>
 
@@ -245,6 +258,19 @@
                         }
                         <div class="message-author"><a href="/App/Profile?userId=@msg.AuthorId" class="author-link">@msg.AuthorUsername</a> <span class="message-time" data-time="@msg.SentAt.ToString("o")"></span></div>
                         <div class="message-content">@msg.Content</div>
+                        @if (msg.AttachmentUrl != null)
+                        {
+                            @if (msg.AttachmentContentType != null && msg.AttachmentContentType.StartsWith("image/"))
+                            {
+                                <img src="@msg.AttachmentUrl" alt="@msg.AttachmentFileName" class="msg-attachment-img" loading="lazy" onclick="window.open(this.src,'_blank')" />
+                            }
+                            else if (msg.AttachmentContentType != null && msg.AttachmentContentType.StartsWith("audio/"))
+                            {
+                                <audio controls class="msg-attachment-audio" preload="metadata">
+                                    <source src="@msg.AttachmentUrl" type="@msg.AttachmentContentType" />
+                                </audio>
+                            }
+                        }
                     </div>
                 }
             </div>
@@ -280,10 +306,13 @@
                         <button id="gift-send" class="btn-primary btn-sm">Send Gift</button>
                     </div>
                 </div>
+                <input type="file" id="file-input" accept="image/jpeg,image/png,image/gif,image/webp,audio/mpeg,audio/ogg,audio/wav" hidden />
+                <div id="attachment-preview" class="attachment-preview hidden"></div>
                 <form id="message-form">
                     <button type="button" id="emoji-picker-toggle" class="icon-btn emoji-picker-btn" title="Emojis">😀</button>
                     <button type="button" id="gif-picker-toggle" class="icon-btn emoji-picker-btn" title="GIFs">GIF</button>
                     <button type="button" id="gift-toggle" class="icon-btn emoji-picker-btn" title="Gift Orbs">&#x1F381;</button>
+                    <button type="button" id="attach-btn" class="icon-btn emoji-picker-btn" title="Attach file">📎</button>
                     <input id="message-input" type="text" placeholder="Message #@Model.ChannelName..." autocomplete="off" />
                     <button type="submit">Send</button>
                 </form>
@@ -947,6 +976,114 @@
             } catch {}
         }
 
+        // ── File attachment system ─────────────────────────────────────
+        (function() {
+            const fileInput = document.getElementById('file-input');
+            const attachBtn = document.getElementById('attach-btn');
+            const previewDiv = document.getElementById('attachment-preview');
+            const inputArea = document.querySelector('.message-input-area');
+            let pendingAttachmentId = null;
+
+            if (!attachBtn || !fileInput) return;
+
+            attachBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) handleFile(fileInput.files[0]);
+            });
+
+            // Drag-and-drop
+            inputArea?.addEventListener('dragover', e => { e.preventDefault(); inputArea.classList.add('drag-over'); });
+            inputArea?.addEventListener('dragleave', () => inputArea.classList.remove('drag-over'));
+            inputArea?.addEventListener('drop', e => {
+                e.preventDefault();
+                inputArea.classList.remove('drag-over');
+                const file = e.dataTransfer?.files[0];
+                if (file) handleFile(file);
+            });
+
+            function handleFile(file) {
+                const isGold = false; // checked server-side; client shows generous limit for UX
+                const maxBytes = 50 * 1024 * 1024;
+                if (file.size > maxBytes) {
+                    showAttachError('File too large (max 50MB for Gold, 8MB free).');
+                    return;
+                }
+                const allowed = ['image/jpeg','image/png','image/gif','image/webp','audio/mpeg','audio/ogg','audio/wav'];
+                if (!allowed.includes(file.type)) {
+                    showAttachError('File type not allowed.');
+                    return;
+                }
+                uploadFile(file);
+            }
+
+            async function uploadFile(file) {
+                clearPending();
+                previewDiv.innerHTML = '<span class="attachment-uploading">Uploading...</span>';
+                previewDiv.classList.remove('hidden');
+
+                const fd = new FormData();
+                fd.append('file', file);
+
+                try {
+                    const resp = await fetch(`/api/channels/${channelId}/upload`, {
+                        method: 'POST',
+                        body: fd
+                    });
+                    if (!resp.ok) {
+                        const data = await resp.json().catch(() => ({}));
+                        showAttachError(data.error || 'Upload failed.');
+                        return;
+                    }
+                    const data = await resp.json();
+                    pendingAttachmentId = data.attachmentId;
+                    showPreview(file, data.url, data.contentType);
+                } catch {
+                    showAttachError('Upload failed. Please try again.');
+                }
+            }
+
+            function showPreview(file, url, contentType) {
+                previewDiv.innerHTML = '';
+                if (contentType.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.className = 'attachment-preview-img';
+                    img.alt = file.name;
+                    previewDiv.appendChild(img);
+                } else {
+                    const icon = document.createElement('span');
+                    icon.className = 'attachment-audio-icon';
+                    icon.textContent = '🎵 ' + file.name;
+                    previewDiv.appendChild(icon);
+                }
+                const dismiss = document.createElement('button');
+                dismiss.type = 'button';
+                dismiss.className = 'attachment-dismiss';
+                dismiss.textContent = '✕';
+                dismiss.title = 'Remove attachment';
+                dismiss.addEventListener('click', clearPending);
+                previewDiv.appendChild(dismiss);
+                previewDiv.classList.remove('hidden');
+            }
+
+            function showAttachError(msg) {
+                previewDiv.innerHTML = `<span class="attachment-error">${msg}</span>`;
+                previewDiv.classList.remove('hidden');
+                setTimeout(() => { if (!pendingAttachmentId) previewDiv.classList.add('hidden'); }, 4000);
+            }
+
+            function clearPending() {
+                pendingAttachmentId = null;
+                previewDiv.innerHTML = '';
+                previewDiv.classList.add('hidden');
+                fileInput.value = '';
+            }
+
+            // Expose so the submit handler can read pendingAttachmentId
+            window._getAttachmentId = () => pendingAttachmentId;
+            window._clearAttachment = clearPending;
+        })();
+
         } // end if (!isVoiceChannel)
 
         // ── Persistent voice: stay in VC while browsing text channels ──────
@@ -1008,9 +1145,10 @@
                         const replyTo = m.replyToMessageId
                             ? { messageId: m.replyToMessageId, authorUsername: m.replyToAuthorUsername, contentPreview: m.replyToContentPreview }
                             : null;
+                        const attachment = m.attachmentUrl ? { url: m.attachmentUrl, fileName: m.attachmentFileName, contentType: m.attachmentContentType } : null;
                         const el = createMessageEl(
                             m.authorUsername, m.content, formatTime(m.sentAt),
-                            m.authorId === currentUserId, m.id, m.authorId, m.authorAvatarUrl, m.sentAt, replyTo
+                            m.authorId === currentUserId, m.id, m.authorId, m.authorAvatarUrl, m.sentAt, replyTo, attachment
                         );
                         container.appendChild(el);
                     });
