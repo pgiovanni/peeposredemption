@@ -68,12 +68,12 @@ namespace peeposredemption.API.Pages.Auth
                 Response.Cookies.Append("jwt", result.Token!, new CookieOptions
                 {
                     HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
-                    MaxAge = TimeSpan.FromMinutes(15)
+                    Domain = ".torvex.app", MaxAge = TimeSpan.FromMinutes(15)
                 });
                 Response.Cookies.Append("refreshToken", result.RefreshToken!, new CookieOptions
                 {
                     HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
-                    MaxAge = TimeSpan.FromDays(30)
+                    Domain = ".torvex.app", MaxAge = TimeSpan.FromDays(30)
                 });
 
                 // Record IP + device for security tracking
