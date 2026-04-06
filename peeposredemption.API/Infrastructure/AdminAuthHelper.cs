@@ -28,6 +28,14 @@ public static class AdminAuthHelper
 
         if (!emailOk || !userIdOk) return false;
 
+        // mTLS check — require nginx to confirm client cert was verified
+        if (headers != null)
+        {
+            var clientVerified = headers["X-Client-Verified"].FirstOrDefault();
+            if (!string.Equals(clientVerified, "SUCCESS", StringComparison.Ordinal))
+                return false;
+        }
+
         // API key check — only enforced when a key is configured AND headers are supplied
         if (!string.IsNullOrEmpty(adminApiKey) && headers != null)
         {
