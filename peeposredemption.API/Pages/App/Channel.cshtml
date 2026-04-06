@@ -162,11 +162,9 @@
             <partial name="_NotifDropdown" />
             @{
                 var config = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
-                var adminEmail = config["Email:AdminEmail"] ?? "";
-                var userEmail = HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-                if (!string.IsNullOrEmpty(adminEmail) && string.Equals(userEmail, adminEmail, StringComparison.OrdinalIgnoreCase))
+                if (peeposredemption.API.Infrastructure.AdminAuthHelper.IsTorvexOwner(HttpContext.User, config))
                 {
-                    <a href="/App/Admin/SecurityAdmin" class="icon-btn" title="Site Admin" style="font-size:1rem;text-decoration:none">🛡️</a>
+                    <a href="https://admin.torvex.app/App/Admin/Index" class="icon-btn" title="Site Admin" style="font-size:1rem;text-decoration:none" target="_blank">🛡️</a>
                 }
             }
         </div>

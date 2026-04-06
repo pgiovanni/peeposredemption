@@ -118,9 +118,7 @@
     <div class="content-area">
         @{
             var cfg = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
-            var aEmail = cfg["Email:AdminEmail"] ?? "";
-            var uEmail = HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-            var isAdmin = !string.IsNullOrEmpty(aEmail) && string.Equals(uEmail, aEmail, StringComparison.OrdinalIgnoreCase);
+            var isAdmin = peeposredemption.API.Infrastructure.AdminAuthHelper.IsTorvexOwner(HttpContext.User, cfg);
         }
         @if (Model.ActiveFriend != null)
         {
@@ -135,7 +133,7 @@
                 <partial name="_NotifDropdown" />
                 @if (isAdmin)
                 {
-                    <a href="/App/Admin/SecurityAdmin" class="icon-btn" title="Site Admin" style="font-size:1rem;text-decoration:none">🛡️</a>
+                    <a href="https://admin.torvex.app/App/Admin/Index" class="icon-btn" title="Site Admin" style="font-size:1rem;text-decoration:none" target="_blank">🛡️</a>
                 }
             </div>
             <div id="messages" class="messages-container">
@@ -191,7 +189,7 @@
                 <partial name="_NotifDropdown" />
                 @if (isAdmin)
                 {
-                    <a href="/App/Admin/SecurityAdmin" class="icon-btn" title="Site Admin" style="font-size:1rem;text-decoration:none">🛡️</a>
+                    <a href="https://admin.torvex.app/App/Admin/Index" class="icon-btn" title="Site Admin" style="font-size:1rem;text-decoration:none" target="_blank">🛡️</a>
                 }
             </div>
             <div class="welcome-screen">

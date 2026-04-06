@@ -106,6 +106,21 @@ var app = builder.Build();
 app.UseMiddleware<IpBanMiddleware>();
 app.UseMiddleware<DeviceIdMiddleware>();
 
+// Block admin paths from non-admin host — /App/Admin/* and /api/admin/* are only reachable via admin.torvex.app
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? "";
+    var host = context.Request.Host.Host;
+    var isAdminPath = path.StartsWith("/App/Admin", StringComparison.OrdinalIgnoreCase)
+                   || path.StartsWith("/api/admin", StringComparison.OrdinalIgnoreCase);
+    if (isAdminPath && !host.Equals("admin.torvex.app", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = 404;
+        return;
+    }
+    await next();
+});
+
 // Catch antiforgery 400s and redirect to login with a helpful message instead of blank Chrome error page
 app.Use(async (context, next) =>
 {
@@ -146,13 +161,13 @@ app.Use(async (context, next) =>
 
             context.Response.Cookies.Append("jwt", result.Token!, new CookieOptions
             {
-                HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
-                MaxAge = TimeSpan.FromMinutes(15)
+                HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax,
+                Domain = ".torvex.app", MaxAge = TimeSpan.FromMinutes(15)
             });
             context.Response.Cookies.Append("refreshToken", result.RefreshToken!, new CookieOptions
             {
-                HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
-                MaxAge = TimeSpan.FromDays(30)
+                HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax,
+                Domain = ".torvex.app", MaxAge = TimeSpan.FromDays(30)
             });
             context.Request.Headers["Authorization"] = $"Bearer {result.Token}";
             context.Items["CurrentJwt"] = result.Token;
@@ -189,13 +204,13 @@ app.MapPost("/api/auth/refresh", async (HttpRequest req, IMediator mediator) =>
 
         req.HttpContext.Response.Cookies.Append("jwt", result.Token!, new CookieOptions
         {
-            HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
-            MaxAge = TimeSpan.FromMinutes(15)
+            HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax,
+            Domain = ".torvex.app", MaxAge = TimeSpan.FromMinutes(15)
         });
         req.HttpContext.Response.Cookies.Append("refreshToken", result.RefreshToken!, new CookieOptions
         {
-            HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
-            MaxAge = TimeSpan.FromDays(30)
+            HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax,
+            Domain = ".torvex.app", MaxAge = TimeSpan.FromDays(30)
         });
         return Results.Ok(new { token = result.Token });
     }
@@ -239,11 +254,13 @@ app.MapPost("/api/auth/switch", async (HttpRequest req, IConfiguration config, p
 
     req.HttpContext.Response.Cookies.Append("jwt", newJwt, new CookieOptions
     {
-        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(15)
+        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax,
+        Domain = ".torvex.app", MaxAge = TimeSpan.FromMinutes(15)
     });
     req.HttpContext.Response.Cookies.Append("refreshToken", newRefresh, new CookieOptions
     {
-        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromDays(30)
+        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax,
+        Domain = ".torvex.app", MaxAge = TimeSpan.FromDays(30)
     });
 
     return Results.Ok(new { jwt = newJwt, username = user.Username, avatarUrl = user.AvatarUrl });

@@ -70,7 +70,7 @@ namespace peeposredemption.Application.Services
                            $"<p><strong>Name:</strong> {System.Net.WebUtility.HtmlEncode(displayName)}<br/>" +
                            $"<strong>Email:</strong> {System.Net.WebUtility.HtmlEncode(email)}<br/>" +
                            $"<strong>Portfolio:</strong> <a href=\"{System.Net.WebUtility.HtmlEncode(portfolioUrl)}\">{System.Net.WebUtility.HtmlEncode(portfolioUrl)}</a></p>" +
-                           $"<p>Review at <a href=\"https://torvex.app/App/ArtistSubmissions\">Artist Submissions</a>.</p>"
+                           $"<p>Review at <a href=\"https://admin.torvex.app/App/Admin/ArtistSubmissions\">Artist Submissions</a>.</p>"
             };
             await _resend.EmailSendAsync(message);
         }

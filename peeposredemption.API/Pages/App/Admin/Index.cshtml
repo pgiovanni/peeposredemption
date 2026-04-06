@@ -1,0 +1,58 @@
+@page
+@model peeposredemption.API.Pages.App.Admin.AdminIndexModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Torvex Admin</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #1a1a2e; color: #e0e0e0; font-family: system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        h1 { font-size: 1.8rem; margin-bottom: 0.25rem; color: #fff; }
+        .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 2.5rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; width: 100%; max-width: 700px; padding: 0 1rem; }
+        .card { background: #16213e; border: 1px solid #2a2a4a; border-radius: 10px; padding: 1.5rem 1rem; text-align: center; text-decoration: none; color: #e0e0e0; transition: border-color 0.2s, background 0.2s; }
+        .card:hover { background: #1e2a50; border-color: #5865f2; }
+        .card .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .card .label { font-size: 0.95rem; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <h1>🛡️ Torvex Admin</h1>
+    <p class="subtitle">Welcome back, @Model.Username</p>
+    <div class="grid">
+        <a href="/App/Admin/SecurityAdmin" class="card">
+            <div class="icon">🔒</div>
+            <div class="label">Security</div>
+        </a>
+        <a href="/App/Admin/BanAdmin" class="card">
+            <div class="icon">🔨</div>
+            <div class="label">Bans</div>
+        </a>
+        <a href="/App/Admin/ArtistAdmin" class="card">
+            <div class="icon">🎨</div>
+            <div class="label">Artists</div>
+        </a>
+        <a href="/App/Admin/ArtistSubmissions" class="card">
+            <div class="icon">📋</div>
+            <div class="label">Artist Applications</div>
+        </a>
+        <a href="/App/Admin/Referrals" class="card">
+            <div class="icon">💰</div>
+            <div class="label">Referrals</div>
+        </a>
+        <a href="/App/Admin/FeatureRequestAdmin" class="card">
+            <div class="icon">💡</div>
+            <div class="label">Feature Requests</div>
+        </a>
+        <a href="/App/Admin/SupportTicketAdmin" class="card">
+            <div class="icon">🎫</div>
+            <div class="label">Support Tickets</div>
+        </a>
+    </div>
+</body>
+</html>

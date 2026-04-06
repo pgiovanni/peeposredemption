@@ -1,21 +1,20 @@
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using peeposredemption.API.Infrastructure;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Domain.Interfaces;
-using System.Security.Claims;
 
-namespace peeposredemption.API.Pages.App;
+namespace peeposredemption.API.Pages.App.Admin;
 
 public class ArtistSubmissionsModel : PageModel
 {
     private readonly IUnitOfWork _uow;
-    private readonly string _adminEmail;
+    private readonly IConfiguration _config;
 
     public ArtistSubmissionsModel(IUnitOfWork uow, IConfiguration config)
     {
         _uow = uow;
-        _adminEmail = config["Email:AdminEmail"] ?? string.Empty;
+        _config = config;
     }
 
     public List<ArtistSubmission> Submissions { get; set; } = new();
@@ -59,10 +58,5 @@ public class ArtistSubmissionsModel : PageModel
         return Page();
     }
 
-    private bool IsAdmin()
-    {
-        var emailClaim = User.FindFirst(ClaimTypes.Email)?.Value;
-        return !string.IsNullOrEmpty(_adminEmail) &&
-               string.Equals(emailClaim, _adminEmail, StringComparison.OrdinalIgnoreCase);
-    }
+    private bool IsAdmin() => AdminAuthHelper.IsTorvexOwner(User, _config);
 }
