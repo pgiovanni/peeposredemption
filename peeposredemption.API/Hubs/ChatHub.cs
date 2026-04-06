@@ -95,7 +95,7 @@ namespace peeposredemption.API.Hubs
 
         public async Task SendChannelMessage(Guid channelId, string content, Guid? replyToMessageId = null, Guid? attachmentId = null)
         {
-            if (string.IsNullOrWhiteSpace(content))
+            if (string.IsNullOrWhiteSpace(content) && attachmentId == null)
                 throw new InvalidOperationException("Message content cannot be empty.");
 
             // Burst detection: 8 messages per 10 seconds
