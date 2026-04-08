@@ -802,7 +802,7 @@
                 img.addEventListener('click', async () => {
                     if (!gifUrl) return;
                     try {
-                        await connection.invoke('SendChannelMessage', channelId, gifUrl, null);
+                        await connection.invoke('SendChannelMessage', channelId, gifUrl, null, null);
                         gifPicker.classList.add('hidden');
                         gifSearch.value = '';
                     } catch (err) {
