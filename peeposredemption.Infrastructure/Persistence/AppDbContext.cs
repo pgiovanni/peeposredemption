@@ -95,6 +95,10 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasIndex(u => u.Username)
                 .IsUnique();
 
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
             // Composite key for join table
             modelBuilder.Entity<ServerMember>()
                 .HasKey(sm => new { sm.UserId, sm.ServerId });
@@ -607,6 +611,21 @@ namespace peeposredemption.Infrastructure.Persistence
 
             modelBuilder.Entity<Message>()
                 .HasIndex(m => new { m.AuthorId, m.SentAt });
+
+            modelBuilder.Entity<Message>()
+                .HasIndex(m => new { m.ChannelId, m.SentAt });
+
+            modelBuilder.Entity<DirectMessage>()
+                .HasIndex(dm => new { dm.RecipientId, dm.IsRead });
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => new { n.UserId, n.IsRead });
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => new { n.UserId, n.CreatedAt });
+
+            modelBuilder.Entity<Channel>()
+                .HasIndex(c => c.ServerId);
 
             // AltSuspicion
             modelBuilder.Entity<AltSuspicion>()
