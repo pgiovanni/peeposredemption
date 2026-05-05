@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Resend;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -515,6 +516,14 @@ app.MapPost("/api/orbs/daily-claim", async (HttpContext ctx, IMediator mediator)
         return Results.Ok(result);
     }
     catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+}).RequireAuthorization();
+
+app.MapGet("/api/game/coins", async (HttpContext ctx, peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    var uid = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (uid == null) return Results.Unauthorized();
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == Guid.Parse(uid));
+    return Results.Ok(new { coins = player == null ? 0L : player.CoinBalance });
 }).RequireAuthorization();
 
 app.MapGet("/api/orbs/balance", async (HttpContext ctx, IMediator mediator) =>
@@ -1182,9 +1191,928 @@ using (var scope = app.Services.CreateScope())
     await mediator.Send(new peeposredemption.Application.Features.Badges.Commands.SeedBadgeDefinitionsCommand());
     await mediator.Send(new peeposredemption.Application.Features.Artists.Commands.SeedArtistsCommand());
     await mediator.Send(new peeposredemption.Application.Features.Game.Commands.SeedGameDataCommand());
+    var expansionDb = scope.ServiceProvider.GetRequiredService<peeposredemption.Infrastructure.Persistence.AppDbContext>();
+    await peeposredemption.API.Infrastructure.GameExpansionSeeder.SeedAsync(expansionDb);
 }
 
+// =====================================================================
+// BOT API — secured by X-Bot-Key header
+// =====================================================================
+// Fixed channel Guid representing "Discord Bot" context for game sessions
+var discordBotChannelId = Guid.Parse("00000000-0000-0000-dcdc-000000000001");
+
+bool BotAuth(HttpContext ctx, IConfiguration cfg)
+{
+    var key = cfg["Bot:ApiKey"];
+    if (string.IsNullOrEmpty(key)) return false;
+    return ctx.Request.Headers.TryGetValue("X-Bot-Key", out var v) && v == key;
+}
+
+// Auto-create a Torvex account and link it for a Discord user (no manual link needed)
+app.MapPost("/api/bot/auto-link", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    IMediator mediator,
+    BotAutoLinkRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    // Already linked?
+    var existing = await db.DiscordLinks
+        .Include(l => l.User)
+        .FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (existing != null)
+        return Results.Ok(new { torvexUserId = existing.TorvexUserId, username = existing.User.Username });
+
+    // Sanitize Discord username into a valid Torvex username
+    var baseUsername = System.Text.RegularExpressions.Regex.Replace(req.DiscordUsername, @"[^a-zA-Z0-9_]", "_");
+    if (baseUsername.Length < 3) baseUsername = $"dc_{baseUsername}";
+    baseUsername = baseUsername[..Math.Min(baseUsername.Length, 20)];
+
+    // Ensure unique username
+    var username = baseUsername;
+    var suffix = 1;
+    while (await db.Users.AnyAsync(u => u.Username == username))
+        username = $"{baseUsername[..Math.Min(baseUsername.Length, 17)]}_{suffix++}";
+
+    var fakeEmail = $"discord_{req.DiscordUserId}@bot.torvex.app";
+    var password = Guid.NewGuid().ToString("N");
+    var user = new peeposredemption.Domain.Entities.User
+    {
+        Username = username,
+        Email = fakeEmail,
+        PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+        EmailConfirmed = true
+    };
+    db.Users.Add(user);
+
+    db.DiscordLinks.Add(new peeposredemption.Domain.Entities.DiscordLink
+    {
+        DiscordUserId = req.DiscordUserId,
+        TorvexUserId = user.Id,
+        User = user
+    });
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { torvexUserId = user.Id, username = user.Username });
+});
+
+// Link a Discord user to a Torvex account
+app.MapPost("/api/bot/link", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotLinkRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    if (string.IsNullOrWhiteSpace(req.DiscordUserId) || string.IsNullOrWhiteSpace(req.TorvexUsername))
+        return Results.BadRequest(new { error = "DiscordUserId and TorvexUsername required." });
+
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Username == req.TorvexUsername);
+    if (user == null) return Results.NotFound(new { error = "Torvex user not found." });
+
+    var existing = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (existing != null)
+    {
+        existing.TorvexUserId = user.Id;
+        existing.LinkedAt = DateTime.UtcNow;
+    }
+    else
+    {
+        db.DiscordLinks.Add(new peeposredemption.Domain.Entities.DiscordLink
+        {
+            DiscordUserId = req.DiscordUserId,
+            TorvexUserId = user.Id
+        });
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { torvexUserId = user.Id, username = user.Username, displayName = user.DisplayName });
+});
+
+// Unlink a Discord user
+app.MapDelete("/api/bot/link/{discordUserId}", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    string discordUserId) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
+    if (link == null) return Results.NotFound();
+    db.DiscordLinks.Remove(link);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
+// Get linked Torvex user for a Discord user
+app.MapGet("/api/bot/link/{discordUserId}", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    string discordUserId) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks
+        .Include(l => l.User)
+        .FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
+    if (link == null) return Results.NotFound();
+    return Results.Ok(new
+    {
+        torvexUserId = link.TorvexUserId,
+        username = link.User.Username,
+        displayName = link.User.DisplayName,
+        orbBalance = link.User.OrbBalance,
+        linkedAt = link.LinkedAt
+    });
+});
+
+// Process a game command on behalf of a linked Discord user
+app.MapPost("/api/bot/game/command", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    IMediator mediator,
+    BotGameCommandRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var link = await db.DiscordLinks
+        .Include(l => l.User)
+        .FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (link == null)
+        return Results.NotFound(new { error = "Discord account not linked. Use /link in Discord." });
+
+    var result = await mediator.Send(new peeposredemption.Application.Features.Game.Commands.ProcessGameCommandRequest(
+        link.TorvexUserId,
+        link.User.Username,
+        discordBotChannelId,
+        req.Command));
+
+    return Results.Ok(result);
+});
+
+// Award message orb reward for a linked Discord user (peepo bucks)
+app.MapPost("/api/bot/orbs/message-reward", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    IMediator mediator,
+    BotDiscordUserRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (link == null) return Results.Ok(new { rewarded = false }); // unlinked users silently skipped
+
+    await mediator.Send(new peeposredemption.Application.Features.Orbs.Commands.RecordMessageOrbRewardCommand(link.TorvexUserId));
+    return Results.Ok(new { rewarded = true });
+});
+
+// Get player stats for a Discord user (for PvP combat)
+app.MapGet("/api/bot/player/{discordUserId}", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    string discordUserId) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks
+        .Include(l => l.User)
+        .FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
+    if (link == null) return Results.NotFound();
+
+    var player = await db.PlayerCharacters
+        .FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.NotFound();
+
+    return Results.Ok(new {
+        username = link.User.Username,
+        characterName = player.CharacterName,
+        @class = player.Class.ToString(),
+        level = player.Level,
+        xp = player.XP,
+        currentHp = player.CurrentHp,
+        maxHp = player.MaxHp,
+        currentMp = player.CurrentMp,
+        maxMp = player.MaxMp,
+        str = player.STR,
+        def = player.DEF,
+        @int = player.INT,
+        dex = player.DEX,
+        vit = player.VIT,
+        luk = player.LUK,
+        totalMonstersKilled = player.TotalMonstersKilled,
+        totalDeaths = player.TotalDeaths,
+        coinBalance = player.CoinBalance
+    });
+});
+
+// Award PvP XP to winner and loser
+app.MapPost("/api/bot/pvp/reward", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPvpRewardRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var winnerLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.WinnerDiscordId);
+    var loserLink  = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.LoserDiscordId);
+    if (winnerLink == null || loserLink == null) return Results.NotFound();
+
+    var winner = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == winnerLink.TorvexUserId);
+    var loser  = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == loserLink.TorvexUserId);
+    if (winner == null || loser == null) return Results.NotFound();
+
+    long winnerXp = Math.Max(50, loser.Level * 25);
+    long loserXp  = Math.Max(10, loser.Level * 5);
+
+    winner.XP += winnerXp;
+    loser.XP  += loserXp;
+
+    // Level up check (simple: level = floor(xp / 500) + 1, capped at 100)
+    winner.Level = Math.Min(100, (int)(winner.XP / 500) + 1);
+    loser.Level  = Math.Min(100, (int)(loser.XP  / 500) + 1);
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { winnerXpGained = winnerXp, loserXpGained = loserXp });
+});
+
+// Add coins to a player's CoinBalance (gathering, PvP wins, daily bonus, etc.)
+app.MapPost("/api/bot/game/add-coins", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotAddCoinsRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordId);
+    if (link == null) return Results.NotFound(new { error = "Discord account not linked." });
+
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.NotFound(new { error = "Player character not found." });
+
+    player.CoinBalance += req.Amount;
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { newBalance = player.CoinBalance, added = req.Amount });
+}).DisableAntiforgery();
+
+// Item dictionary — weapons, armor, or materials
+app.MapGet("/api/bot/items", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    string? type) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var query = db.ItemDefinitions.AsQueryable();
+
+    if (!string.IsNullOrWhiteSpace(type))
+    {
+        if (Enum.TryParse<GameItemType>(type, true, out var parsed))
+            query = query.Where(i => i.Type == parsed);
+    }
+
+    var items = await query
+        .OrderBy(i => i.LevelReq).ThenBy(i => i.Name)
+        .Select(i => new {
+            id          = i.Id,
+            name        = i.Name,
+            description = i.Description,
+            icon        = i.Icon,
+            type        = i.Type.ToString(),
+            subType     = i.SubType.ToString(),
+            equipSlot   = i.EquipSlot != null ? i.EquipSlot.ToString() : null,
+            rarity      = i.Rarity.ToString(),
+            levelReq    = i.LevelReq,
+            minDamage   = i.MinDamage,
+            maxDamage   = i.MaxDamage,
+            element     = i.Element.ToString(),
+            bonusSTR    = i.BonusSTR,
+            bonusDEF    = i.BonusDEF,
+            bonusINT    = i.BonusINT,
+            bonusDEX    = i.BonusDEX,
+            bonusVIT    = i.BonusVIT,
+            bonusLUK    = i.BonusLUK,
+            buyPrice    = i.BuyPrice,
+            sellPrice   = i.SellPrice
+        })
+        .ToListAsync();
+
+    return Results.Ok(items);
+});
+
+// Monster dictionary
+app.MapGet("/api/bot/monsters", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    string? zone) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var query = db.MonsterDefinitions.AsQueryable();
+    if (!string.IsNullOrWhiteSpace(zone))
+        query = query.Where(m => m.Zone.ToLower() == zone.ToLower());
+
+    var monsters = await query
+        .OrderBy(m => m.Level).ThenBy(m => m.Name)
+        .Select(m => new {
+            id      = m.Id,
+            name    = m.Name,
+            icon    = m.Icon,
+            level   = m.Level,
+            zone    = m.Zone,
+            element = m.Element.ToString(),
+            maxHp   = m.MaxHp,
+            xp      = m.XpReward,
+            orbMin  = m.OrbRewardMin,
+            orbMax  = m.OrbRewardMax
+        })
+        .ToListAsync();
+
+    return Results.Ok(monsters);
+});
+
+// ── Peepo Collectibles API ──────────────────────────────────────────────────
+
+static GameItemRarity PeepoRarity(string name)
+{
+    using var sha = System.Security.Cryptography.SHA256.Create();
+    var v = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(name.ToLower()))[0];
+    return v switch
+    {
+        <= 127 => GameItemRarity.Common,
+        <= 191 => GameItemRarity.Uncommon,
+        <= 223 => GameItemRarity.Rare,
+        <= 239 => GameItemRarity.Epic,
+        _      => GameItemRarity.Legendary
+    };
+}
+
+static (long buy, long sell, decimal drop) PeepoStats(GameItemRarity r) => r switch
+{
+    GameItemRarity.Common    => (150,   45,   0.03m),
+    GameItemRarity.Uncommon  => (400,   120,  0.015m),
+    GameItemRarity.Rare      => (1200,  360,  0.005m),
+    GameItemRarity.Epic      => (3500,  1050, 0.0015m),
+    _                        => (10000, 3000, 0.0005m)
+};
+
+// POST /api/bot/peepos/sync — bot pushes Discord guild emojis; idempotent by name
+app.MapPost("/api/bot/peepos/sync", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    List<BotPeepoEmojiDto> emojis) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var monsterIds = await db.MonsterDefinitions.Select(m => m.Id).ToListAsync();
+    int created = 0, updated = 0;
+
+    int batchCount = 0;
+    foreach (var emoji in emojis)
+    {
+        var existing = await db.ItemDefinitions.FirstOrDefaultAsync(i =>
+            i.Name == emoji.Name && i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo);
+        if (existing == null)
+        {
+            var rarity = PeepoRarity(emoji.Name);
+            var (buy, sell, drop) = PeepoStats(rarity);
+            var itemDef = new ItemDefinition
+            {
+                Name        = emoji.Name,
+                Description = "A collectible peepo emoji.",
+                Type        = GameItemType.Collectible,
+                SubType     = ItemSubType.Peepo,
+                Rarity      = rarity,
+                Icon        = emoji.Url,
+                BuyPrice    = buy,
+                SellPrice   = sell,
+                IsStackable = false,
+            };
+            db.ItemDefinitions.Add(itemDef);
+            foreach (var mid in monsterIds)
+                db.MonsterLootEntries.Add(new MonsterLootEntry
+                {
+                    MonsterDefinitionId = mid,
+                    ItemDefinitionId    = itemDef.Id,
+                    DropChance          = drop,
+                    MinQuantity         = 1,
+                    MaxQuantity         = 1
+                });
+            created++;
+        }
+        else if (existing.Icon != emoji.Url)
+        {
+            existing.Icon = emoji.Url;
+            updated++;
+        }
+
+        batchCount++;
+        if (batchCount % 50 == 0)
+            await db.SaveChangesAsync();
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { created, updated, total = emojis.Count });
+}).DisableAntiforgery();
+
+// GET /api/bot/peepos — all peepo ItemDefs sorted rarity → name
+app.MapGet("/api/bot/peepos", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var peepos = await db.ItemDefinitions
+        .Where(i => i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo)
+        .OrderBy(i => i.Rarity).ThenBy(i => i.Name)
+        .Select(i => new { id = i.Id, name = i.Name, icon = i.Icon,
+            rarity = i.Rarity.ToString(), buyPrice = i.BuyPrice, sellPrice = i.SellPrice })
+        .ToListAsync();
+    return Results.Ok(peepos);
+});
+
+// GET /api/bot/peepos/inventory/{discordUserId}
+app.MapGet("/api/bot/peepos/inventory/{discordUserId}", async (
+    string discordUserId, HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
+    if (link == null) return Results.NotFound();
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.NotFound();
+    var items = await db.PlayerInventoryItems
+        .Include(i => i.ItemDefinition)
+        .Where(i => i.PlayerId == player.Id
+            && i.ItemDefinition.Type == GameItemType.Collectible
+            && i.ItemDefinition.SubType == ItemSubType.Peepo)
+        .Select(i => new { id = i.ItemDefinition.Id, name = i.ItemDefinition.Name,
+            icon = i.ItemDefinition.Icon, rarity = i.ItemDefinition.Rarity.ToString(),
+            quantity = i.Quantity })
+        .ToListAsync();
+    return Results.Ok(items);
+});
+
+// POST /api/bot/peepos/buy — buy from fixed shop
+app.MapPost("/api/bot/peepos/buy", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoBuyRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.BadRequest(new { error = "No character found." });
+    var itemDef = await db.ItemDefinitions.FirstOrDefaultAsync(i =>
+        i.Name == req.PeepoName && i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo);
+    if (itemDef == null) return Results.NotFound(new { error = "Peepo not found." });
+    if (player.CoinBalance < itemDef.BuyPrice)
+        return Results.BadRequest(new { error = $"Not enough coins. Need {itemDef.BuyPrice:N0}, have {player.CoinBalance:N0}." });
+
+    player.CoinBalance -= itemDef.BuyPrice;
+    var existing = await db.PlayerInventoryItems
+        .FirstOrDefaultAsync(i => i.PlayerId == player.Id && i.ItemDefinitionId == itemDef.Id);
+    if (existing != null) existing.Quantity++;
+    else db.PlayerInventoryItems.Add(new PlayerInventoryItem
+        { PlayerId = player.Id, ItemDefinitionId = itemDef.Id, Quantity = 1 });
+    await db.SaveChangesAsync();
+    return Results.Ok(new { newCoinBalance = player.CoinBalance });
+}).DisableAntiforgery();
+
+// GET /api/bot/peepos/market — active coin-currency listings
+app.MapGet("/api/bot/peepos/market", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var listings = await db.MarketplaceListings
+        .Include(l => l.ItemDefinition)
+        .Include(l => l.Seller).ThenInclude(s => s.User)
+        .Where(l => l.Status == MarketListingStatus.Active
+            && l.CurrencyType == MarketplaceCurrencyType.Coins
+            && l.ItemDefinition.Type == GameItemType.Collectible
+            && l.ExpiresAt > DateTime.UtcNow)
+        .OrderBy(l => l.PricePerUnit)
+        .Select(l => new { id = l.Id, itemName = l.ItemDefinition.Name, icon = l.ItemDefinition.Icon,
+            rarity = l.ItemDefinition.Rarity.ToString(), quantity = l.Quantity,
+            pricePerUnit = l.PricePerUnit, sellerName = l.Seller.User.Username, listedAt = l.CreatedAt })
+        .ToListAsync();
+    return Results.Ok(listings);
+});
+
+// POST /api/bot/peepos/market/list — create listing (removes from inventory)
+app.MapPost("/api/bot/peepos/market/list", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoMarketListRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.BadRequest(new { error = "No character found." });
+    var itemDef = await db.ItemDefinitions.FirstOrDefaultAsync(i =>
+        i.Name == req.PeepoName && i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo);
+    if (itemDef == null) return Results.NotFound(new { error = "Peepo not found." });
+    if (req.Price <= 0) return Results.BadRequest(new { error = "Price must be positive." });
+
+    var invItem = await db.PlayerInventoryItems
+        .FirstOrDefaultAsync(i => i.PlayerId == player.Id && i.ItemDefinitionId == itemDef.Id);
+    if (invItem == null || invItem.Quantity < 1)
+        return Results.BadRequest(new { error = "You don't own that peepo." });
+
+    invItem.Quantity--;
+    if (invItem.Quantity <= 0) db.PlayerInventoryItems.Remove(invItem);
+    db.MarketplaceListings.Add(new MarketplaceListing
+    {
+        SellerId         = player.Id,
+        ItemDefinitionId = itemDef.Id,
+        Quantity         = 1,
+        PricePerUnit     = req.Price,
+        CurrencyType     = MarketplaceCurrencyType.Coins
+    });
+    await db.SaveChangesAsync();
+    return Results.Ok(new { listed = true });
+}).DisableAntiforgery();
+
+// POST /api/bot/peepos/market/buy — buy from market (5% coin sink)
+app.MapPost("/api/bot/peepos/market/buy", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoMarketBuyRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
+    var buyer = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (buyer == null) return Results.BadRequest(new { error = "No character found." });
+    var listing = await db.MarketplaceListings
+        .Include(l => l.ItemDefinition)
+        .FirstOrDefaultAsync(l => l.Id == req.ListingId
+            && l.Status == MarketListingStatus.Active
+            && l.CurrencyType == MarketplaceCurrencyType.Coins
+            && l.ExpiresAt > DateTime.UtcNow);
+    if (listing == null) return Results.NotFound(new { error = "Listing not found or expired." });
+    if (listing.SellerId == buyer.Id)
+        return Results.BadRequest(new { error = "Can't buy your own listing." });
+
+    var totalCost = listing.PricePerUnit * listing.Quantity;
+    if (buyer.CoinBalance < totalCost)
+        return Results.BadRequest(new { error = $"Not enough coins. Need {totalCost:N0}." });
+
+    var seller = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.Id == listing.SellerId);
+    if (seller == null) return Results.NotFound(new { error = "Seller not found." });
+
+    buyer.CoinBalance  -= totalCost;
+    seller.CoinBalance += (long)(totalCost * 0.95); // 5% tax sunk
+    listing.Status  = MarketListingStatus.Sold;
+    listing.BuyerId = buyer.Id;
+
+    var existing = await db.PlayerInventoryItems
+        .FirstOrDefaultAsync(i => i.PlayerId == buyer.Id && i.ItemDefinitionId == listing.ItemDefinitionId);
+    if (existing != null) existing.Quantity += listing.Quantity;
+    else db.PlayerInventoryItems.Add(new PlayerInventoryItem
+        { PlayerId = buyer.Id, ItemDefinitionId = listing.ItemDefinitionId, Quantity = listing.Quantity });
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { newCoinBalance = buyer.CoinBalance });
+}).DisableAntiforgery();
+
+// DELETE /api/bot/peepos/market/{listingId} — cancel listing (returns item)
+app.MapDelete("/api/bot/peepos/market/{listingId:guid}", async (
+    Guid listingId, string discordUserId, HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
+    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.BadRequest(new { error = "No character found." });
+    var listing = await db.MarketplaceListings
+        .FirstOrDefaultAsync(l => l.Id == listingId && l.SellerId == player.Id
+            && l.Status == MarketListingStatus.Active);
+    if (listing == null) return Results.NotFound(new { error = "Listing not found." });
+
+    listing.Status = MarketListingStatus.Cancelled;
+    var existing = await db.PlayerInventoryItems
+        .FirstOrDefaultAsync(i => i.PlayerId == player.Id && i.ItemDefinitionId == listing.ItemDefinitionId);
+    if (existing != null) existing.Quantity += listing.Quantity;
+    else db.PlayerInventoryItems.Add(new PlayerInventoryItem
+        { PlayerId = player.Id, ItemDefinitionId = listing.ItemDefinitionId, Quantity = listing.Quantity });
+    await db.SaveChangesAsync();
+    return Results.Ok();
+}).DisableAntiforgery();
+
+// POST /api/bot/peepos/trade/offer — create pending trade offer
+app.MapPost("/api/bot/peepos/trade/offer", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoTradeOfferRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var initLink  = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.InitiatorDiscordId);
+    var recipLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.RecipientDiscordId);
+    if (initLink == null || recipLink == null)
+        return Results.BadRequest(new { error = "Both users must be linked." });
+    var initiator = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == initLink.TorvexUserId);
+    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipLink.TorvexUserId);
+    if (initiator == null || recipient == null)
+        return Results.BadRequest(new { error = "Both users need a character." });
+
+    // Validate initiator owns the peepo
+    if (!string.IsNullOrEmpty(req.InitiatorPeepoName))
+    {
+        var itemDef = await db.ItemDefinitions.FirstOrDefaultAsync(i =>
+            i.Name == req.InitiatorPeepoName && i.Type == GameItemType.Collectible);
+        if (itemDef == null) return Results.BadRequest(new { error = "Peepo not found." });
+        var inv = await db.PlayerInventoryItems
+            .FirstOrDefaultAsync(i => i.PlayerId == initiator.Id && i.ItemDefinitionId == itemDef.Id);
+        if (inv == null || inv.Quantity < 1)
+            return Results.BadRequest(new { error = "You don't own that peepo." });
+    }
+    if (req.InitiatorCoins > 0 && initiator.CoinBalance < req.InitiatorCoins)
+        return Results.BadRequest(new { error = "Not enough coins." });
+
+    var itemsJson = string.IsNullOrEmpty(req.InitiatorPeepoName) ? "[]"
+        : System.Text.Json.JsonSerializer.Serialize(
+            new[] { new { name = req.InitiatorPeepoName, quantity = 1 } });
+
+    var trade = new TradeOffer
+    {
+        InitiatorId    = initiator.Id,
+        RecipientId    = recipient.Id,
+        ChannelId      = discordBotChannelId,
+        InitiatorItems = itemsJson,
+        InitiatorCoins = req.InitiatorCoins,
+        RecipientItems = "[]",
+        RecipientCoins = 0
+    };
+    db.TradeOffers.Add(trade);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { tradeOfferId = trade.Id });
+}).DisableAntiforgery();
+
+// POST /api/bot/peepos/trade/{id}/accept — executes swap
+app.MapPost("/api/bot/peepos/trade/{id:guid}/accept", async (
+    Guid id, HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoTradeActionRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var recipLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (recipLink == null) return Results.BadRequest(new { error = "Account not linked." });
+    var trade = await db.TradeOffers.FirstOrDefaultAsync(t => t.Id == id && t.Status == TradeStatus.Pending);
+    if (trade == null) return Results.NotFound(new { error = "Trade not found or already resolved." });
+    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipLink.TorvexUserId);
+    if (recipient == null || recipient.Id != trade.RecipientId) return Results.Forbid();
+    if (trade.ExpiresAt < DateTime.UtcNow)
+    {
+        trade.Status = TradeStatus.Expired;
+        await db.SaveChangesAsync();
+        return Results.BadRequest(new { error = "Trade expired." });
+    }
+    var initiator = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.Id == trade.InitiatorId);
+    if (initiator == null) return Results.BadRequest(new { error = "Initiator not found." });
+
+    // Transfer initiator items → recipient
+    if (trade.InitiatorItems != "[]")
+    {
+        var items = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(trade.InitiatorItems);
+        foreach (var item in items ?? [])
+        {
+            var name    = item.GetProperty("name").GetString() ?? "";
+            var itemDef = await db.ItemDefinitions.FirstOrDefaultAsync(i =>
+                i.Name == name && i.Type == GameItemType.Collectible);
+            if (itemDef == null) continue;
+            var initInv = await db.PlayerInventoryItems
+                .FirstOrDefaultAsync(i => i.PlayerId == initiator.Id && i.ItemDefinitionId == itemDef.Id);
+            if (initInv != null) { initInv.Quantity--; if (initInv.Quantity <= 0) db.PlayerInventoryItems.Remove(initInv); }
+            var recipInv = await db.PlayerInventoryItems
+                .FirstOrDefaultAsync(i => i.PlayerId == recipient.Id && i.ItemDefinitionId == itemDef.Id);
+            if (recipInv != null) recipInv.Quantity++;
+            else db.PlayerInventoryItems.Add(new PlayerInventoryItem
+                { PlayerId = recipient.Id, ItemDefinitionId = itemDef.Id, Quantity = 1 });
+        }
+    }
+
+    // Transfer coins
+    if (trade.InitiatorCoins > 0) { initiator.CoinBalance -= trade.InitiatorCoins; recipient.CoinBalance += trade.InitiatorCoins; }
+    if (trade.RecipientCoins > 0) { recipient.CoinBalance -= trade.RecipientCoins; initiator.CoinBalance += trade.RecipientCoins; }
+
+    trade.Status = TradeStatus.Accepted;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { success = true });
+}).DisableAntiforgery();
+
+// POST /api/bot/peepos/crate/open — spend 5000 coins for a random weighted-rarity peepo
+app.MapPost("/api/bot/peepos/crate/open", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoCrateRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    const long CRATE_COST = 5000;
+
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.BadRequest(new { error = "No character found. Use /rpg start first." });
+    if (player.CoinBalance < CRATE_COST)
+        return Results.BadRequest(new { error = $"Not enough coins. Need {CRATE_COST:N0}, have {player.CoinBalance:N0}." });
+
+    var roll = Random.Shared.NextDouble() * 100;
+    var rarity = roll < 0.5  ? GameItemRarity.Legendary
+               : roll < 4.0  ? GameItemRarity.Epic
+               : roll < 13.0 ? GameItemRarity.Rare
+               : roll < 38.0 ? GameItemRarity.Uncommon
+               : GameItemRarity.Common;
+
+    var pool = await db.ItemDefinitions
+        .Where(i => i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo && i.Rarity == rarity)
+        .ToListAsync();
+    if (!pool.Any())
+    {
+        rarity = GameItemRarity.Common;
+        pool   = await db.ItemDefinitions
+            .Where(i => i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo && i.Rarity == GameItemRarity.Common)
+            .ToListAsync();
+    }
+    if (!pool.Any()) return Results.Problem("No peepos in catalog. Run /peepo sync first.");
+
+    var winner = pool[Random.Shared.Next(pool.Count)];
+
+    player.CoinBalance -= CRATE_COST;
+
+    var inv = await db.PlayerInventoryItems
+        .FirstOrDefaultAsync(i => i.PlayerId == player.Id && i.ItemDefinitionId == winner.Id);
+    bool isNew = inv == null;
+    if (inv != null) inv.Quantity++;
+    else db.PlayerInventoryItems.Add(new PlayerInventoryItem
+        { PlayerId = player.Id, ItemDefinitionId = winner.Id, Quantity = 1 });
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { name = winner.Name, icon = winner.Icon, rarity = rarity.ToString(), isNew, newCoinBalance = player.CoinBalance });
+}).DisableAntiforgery();
+
+// POST /api/bot/peepos/add — add a single peepo by name + URL (idempotent by name)
+app.MapPost("/api/bot/peepos/add", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoEmojiDto emoji) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var existing = await db.ItemDefinitions.FirstOrDefaultAsync(i =>
+        i.Name == emoji.Name && i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo);
+    if (existing != null)
+    {
+        existing.Icon = emoji.Url;
+        await db.SaveChangesAsync();
+        return Results.Ok(new { created = false, updated = true });
+    }
+    var rarity = PeepoRarity(emoji.Name);
+    var (buy, sell, drop) = PeepoStats(rarity);
+    var itemDef = new ItemDefinition
+    {
+        Name = emoji.Name, Description = "A collectible peepo emoji.",
+        Type = GameItemType.Collectible, SubType = ItemSubType.Peepo,
+        Rarity = rarity, Icon = emoji.Url, BuyPrice = buy, SellPrice = sell, IsStackable = false
+    };
+    db.ItemDefinitions.Add(itemDef);
+    var monsterIds = await db.MonsterDefinitions.Select(m => m.Id).ToListAsync();
+    foreach (var mid in monsterIds)
+        db.MonsterLootEntries.Add(new MonsterLootEntry
+            { MonsterDefinitionId = mid, ItemDefinitionId = itemDef.Id, DropChance = drop, MinQuantity = 1, MaxQuantity = 1 });
+    await db.SaveChangesAsync();
+    return Results.Ok(new { created = true, updated = false, rarity = rarity.ToString() });
+}).DisableAntiforgery();
+
+// POST /api/bot/peepos/trade/{id}/decline
+app.MapPost("/api/bot/peepos/trade/{id:guid}/decline", async (
+    Guid id, HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoTradeActionRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var trade = await db.TradeOffers.FirstOrDefaultAsync(t => t.Id == id && t.Status == TradeStatus.Pending);
+    if (trade == null) return Results.NotFound(new { error = "Trade not found." });
+    trade.Status = TradeStatus.Declined;
+    await db.SaveChangesAsync();
+    return Results.Ok();
+}).DisableAntiforgery();
+
+// POST /api/bot/game/gift-coins — transfer coins between two players
+app.MapPost("/api/bot/game/gift-coins", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotGiftCoinsRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    if (req.Amount < 1)
+        return Results.BadRequest(new { error = "Amount must be at least 1." });
+    if (req.SenderDiscordId == req.RecipientDiscordId)
+        return Results.BadRequest(new { error = "You cannot gift coins to yourself." });
+
+    var senderLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.SenderDiscordId);
+    if (senderLink == null) return Results.BadRequest(new { error = "Sender account not linked." });
+    var sender = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == senderLink.TorvexUserId);
+    if (sender == null) return Results.BadRequest(new { error = "Sender has no character." });
+
+    var recipientLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.RecipientDiscordId);
+    if (recipientLink == null) return Results.BadRequest(new { error = "Recipient account not linked." });
+    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipientLink.TorvexUserId);
+    if (recipient == null) return Results.BadRequest(new { error = "Recipient has no character." });
+
+    if (sender.CoinBalance < req.Amount)
+        return Results.BadRequest(new { error = $"Not enough coins. You have {sender.CoinBalance:N0}, need {req.Amount:N0}." });
+
+    sender.CoinBalance -= req.Amount;
+    recipient.CoinBalance += req.Amount;
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { success = true, senderNewBalance = sender.CoinBalance, recipientNewBalance = recipient.CoinBalance });
+}).DisableAntiforgery();
+
+// POST /api/bot/game/sync-level — sync chat level to RPG character level (never go backwards)
+app.MapPost("/api/bot/game/sync-level", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotSyncLevelRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordId);
+    if (link == null)
+        return Results.NotFound(new { error = "Discord account not linked." });
+
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null)
+        return Results.NotFound(new { error = "Player character not found." });
+
+    if (req.NewLevel <= player.Level)
+        return Results.Ok(new { synced = false, level = player.Level });
+
+    // Apply level-up stats once per level gained (same formulas as ProcessGameCommandHandler)
+    int levelsGained = req.NewLevel - player.Level;
+    for (int i = 0; i < levelsGained; i++)
+    {
+        player.Level++;
+        switch (player.Class)
+        {
+            case peeposredemption.Domain.Entities.GameClass.Warrior:
+                player.STR += 3; player.DEF += 3; player.INT += 1; player.DEX += 1; player.VIT += 2; player.LUK += 1;
+                break;
+            case peeposredemption.Domain.Entities.GameClass.Mage:
+                player.STR += 1; player.DEF += 1; player.INT += 3; player.DEX += 1; player.VIT += 2; player.LUK += 1;
+                break;
+            case peeposredemption.Domain.Entities.GameClass.Ranger:
+                player.STR += 1; player.DEF += 1; player.INT += 1; player.DEX += 3; player.VIT += 2; player.LUK += 2;
+                break;
+            case peeposredemption.Domain.Entities.GameClass.Cleric:
+                player.STR += 1; player.DEF += 2; player.INT += 2; player.DEX += 1; player.VIT += 3; player.LUK += 1;
+                break;
+            case peeposredemption.Domain.Entities.GameClass.Rogue:
+                player.STR += 2; player.DEF += 1; player.INT += 1; player.DEX += 3; player.VIT += 1; player.LUK += 2;
+                break;
+        }
+        player.MaxHp += 10 + player.VIT;
+        player.MaxMp += 5 + player.INT / 2;
+    }
+
+    // Heal to full on sync (mirrors RPG level-up behaviour)
+    player.CurrentHp = player.MaxHp;
+    player.CurrentMp = player.MaxMp;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { synced = true, level = player.Level });
+}).DisableAntiforgery();
+
 app.Run();
+
+record BotAutoLinkRequest(string DiscordUserId, string DiscordUsername);
+record BotPvpRewardRequest(string WinnerDiscordId, string LoserDiscordId);
+record BotAddCoinsRequest(string DiscordId, long Amount, string Reason);
+record BotLinkRequest(string DiscordUserId, string TorvexUsername);
+record BotGameCommandRequest(string DiscordUserId, string Command);
+record BotDiscordUserRequest(string DiscordUserId);
+record BotPeepoEmojiDto(string Name, string Url);
+record BotPeepoBuyRequest(string DiscordUserId, string PeepoName);
+record BotPeepoMarketListRequest(string DiscordUserId, string PeepoName, long Price);
+record BotPeepoMarketBuyRequest(string DiscordUserId, Guid ListingId);
+record BotPeepoTradeOfferRequest(string InitiatorDiscordId, string RecipientDiscordId, string InitiatorPeepoName, long InitiatorCoins);
+record BotPeepoTradeActionRequest(string DiscordUserId);
+record BotPeepoCrateRequest(string DiscordUserId);
+record BotGiftCoinsRequest(string SenderDiscordId, string RecipientDiscordId, long Amount);
+record BotSyncLevelRequest(string DiscordId, int NewLevel);
 
 record OrbPurchaseRequest(int Tier);
 record OrbGiftRequest(string ChannelId, string RecipientUsername, long Amount, string? Message);
