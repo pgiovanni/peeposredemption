@@ -2096,6 +2096,197 @@ app.MapPost("/api/bot/game/sync-level", async (
     return Results.Ok(new { synced = true, level = player.Level });
 }).DisableAntiforgery();
 
+// =====================================================================
+// Game item trade endpoints (generic RPG inventory items)
+// =====================================================================
+
+// POST /api/bot/game/trade/offer -- create a pending game-item trade offer
+app.MapPost("/api/bot/game/trade/offer", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotGameTradeOfferRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var initLink  = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.InitiatorDiscordId);
+    var recipLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.RecipientDiscordId);
+    if (initLink == null || recipLink == null)
+        return Results.BadRequest(new { error = "Both users must be linked." });
+
+    var initiator = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == initLink.TorvexUserId);
+    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipLink.TorvexUserId);
+    if (initiator == null || recipient == null)
+        return Results.BadRequest(new { error = "Both users need a character." });
+
+    foreach (var offered in req.InitiatorItems ?? [])
+    {
+        var inv = await db.PlayerInventoryItems
+            .FirstOrDefaultAsync(i => i.PlayerId == initiator.Id && i.ItemDefinitionId == offered.ItemDefinitionId);
+        if (inv == null || inv.Quantity < offered.Quantity)
+        {
+            var itemDef = await db.ItemDefinitions.FindAsync(offered.ItemDefinitionId);
+            var name = itemDef?.Name ?? offered.ItemDefinitionId.ToString();
+            return Results.BadRequest(new { error = $"You don't have enough of '{name}'." });
+        }
+    }
+    if (req.InitiatorCoins > 0 && initiator.CoinBalance < req.InitiatorCoins)
+        return Results.BadRequest(new { error = "Not enough coins." });
+
+    foreach (var wanted in req.RecipientItems ?? [])
+    {
+        var inv = await db.PlayerInventoryItems
+            .FirstOrDefaultAsync(i => i.PlayerId == recipient.Id && i.ItemDefinitionId == wanted.ItemDefinitionId);
+        if (inv == null || inv.Quantity < wanted.Quantity)
+        {
+            var itemDef = await db.ItemDefinitions.FindAsync(wanted.ItemDefinitionId);
+            var name = itemDef?.Name ?? wanted.ItemDefinitionId.ToString();
+            return Results.BadRequest(new { error = $"Recipient doesn't have enough of '{name}'." });
+        }
+    }
+    if (req.RecipientCoins > 0 && recipient.CoinBalance < req.RecipientCoins)
+        return Results.BadRequest(new { error = "Recipient doesn't have enough coins." });
+
+    var trade = new TradeOffer
+    {
+        InitiatorId    = initiator.Id,
+        RecipientId    = recipient.Id,
+        ChannelId      = discordBotChannelId,
+        InitiatorItems = System.Text.Json.JsonSerializer.Serialize(
+            (req.InitiatorItems ?? []).Select(i => new { itemDefinitionId = i.ItemDefinitionId, quantity = i.Quantity })),
+        InitiatorCoins = req.InitiatorCoins,
+        RecipientItems = System.Text.Json.JsonSerializer.Serialize(
+            (req.RecipientItems ?? []).Select(i => new { itemDefinitionId = i.ItemDefinitionId, quantity = i.Quantity })),
+        RecipientCoins = req.RecipientCoins
+    };
+    db.TradeOffers.Add(trade);
+    await db.SaveChangesAsync();
+
+    var initItemNames = new List<string>();
+    foreach (var i in req.InitiatorItems ?? [])
+    {
+        var d = await db.ItemDefinitions.FindAsync(i.ItemDefinitionId);
+        if (d != null) initItemNames.Add($"{d.Name} x{i.Quantity}");
+    }
+    var recipItemNames = new List<string>();
+    foreach (var i in req.RecipientItems ?? [])
+    {
+        var d = await db.ItemDefinitions.FindAsync(i.ItemDefinitionId);
+        if (d != null) recipItemNames.Add($"{d.Name} x{i.Quantity}");
+    }
+
+    return Results.Ok(new
+    {
+        tradeOfferId   = trade.Id,
+        initiatorItems = initItemNames,
+        initiatorCoins = trade.InitiatorCoins,
+        recipientItems = recipItemNames,
+        recipientCoins = trade.RecipientCoins
+    });
+}).DisableAntiforgery();
+
+// POST /api/bot/game/trade/accept -- accept by offer ID, execute swap atomically
+app.MapPost("/api/bot/game/trade/accept", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotGameTradeActionRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var recipLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (recipLink == null) return Results.BadRequest(new { error = "Account not linked." });
+
+    var trade = await db.TradeOffers.FirstOrDefaultAsync(t => t.Id == req.OfferId && t.Status == TradeStatus.Pending);
+    if (trade == null) return Results.NotFound(new { error = "Trade not found or already resolved." });
+
+    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipLink.TorvexUserId);
+    if (recipient == null || recipient.Id != trade.RecipientId) return Results.Forbid();
+
+    if (trade.ExpiresAt < DateTime.UtcNow)
+    {
+        trade.Status = TradeStatus.Expired;
+        await db.SaveChangesAsync();
+        return Results.BadRequest(new { error = "Trade expired." });
+    }
+
+    var initiator = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.Id == trade.InitiatorId);
+    if (initiator == null) return Results.BadRequest(new { error = "Initiator not found." });
+
+    async Task TransferGameItems(string itemsJson, Guid fromId, Guid toId)
+    {
+        if (string.IsNullOrEmpty(itemsJson) || itemsJson == "[]") return;
+        var items = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(itemsJson);
+        foreach (var item in items ?? [])
+        {
+            var defId   = item.GetProperty("itemDefinitionId").GetGuid();
+            var qty     = item.GetProperty("quantity").GetInt32();
+            var fromInv = await db.PlayerInventoryItems
+                .FirstOrDefaultAsync(i => i.PlayerId == fromId && i.ItemDefinitionId == defId);
+            if (fromInv != null)
+            {
+                fromInv.Quantity -= qty;
+                if (fromInv.Quantity <= 0) db.PlayerInventoryItems.Remove(fromInv);
+            }
+            var toInv = await db.PlayerInventoryItems
+                .FirstOrDefaultAsync(i => i.PlayerId == toId && i.ItemDefinitionId == defId);
+            if (toInv != null) toInv.Quantity += qty;
+            else db.PlayerInventoryItems.Add(new PlayerInventoryItem
+                { PlayerId = toId, ItemDefinitionId = defId, Quantity = qty });
+        }
+    }
+
+    await TransferGameItems(trade.InitiatorItems, initiator.Id, recipient.Id);
+    await TransferGameItems(trade.RecipientItems, recipient.Id, initiator.Id);
+
+    if (trade.InitiatorCoins > 0) { initiator.CoinBalance -= trade.InitiatorCoins; recipient.CoinBalance += trade.InitiatorCoins; }
+    if (trade.RecipientCoins > 0) { recipient.CoinBalance -= trade.RecipientCoins; initiator.CoinBalance += trade.RecipientCoins; }
+
+    trade.Status = TradeStatus.Accepted;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { success = true });
+}).DisableAntiforgery();
+
+// POST /api/bot/game/trade/decline -- decline by offer ID
+app.MapPost("/api/bot/game/trade/decline", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotGameTradeActionRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var trade = await db.TradeOffers.FirstOrDefaultAsync(t => t.Id == req.OfferId && t.Status == TradeStatus.Pending);
+    if (trade == null) return Results.NotFound(new { error = "Trade not found." });
+
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
+    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null || (player.Id != trade.InitiatorId && player.Id != trade.RecipientId))
+        return Results.Forbid();
+
+    trade.Status = TradeStatus.Declined;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { success = true });
+}).DisableAntiforgery();
+
+// GET /api/bot/game/trade/{offerId} -- get offer status and details
+app.MapGet("/api/bot/game/trade/{offerId:guid}", async (
+    Guid offerId, HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var trade = await db.TradeOffers.FirstOrDefaultAsync(t => t.Id == offerId);
+    if (trade == null) return Results.NotFound(new { error = "Trade not found." });
+    return Results.Ok(new
+    {
+        id             = trade.Id,
+        status         = trade.Status.ToString(),
+        initiatorItems = trade.InitiatorItems,
+        initiatorCoins = trade.InitiatorCoins,
+        recipientItems = trade.RecipientItems,
+        recipientCoins = trade.RecipientCoins,
+        expiresAt      = trade.ExpiresAt
+    });
+});
+
 app.Run();
 
 record BotAutoLinkRequest(string DiscordUserId, string DiscordUsername);
@@ -2113,6 +2304,11 @@ record BotPeepoTradeActionRequest(string DiscordUserId);
 record BotPeepoCrateRequest(string DiscordUserId);
 record BotGiftCoinsRequest(string SenderDiscordId, string RecipientDiscordId, long Amount);
 record BotSyncLevelRequest(string DiscordId, int NewLevel);
+record BotGameTradeItemEntry(Guid ItemDefinitionId, int Quantity);
+record BotGameTradeOfferRequest(string InitiatorDiscordId, string RecipientDiscordId,
+    List<BotGameTradeItemEntry>? InitiatorItems, long InitiatorCoins,
+    List<BotGameTradeItemEntry>? RecipientItems, long RecipientCoins);
+record BotGameTradeActionRequest(string DiscordUserId, Guid OfferId);
 
 record OrbPurchaseRequest(int Tier);
 record OrbGiftRequest(string ChannelId, string RecipientUsername, long Amount, string? Message);
