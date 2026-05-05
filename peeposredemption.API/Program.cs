@@ -1409,6 +1409,31 @@ app.MapGet("/api/bot/player/{discordUserId}", async (
     });
 });
 
+// GET /api/bot/game/inventory/{discordUserId} -- items with definition IDs for trade resolution
+app.MapGet("/api/bot/game/inventory/{discordUserId}", async (
+    string discordUserId, HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
+    if (link == null) return Results.NotFound();
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.NotFound();
+    var items = await db.PlayerInventoryItems
+        .Include(i => i.ItemDefinition)
+        .Where(i => i.PlayerId == player.Id)
+        .ToListAsync();
+    return Results.Ok(items.Select(i => new
+    {
+        itemDefinitionId = i.ItemDefinitionId,
+        name     = i.ItemDefinition.Name,
+        rarity   = i.ItemDefinition.Rarity.ToString(),
+        type     = i.ItemDefinition.Type.ToString(),
+        quantity = i.Quantity,
+        isEquipped = i.IsEquipped
+    }));
+});
+
 // Award PvP XP to winner and loser
 app.MapPost("/api/bot/pvp/reward", async (
     HttpContext ctx,
