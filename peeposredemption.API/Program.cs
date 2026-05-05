@@ -1208,7 +1208,6 @@ bool BotAuth(HttpContext ctx, IConfiguration cfg)
     return ctx.Request.Headers.TryGetValue("X-Bot-Key", out var v) && v == key;
 }
 
-<<<<<<< HEAD
 // Auto-create a Torvex account and link it for a Discord user (no manual link needed)
 app.MapPost("/api/bot/auto-link", async (
     HttpContext ctx,
@@ -1462,7 +1461,6 @@ app.MapPost("/api/bot/game/add-coins", async (
     return Results.Ok(new { newBalance = player.CoinBalance, added = req.Amount });
 }).DisableAntiforgery();
 
-<<<<<<< HEAD
 // Item dictionary — weapons, armor, or materials
 app.MapGet("/api/bot/items", async (
     HttpContext ctx,
