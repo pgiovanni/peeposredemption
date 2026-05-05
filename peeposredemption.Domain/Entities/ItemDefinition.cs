@@ -34,4 +34,7 @@ public class ItemDefinition
     // Consumable stats
     public int HealAmount { get; set; }
     public int ManaRestoreAmount { get; set; }
+
+    // Collectible — links to ServerEmoji for idempotent re-sync
+    public Guid? SourceEmojiId { get; set; }
 }

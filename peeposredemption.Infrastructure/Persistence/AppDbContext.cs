@@ -76,6 +76,9 @@ namespace peeposredemption.Infrastructure.Persistence
         // Message attachments
         public DbSet<MessageAttachment> MessageAttachments { get; set; }
 
+        // Discord bot integration
+        public DbSet<DiscordLink> DiscordLinks { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Force snake_case so Windows dev and Linux prod behave identically

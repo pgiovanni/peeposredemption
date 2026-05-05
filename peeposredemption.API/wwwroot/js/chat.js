@@ -443,7 +443,7 @@ document.getElementById("message-form")?.addEventListener("submit", async (e) =>
         if (!content.startsWith(mention)) content = mention + ' ' + content;
     }
     try {
-        await connection.invoke('SendChannelMessage', channelId, content, replyId);
+        await connection.invoke('SendChannelMessage', channelId, content, replyId, null);
         input.value = '';
         clearReplyState();
     } catch (err) {

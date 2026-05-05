@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using peeposredemption.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using peeposredemption.Infrastructure.Persistence;
 namespace peeposredemption.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260505022159_AddPlayerCoinBalance")]
+    partial class AddPlayerCoinBalance
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -948,10 +951,6 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("sell_price");
 
-                    b.Property<Guid?>("SourceEmojiId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("source_emoji_id");
-
                     b.Property<int>("SubType")
                         .HasColumnType("integer")
                         .HasColumnName("sub_type");
@@ -983,10 +982,6 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
-
-                    b.Property<int>("CurrencyType")
-                        .HasColumnType("integer")
-                        .HasColumnName("currency_type");
 
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
@@ -2181,10 +2176,6 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
-                    b.Property<long>("InitiatorCoins")
-                        .HasColumnType("bigint")
-                        .HasColumnName("initiator_coins");
-
                     b.Property<Guid>("InitiatorId")
                         .HasColumnType("uuid")
                         .HasColumnName("initiator_id");
@@ -2197,10 +2188,6 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.Property<long>("InitiatorOrbs")
                         .HasColumnType("bigint")
                         .HasColumnName("initiator_orbs");
-
-                    b.Property<long>("RecipientCoins")
-                        .HasColumnType("bigint")
-                        .HasColumnName("recipient_coins");
 
                     b.Property<Guid>("RecipientId")
                         .HasColumnType("uuid")
