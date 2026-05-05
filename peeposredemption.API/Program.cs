@@ -1184,6 +1184,36 @@ using (var scope = app.Services.CreateScope())
     await mediator.Send(new peeposredemption.Application.Features.Game.Commands.SeedGameDataCommand());
 }
 
+// Bot API - secured by X-Bot-Key header
+
+bool BotAuth(HttpContext ctx, IConfiguration cfg)
+{
+    var key = cfg["Bot:ApiKey"];
+    if (string.IsNullOrEmpty(key)) return false;
+    return ctx.Request.Headers.TryGetValue("X-Bot-Key", out var v) && v == key;
+}
+
+// Add coins to a player's CoinBalance (gathering rewards, PvP wins, daily bonus, etc.)
+app.MapPost("/api/bot/game/add-coins", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotAddCoinsRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordId);
+    if (link == null) return Results.NotFound(new { error = "Discord account not linked." });
+
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.NotFound(new { error = "Player character not found." });
+
+    player.CoinBalance += req.Amount;
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { newBalance = player.CoinBalance, added = req.Amount });
+}).DisableAntiforgery();
+
 app.Run();
 
 record OrbPurchaseRequest(int Tier);
@@ -1206,3 +1236,4 @@ record PrivateServerToggleRequest(bool Enabled);
 record AltReviewRequest(string Action); // "confirm" | "dismiss" | "ban"
 record ServerReorderRequest(List<Guid> ServerIds);
 record SwitchAccountRequest(string Jwt);
+record BotAddCoinsRequest(string DiscordId, long Amount, string Reason);
