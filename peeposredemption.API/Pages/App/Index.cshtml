@@ -186,6 +186,9 @@
                     <span class="orb-icon"></span>
                     <span id="orb-count-home">@Model.OrbBalance</span>
                 </a>
+                <span class="orb-balance" title="RPG Coins" style="cursor:default">
+                    🪙 <span id="coin-balance-home">…</span>
+                </span>
                 <partial name="_NotifDropdown" />
                 @if (isAdmin)
                 {
@@ -398,6 +401,19 @@
         document.querySelectorAll('[data-copy]').forEach(btn => {
             btn.addEventListener('click', () => copyText(btn.dataset.copy, btn, btn.textContent.trim()));
         });
+
+        // Load RPG coin balance
+        (async () => {
+            try {
+                const jwt = document.querySelector('meta[name="jwt"]')?.content;
+                const r = await fetch('/api/game/coins', { headers: jwt ? { Authorization: `Bearer ${jwt}` } : {} });
+                if (r.ok) {
+                    const d = await r.json();
+                    const el = document.getElementById('coin-balance-home');
+                    if (el) el.textContent = d.coins.toLocaleString();
+                }
+            } catch {}
+        })();
 
         // Daily claim
         const claimBtn = document.getElementById('claim-daily-btn');

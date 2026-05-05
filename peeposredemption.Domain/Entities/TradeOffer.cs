@@ -11,8 +11,10 @@ public class TradeOffer
     // Items as JSON arrays of { ItemDefinitionId, Quantity }
     public string InitiatorItems { get; set; } = "[]";
     public long InitiatorOrbs { get; set; }
+    public long InitiatorCoins { get; set; }
     public string RecipientItems { get; set; } = "[]";
     public long RecipientOrbs { get; set; }
+    public long RecipientCoins { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddMinutes(5);

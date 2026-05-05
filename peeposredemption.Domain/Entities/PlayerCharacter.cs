@@ -23,6 +23,9 @@ public class PlayerCharacter
     public int CurrentMp { get; set; } = 50;
     public int MaxMp { get; set; } = 50;
 
+    // In-game currency (separate from Peepo Bucks/OrbBalance)
+    public long CoinBalance { get; set; }
+
     // Tracking
     public int TotalMonstersKilled { get; set; }
     public int TotalDeaths { get; set; }

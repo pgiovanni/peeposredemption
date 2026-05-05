@@ -183,6 +183,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             bonusLuk = bonusLUK,
             kills = player.TotalMonstersKilled,
             deaths = player.TotalDeaths,
+            coinBalance = player.CoinBalance,
             skills = skills.Select(s => new { skill = s.SkillType.ToString(), level = s.Level, xp = s.XP, xpToNext = s.XpToNextLevel })
         });
     }
@@ -417,24 +418,11 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         if (session.State == CombatState.Victory)
         {
             var xpGained = monster.XpReward;
-            var orbsGained = Random.Shared.NextInt64(monster.OrbRewardMin, monster.OrbRewardMax + 1);
+            var coinsGained = Random.Shared.NextInt64(monster.OrbRewardMin, monster.OrbRewardMax + 1);
 
             player.XP += xpGained;
+            player.CoinBalance += coinsGained;
             player.TotalMonstersKilled++;
-
-            // Award orbs
-            var user = await _uow.Users.GetByIdAsync(player.UserId);
-            if (user != null)
-            {
-                user.OrbBalance += orbsGained;
-                await _uow.OrbTransactions.AddAsync(new OrbTransaction
-                {
-                    UserId = player.UserId,
-                    Amount = orbsGained,
-                    Type = OrbTransactionType.CrateOpen, // Using CrateOpen(5) for monster rewards
-                    Description = $"Defeated {monster.Name}"
-                });
-            }
 
             // Combat skill XP
             var combatSkill = await _uow.PlayerSkills.GetByPlayerAndSkillAsync(player.Id, SkillType.Combat);
@@ -481,7 +469,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             {
                 result = "victory",
                 xpGained,
-                orbsGained,
+                coinsGained,
                 loot = lootDrops,
                 leveledUp,
                 newLevel = player.Level
@@ -490,29 +478,18 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         else if (session.State == CombatState.Defeat)
         {
             player.TotalDeaths++;
-            var user = await _uow.Users.GetByIdAsync(player.UserId);
-            long orbPenalty = 0;
-            if (user != null && user.OrbBalance > 0)
+            long coinPenalty = 0;
+            if (player.CoinBalance > 0)
             {
-                orbPenalty = (long)(user.OrbBalance * 0.10);
-                user.OrbBalance -= orbPenalty;
-                if (orbPenalty > 0)
-                {
-                    await _uow.OrbTransactions.AddAsync(new OrbTransaction
-                    {
-                        UserId = player.UserId,
-                        Amount = -orbPenalty,
-                        Type = OrbTransactionType.CrateOpen,
-                        Description = $"Defeated by {monster.Name}"
-                    });
-                }
+                coinPenalty = (long)(player.CoinBalance * 0.10);
+                player.CoinBalance -= coinPenalty;
             }
             player.CurrentHp = (int)(player.MaxHp * 0.25);
 
             resultPayload = new
             {
                 result = "defeat",
-                orbsLost = orbPenalty
+                coinsLost = coinPenalty
             };
         }
 

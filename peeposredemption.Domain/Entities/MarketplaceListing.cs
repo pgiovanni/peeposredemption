@@ -9,6 +9,7 @@ public class MarketplaceListing
     public long PricePerUnit { get; set; }
     public MarketListingStatus Status { get; set; } = MarketListingStatus.Active;
     public Guid? BuyerId { get; set; }
+    public MarketplaceCurrencyType CurrencyType { get; set; } = MarketplaceCurrencyType.Orbs;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddDays(7);

@@ -15,7 +15,14 @@ public enum GameItemType
     Armor,
     Consumable,
     Material,
-    QuestItem
+    QuestItem,
+    Collectible = 5
+}
+
+public enum MarketplaceCurrencyType
+{
+    Orbs,
+    Coins
 }
 
 public enum ItemSubType
@@ -27,7 +34,9 @@ public enum ItemSubType
     // Consumables
     HealthPotion, ManaPotion,
     // Materials
-    Ore, Herb, Wood, Gem, MonsterDrop, Leather, Cloth
+    Ore, Herb, Wood, Gem, MonsterDrop, Leather, Cloth,
+    // Collectibles
+    Peepo = 22
 }
 
 public enum EquipSlot
