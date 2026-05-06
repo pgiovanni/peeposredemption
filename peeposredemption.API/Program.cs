@@ -2090,7 +2090,7 @@ app.MapPost("/api/bot/peepos/crate/open", async (
     if (!pool.Any()) { rarity = GameItemRarity.Common; pool = await db.ItemDefinitions.Where(i => i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo && i.Rarity == GameItemRarity.Common).ToListAsync(); }
     if (!pool.Any()) return Results.Problem("No peepos in catalog. Run /peepo sync first.");
     var winner = pool[Random.Shared.Next(pool.Count)];
-    player.CoinBalance -= LEGACY_COST;
+    player.CoinBalance -= CRATE_COST;
     var inv = await db.PlayerInventoryItems.FirstOrDefaultAsync(i => i.PlayerId == player.Id && i.ItemDefinitionId == winner.Id);
     bool isNew = inv == null;
     if (inv != null) inv.Quantity++;

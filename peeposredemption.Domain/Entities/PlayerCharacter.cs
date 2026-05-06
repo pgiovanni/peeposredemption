@@ -30,6 +30,9 @@ public class PlayerCharacter
     public int TotalMonstersKilled { get; set; }
     public int TotalDeaths { get; set; }
 
+    // Chat integration
+    public int ChatLevel { get; set; }
+
     // Cooldowns
     public DateTime? LastGatherAt { get; set; }
 
