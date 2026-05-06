@@ -77,6 +77,16 @@ public static class GameExpansionSeeder
         var dragonClaw    = GetOrCreate("Dragon Claw",    () => Ma("Dragon Claw",    "Razor-edged claw.",                 "🐾", buy: 200, sell: 80,  rarity: GameItemRarity.Rare));
         var lichDust      = GetOrCreate("Lich Dust",      () => Ma("Lich Dust",      "Ancient necrotic powder.",          "💨", buy: 100, sell: 40,  rarity: GameItemRarity.Rare));
 
+        // ── MONSTER DROP PEEPOS ────────────────────────────────────────────────
+        // These are drop-only peepos; BuyPrice = 0 (not in coin shop)
+        // SellPrice = 50% of the equivalent rarity coin price
+        var slimePeepo    = GetOrCreate("Slime Peepo",    () => Pe("Slime Peepo",    "A squishy peepo covered in green goo.",      "🟢", GameItemRarity.Common,    sellPrice: 25));
+        var dragonPeepo   = GetOrCreate("Dragon Peepo",   () => Pe("Dragon Peepo",   "A fierce peepo wreathed in dragon fire.",    "🐉", GameItemRarity.Rare,      sellPrice: 250));
+        var demonPeepo    = GetOrCreate("Demon Peepo",    () => Pe("Demon Peepo",    "A sinister peepo with tiny demon horns.",    "👹", GameItemRarity.Epic,      sellPrice: 750));
+        var lichPeepo     = GetOrCreate("Lich Peepo",     () => Pe("Lich Peepo",     "A skeletal peepo radiating dark magic.",     "💀", GameItemRarity.Rare,      sellPrice: 250));
+        var vampirePeepo  = GetOrCreate("Vampire Peepo",  () => Pe("Vampire Peepo",  "A pale peepo with a sweeping black cape.",   "🧛", GameItemRarity.Uncommon,  sellPrice: 75));
+        var werewolfPeepo = GetOrCreate("Werewolf Peepo", () => Pe("Werewolf Peepo", "A peepo that howls at the blood moon.",      "🐺", GameItemRarity.Uncommon,  sellPrice: 75));
+
         if (newItems.Count > 0)
         {
             db.ItemDefinitions.AddRange(newItems);
@@ -260,6 +270,46 @@ public static class GameExpansionSeeder
             db.MonsterLootEntries.AddRange(lootEntries);
             await db.SaveChangesAsync(ct);
         }
+
+        // ── PEEPO MONSTER LOOT ENTRIES ─────────────────────────────────────────
+        // Add peepo drops to existing monsters (idempotent — check by monster + item before inserting)
+        var peepoDrops = new[]
+        {
+            ("Slime King",           slimePeepo,    0.15m),
+            ("Ancient Dragon",       dragonPeepo,   0.05m),
+            ("Archdemon",            demonPeepo,    0.03m),
+            ("Lich",                 lichPeepo,     0.04m),
+            ("Ancient Vampire",      vampirePeepo,  0.08m),
+            ("Blood Moon Werewolf",  werewolfPeepo, 0.06m),
+        };
+
+        var existingLootPairs = await db.MonsterLootEntries
+            .Select(e => new { e.MonsterDefinitionId, e.ItemDefinitionId })
+            .ToHashSetAsync(ct);
+
+        var newPeepoLoot = new List<MonsterLootEntry>();
+        foreach (var (monsterName, peepoItem, chance) in peepoDrops)
+        {
+            if (peepoItem is null) continue;
+            var monster = await db.MonsterDefinitions.FirstOrDefaultAsync(m => m.Name == monsterName, ct);
+            if (monster is null) continue;
+            var key = new { MonsterDefinitionId = monster.Id, ItemDefinitionId = peepoItem.Id };
+            if (existingLootPairs.Any(p => p.MonsterDefinitionId == key.MonsterDefinitionId && p.ItemDefinitionId == key.ItemDefinitionId))
+                continue;
+            newPeepoLoot.Add(new MonsterLootEntry
+            {
+                MonsterDefinitionId = monster.Id,
+                ItemDefinitionId    = peepoItem.Id,
+                DropChance          = chance,
+                MinQuantity         = 1,
+                MaxQuantity         = 1
+            });
+        }
+        if (newPeepoLoot.Count > 0)
+        {
+            db.MonsterLootEntries.AddRange(newPeepoLoot);
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     // ── Factories ─────────────────────────────────────────────────────────────
@@ -328,5 +378,20 @@ public static class GameExpansionSeeder
         MaxHp = maxHp, STR = str, DEF = def, INT = @int, DEX = dex,
         MinDamage = minDmg, MaxDamage = maxDmg, Element = element,
         XpReward = xpReward, OrbRewardMin = orbMin, OrbRewardMax = orbMax
+    };
+
+    // Peepo collectible factory — drop-only (BuyPrice = 0)
+    private static ItemDefinition Pe(string name, string desc, string icon,
+        GameItemRarity rarity, long sellPrice = 0) => new()
+    {
+        Name        = name,
+        Description = desc,
+        Icon        = icon,
+        Type        = GameItemType.Collectible,
+        SubType     = ItemSubType.Peepo,
+        Rarity      = rarity,
+        IsStackable = false,
+        BuyPrice    = 0,
+        SellPrice   = sellPrice
     };
 }
