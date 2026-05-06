@@ -61,6 +61,50 @@ public static class GameExpansionSeeder
         var largeMpPot = GetOrCreate("Large Mana Potion",   () => Co("Large Mana Potion",   "Restores 80 MP.",  "💧", 20, mana: 80,  buy: 100, sell: 35));
         var elixir     = GetOrCreate("Elixir of Life",      () => Co("Elixir of Life",      "Restores 200 HP and 150 MP.", "⚗️", 40, heal: 200, mana: 150, rarity: GameItemRarity.Rare, buy: 500, sell: 175));
 
+        // ── COOKED FOOD (Cooking skill) ────────────────────────────────────────
+        GetOrCreate("Cooked Shrimp",    () => Co("Cooked Shrimp",    "Freshly cooked shrimp — restores 3 HP.",           "🍤",  1, heal:  3,        buy:  4, sell:  2));
+        GetOrCreate("Cooked Trout",     () => Co("Cooked Trout",     "A nicely grilled trout — restores 7 HP.",          "🐟",  1, heal:  7,        buy: 10, sell:  5));
+        GetOrCreate("Cooked Salmon",    () => Co("Cooked Salmon",    "Perfectly cooked salmon — restores 12 HP.",        "🐠",  1, heal: 12,        buy: 18, sell:  8));
+        GetOrCreate("Cooked Tuna",      () => Co("Cooked Tuna",      "A hearty cooked tuna — restores 18 HP.",           "🐡",  1, heal: 18,        buy: 28, sell: 12));
+        GetOrCreate("Cooked Lobster",   () => Co("Cooked Lobster",   "Succulent cooked lobster — restores 25 HP.",       "🦞",  1, heal: 25,        buy: 40, sell: 18));
+        GetOrCreate("Cooked Swordfish", () => Co("Cooked Swordfish", "A powerful swordfish steak — restores 35 HP.",     "🐟",  1, heal: 35,        buy: 55, sell: 25));
+        GetOrCreate("Cooked Shark",     () => Co("Cooked Shark",     "Thick shark meat — restores 50 HP.",               "🦈",  1, heal: 50,        buy: 80, sell: 38));
+        GetOrCreate("Cooked Abyssal Eel", () => Co("Cooked Abyssal Eel", "Mystical eel — restores 70 HP and 20 MP.",    "🌑",  1, heal: 70, mana: 20, buy: 140, sell: 60, rarity: GameItemRarity.Rare));
+        GetOrCreate("Burnt Fish",       () => Fo("Burnt Fish",       "You burnt it. Completely inedible.",               "🖤",  buy:  2, sell:  1));
+        GetOrCreate("Fish Stew",        () => Co("Fish Stew",        "A rich stew — restores 20 HP in combat.",         "🍲",  1, heal: 20,        buy: 60, sell: 30, rarity: GameItemRarity.Uncommon));
+        // TODO: Fish Stew is intended to be a 15 HP/turn HoT over 3 turns (45 HP total).
+        // Currently grants 20 HP instantly. Full HoT requires RegenHpPerTurn + RegenTurnsRemaining on CombatSession.
+
+        // ── GATHERING RESOURCES — MINING ──────────────────────────────────────
+        var silverOre      = GetOrCreate("Silver Ore",      () => Ma("Silver Ore",      "Shiny silver ore.",                     "⚪", buy: 10,  sell: 4));
+        var goldOre        = GetOrCreate("Gold Ore",        () => Ma("Gold Ore",        "Glittering gold ore.",                  "🟡", buy: 20,  sell: 8));
+        var mithrilOre     = GetOrCreate("Mithril Ore",     () => Ma("Mithril Ore",     "Lightweight yet incredibly strong.",    "🔵", buy: 40,  sell: 15));
+        var adamantiteOre  = GetOrCreate("Adamantite Ore",  () => Ma("Adamantite Ore",  "One of the hardest metals known.",      "🟢", buy: 65,  sell: 25));
+        var runiteOre      = GetOrCreate("Runite Ore",      () => Ma("Runite Ore",      "A rare and powerful ore.",              "🔷", buy: 100, sell: 40));
+        var voidstone      = GetOrCreate("Voidstone",       () => Ma("Voidstone",       "Pulsates with void energy.",            "🌑", buy: 250, sell: 100));
+        var sapphire       = GetOrCreate("Sapphire",        () => Ma("Sapphire",        "A brilliant blue gemstone.",            "💎", buy: 50,  sell: 20));
+        var emerald        = GetOrCreate("Emerald",         () => Ma("Emerald",         "A deep green gemstone.",                "💚", buy: 90,  sell: 35));
+        var ruby           = GetOrCreate("Ruby",            () => Ma("Ruby",            "A fiery red gemstone.",                 "❤️", buy: 130, sell: 50));
+        var diamond        = GetOrCreate("Diamond",         () => Ma("Diamond",         "The hardest and rarest gemstone.",      "💠", buy: 250, sell: 100));
+
+        // ── GATHERING RESOURCES — FISHING ─────────────────────────────────────
+        var rawShrimp      = GetOrCreate("Raw Shrimp",      () => Ma("Raw Shrimp",      "Tiny but edible shrimp.",               "🦐", buy: 3,   sell: 1));
+        var rawTrout       = GetOrCreate("Raw Trout",       () => Ma("Raw Trout",       "A freshwater trout.",                   "🐟", buy: 8,   sell: 3));
+        var rawSalmon      = GetOrCreate("Raw Salmon",      () => Ma("Raw Salmon",      "A pink-fleshed salmon.",                "🐠", buy: 14,  sell: 5));
+        var rawTuna        = GetOrCreate("Raw Tuna",        () => Ma("Raw Tuna",        "A large ocean tuna.",                   "🐡", buy: 22,  sell: 8));
+        var rawLobster     = GetOrCreate("Raw Lobster",     () => Ma("Raw Lobster",     "A hard-shelled lobster.",               "🦞", buy: 30,  sell: 12));
+        var rawSwordfish   = GetOrCreate("Raw Swordfish",   () => Ma("Raw Swordfish",   "A powerful, sharp-billed fish.",        "🐟", buy: 45,  sell: 18));
+        var rawShark       = GetOrCreate("Raw Shark",       () => Ma("Raw Shark",       "A formidable ocean predator.",          "🦈", buy: 70,  sell: 28));
+        var rawAbyssalEel  = GetOrCreate("Raw Abyssal Eel", () => Ma("Raw Abyssal Eel", "An eel from the deepest trenches.",     "🌑", buy: 110, sell: 45));
+
+        // ── GATHERING RESOURCES — WOODCUTTING ─────────────────────────────────
+        var oakLogs        = GetOrCreate("Oak Logs",        () => Ma("Oak Logs",        "Sturdy oak wood.",                      "🪵", buy: 10,  sell: 4));
+        var willowLogs     = GetOrCreate("Willow Logs",     () => Ma("Willow Logs",     "Flexible willow branches.",             "🪵", buy: 20,  sell: 8));
+        var mapleLogs      = GetOrCreate("Maple Logs",      () => Ma("Maple Logs",      "Dense maple wood.",                     "🪵", buy: 35,  sell: 14));
+        var yewLogs        = GetOrCreate("Yew Logs",        () => Ma("Yew Logs",        "Ancient yew wood.",                     "🪵", buy: 55,  sell: 22));
+        var magicLogs      = GetOrCreate("Magic Logs",      () => Ma("Magic Logs",      "Infused with residual magic.",          "✨", buy: 88,  sell: 35));
+        var voidWood       = GetOrCreate("Void Wood",       () => Ma("Void Wood",       "Wood twisted by void energy.",          "🌑", buy: 200, sell: 80));
+
         // ── NEW MATERIALS ──────────────────────────────────────────────────────
         var slimeCore     = GetOrCreate("Slime Core",     () => Ma("Slime Core",     "A gelatinous orb from a slime.",    "🔵", buy: 8,   sell: 3));
         var goblinEar     = GetOrCreate("Goblin Ear",     () => Ma("Goblin Ear",     "A pointy goblin ear.",              "👂", buy: 10,  sell: 4));
@@ -317,6 +361,17 @@ public static class GameExpansionSeeder
         Name = name, Description = desc, Icon = icon,
         Type = GameItemType.Material, SubType = ItemSubType.MonsterDrop,
         Rarity = rarity, LevelReq = 1, IsStackable = true,
+        BuyPrice = buy, SellPrice = sell
+    };
+
+    /// <summary>Zero-effect food item (burnt fish, novelty drops). Consumable type so it shows in the item slot.</summary>
+    private static ItemDefinition Fo(string name, string desc, string icon,
+        long buy = 0, long sell = 0) => new()
+    {
+        Name = name, Description = desc, Icon = icon,
+        Type = GameItemType.Consumable, SubType = ItemSubType.HealthPotion,
+        Rarity = GameItemRarity.Common, LevelReq = 1, IsStackable = true,
+        HealAmount = 0, ManaRestoreAmount = 0,
         BuyPrice = buy, SellPrice = sell
     };
 
