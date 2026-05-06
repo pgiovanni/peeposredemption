@@ -48,6 +48,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             "/equip" => await HandleEquip(player, args),
             "/unequip" => await HandleUnequip(player, args),
             "/mine" or "/fish" or "/chop" => await HandleGather(player, command),
+            "/cook" => await HandleCook(player, args),
             "/craft" => await HandleCraft(player, args),
             "/recipes" => await HandleRecipes(player),
             "/trade" => await HandleTrade(player, args, request.ChannelId),
@@ -129,6 +130,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 new { cmd = "/mine", desc = "Mine for ore (60s cooldown)" },
                 new { cmd = "/fish", desc = "Go fishing (60s cooldown)" },
                 new { cmd = "/chop", desc = "Chop wood (60s cooldown)" },
+                new { cmd = "/cook [raw fish]", desc = "Cook raw fish into food" },
                 new { cmd = "/craft [item]", desc = "Craft an item" },
                 new { cmd = "/recipes", desc = "View available recipes" },
                 new { cmd = "/trade @user [item] [qty]", desc = "Trade with another player" },
@@ -659,6 +661,112 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             skillLevel = skill.Level,
             skillXp = skill.XP,
             skillXpToNext = skill.XpToNextLevel
+        });
+    }
+
+    // ── Raw fish → cooked item mapping ────────────────────────────────────────
+    private static readonly Dictionary<string, (string CookedName, long XpReward)> _fishCookMap =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Raw Shrimp"]      = ("Cooked Shrimp",      10),
+            ["Raw Trout"]       = ("Cooked Trout",       15),
+            ["Raw Salmon"]      = ("Cooked Salmon",      20),
+            ["Raw Tuna"]        = ("Cooked Tuna",        25),
+            ["Raw Lobster"]     = ("Cooked Lobster",     35),
+            ["Raw Swordfish"]   = ("Cooked Swordfish",   45),
+            ["Raw Shark"]       = ("Cooked Shark",       60),
+            ["Raw Abyssal Eel"] = ("Cooked Abyssal Eel", 80),
+        };
+
+    private async Task<GameCommandResult> HandleCook(PlayerCharacter player, string args)
+    {
+        if (string.IsNullOrWhiteSpace(args))
+            return GameCommandResult.Single("error", new { message = "Specify a raw fish to cook: /cook Raw Shark" });
+
+        // Block cooking during active combat
+        var activeCombat = await _uow.CombatSessions.GetActiveByPlayerIdAsync(player.Id);
+        if (activeCombat != null)
+            return GameCommandResult.Single("error", new { message = "Cannot cook during combat!" });
+
+        var rawName = args.Trim();
+        if (!_fishCookMap.TryGetValue(rawName, out var cookEntry))
+            return GameCommandResult.Single("error", new
+            {
+                message = $"'{rawName}' is not a cookable fish. Valid options: {string.Join(", ", _fishCookMap.Keys)}"
+            });
+
+        // Check the player has the raw fish
+        var rawDef = await _uow.ItemDefinitions.GetByNameAsync(rawName);
+        if (rawDef == null)
+            return GameCommandResult.Single("error", new { message = $"Item '{rawName}' not found." });
+
+        var rawInv = await _uow.PlayerInventoryItems.GetByPlayerAndItemAsync(player.Id, rawDef.Id);
+        if (rawInv == null || rawInv.Quantity <= 0)
+            return GameCommandResult.Single("error", new { message = $"You don't have any {rawName}." });
+
+        // Get or create Cooking skill
+        var cookingSkill = await _uow.PlayerSkills.GetByPlayerAndSkillAsync(player.Id, SkillType.Cooking);
+        if (cookingSkill == null)
+        {
+            cookingSkill = new PlayerSkill
+            {
+                PlayerId = player.Id,
+                SkillType = SkillType.Cooking,
+                Level = 1,
+                XP = 0,
+                XpToNextLevel = 75
+            };
+            await _uow.PlayerSkills.AddAsync(cookingSkill);
+        }
+
+        // Roll burn chance: max(0%, 40% - cookingLevel * 0.5%)
+        double burnChance = Math.Max(0.0, 0.40 - cookingSkill.Level * 0.005);
+        bool burnt = Random.Shared.NextDouble() < burnChance;
+
+        // Consume one raw fish
+        rawInv.Quantity--;
+        if (rawInv.Quantity <= 0)
+            _uow.PlayerInventoryItems.Remove(rawInv);
+
+        long xpGained;
+        string resultItemName;
+        long coinBonus;
+
+        if (burnt)
+        {
+            xpGained = 5;
+            resultItemName = "Burnt Fish";
+            coinBonus = 1;
+        }
+        else
+        {
+            xpGained = cookEntry.XpReward;
+            resultItemName = cookEntry.CookedName;
+            coinBonus = 1 + (cookingSkill.Level / 10);
+        }
+
+        player.CoinBalance += coinBonus;
+
+        var resultDef = await _uow.ItemDefinitions.GetByNameAsync(resultItemName);
+        if (resultDef != null)
+            await AddItemToInventory(player.Id, resultDef.Id, 1);
+
+        cookingSkill.XP += xpGained;
+        CheckSkillLevelUp(cookingSkill);
+
+        await _uow.SaveChangesAsync();
+
+        return GameCommandResult.Single("cook", new
+        {
+            rawFish       = rawName,
+            result        = resultItemName,
+            burnt,
+            xpGained,
+            coinBonus,
+            skillLevel    = cookingSkill.Level,
+            skillXp       = cookingSkill.XP,
+            skillXpToNext = cookingSkill.XpToNextLevel,
+            burnChance    = Math.Round(burnChance * 100, 1)
         });
     }
 
