@@ -1582,11 +1582,30 @@ static GameItemRarity PeepoRarity(string name)
 
 static (long buy, long sell, decimal drop) PeepoStats(GameItemRarity r) => r switch
 {
-    GameItemRarity.Common    => (150,   45,   0.03m),
-    GameItemRarity.Uncommon  => (400,   120,  0.015m),
-    GameItemRarity.Rare      => (1200,  360,  0.005m),
-    GameItemRarity.Epic      => (3500,  1050, 0.0015m),
-    _                        => (10000, 3000, 0.0005m)
+    GameItemRarity.Common    => (50,   25,   0.03m),
+    GameItemRarity.Uncommon  => (150,  75,   0.015m),
+    GameItemRarity.Rare      => (500,  250,  0.005m),
+    GameItemRarity.Epic      => (1500, 750,  0.0015m),
+    _                        => (0,    0,    0.0005m)  // Legendary: orbs only, no coin price
+};
+
+// Coin price per rarity for shop display (Legendary = 0 = orbs only)
+static long PeepoRarityShopPrice(GameItemRarity r) => r switch
+{
+    GameItemRarity.Common    => 50,
+    GameItemRarity.Uncommon  => 150,
+    GameItemRarity.Rare      => 500,
+    GameItemRarity.Epic      => 1500,
+    _                        => 0   // Legendary: not purchasable with coins
+};
+
+// Orb price per rarity (Rare+)
+static long PeepoRarityOrbPrice(GameItemRarity r) => r switch
+{
+    GameItemRarity.Rare      => 50,
+    GameItemRarity.Epic      => 150,
+    GameItemRarity.Legendary => 500,
+    _                        => 0
 };
 
 // POST /api/bot/peepos/sync — bot pushes Discord guild emojis; idempotent by name
@@ -1662,6 +1681,63 @@ app.MapGet("/api/bot/peepos", async (
         .ToListAsync();
     return Results.Ok(peepos);
 });
+
+// GET /api/bot/peepos/shop — peepos available for coin purchase, with rarity-scaled prices
+app.MapGet("/api/bot/peepos/shop", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var peepos = await db.ItemDefinitions
+        .Where(i => i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo)
+        .OrderBy(i => i.Rarity).ThenBy(i => i.Name)
+        .ToListAsync();
+    var result = peepos.Select(i => new
+    {
+        id         = i.Id,
+        name       = i.Name,
+        icon       = i.Icon,
+        rarity     = i.Rarity.ToString(),
+        coinPrice  = PeepoRarityShopPrice(i.Rarity),
+        orbPrice   = PeepoRarityOrbPrice(i.Rarity),
+        sellPrice  = i.SellPrice,
+        buyWithCoins = PeepoRarityShopPrice(i.Rarity) > 0,
+    });
+    return Results.Ok(result);
+});
+
+// POST /api/bot/peepos/buy-coins — buy a peepo by itemDefinitionId using CoinBalance
+app.MapPost("/api/bot/peepos/buy-coins", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoBuyCoinsRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordId);
+    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.BadRequest(new { error = "No character found. Use /rpg start first." });
+    var itemDef = await db.ItemDefinitions.FirstOrDefaultAsync(i =>
+        i.Id == req.ItemDefinitionId && i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo);
+    if (itemDef == null) return Results.NotFound(new { error = "Peepo not found." });
+
+    var coinPrice = PeepoRarityShopPrice(itemDef.Rarity);
+    if (coinPrice <= 0)
+        return Results.BadRequest(new { error = $"{itemDef.Name} is Legendary — purchasable with orbs only." });
+    if (player.CoinBalance < coinPrice)
+        return Results.BadRequest(new { error = $"Not enough coins. Need {coinPrice:N0}, have {player.CoinBalance:N0}." });
+
+    var existing = await db.PlayerInventoryItems
+        .FirstOrDefaultAsync(i => i.PlayerId == player.Id && i.ItemDefinitionId == itemDef.Id);
+    if (existing != null)
+        return Results.BadRequest(new { error = $"You already own {itemDef.Name}." });
+
+    player.CoinBalance -= coinPrice;
+    db.PlayerInventoryItems.Add(new PlayerInventoryItem
+        { PlayerId = player.Id, ItemDefinitionId = itemDef.Id, Quantity = 1 });
+    await db.SaveChangesAsync();
+    return Results.Ok(new { newCoinBalance = player.CoinBalance, peepo = new { name = itemDef.Name, rarity = itemDef.Rarity.ToString(), icon = itemDef.Icon } });
+}).DisableAntiforgery();
 
 // GET /api/bot/peepos/inventory/{discordUserId}
 app.MapGet("/api/bot/peepos/inventory/{discordUserId}", async (
@@ -1937,28 +2013,87 @@ app.MapPost("/api/bot/peepos/trade/{id:guid}/accept", async (
     return Results.Ok(new { success = true });
 }).DisableAntiforgery();
 
-// POST /api/bot/peepos/crate/open — spend 5000 coins for a random weighted-rarity peepo
+// POST /api/bot/peepos/crate/open — legacy endpoint kept for backward compat, spend 5000 coins
 app.MapPost("/api/bot/peepos/crate/open", async (
     HttpContext ctx, IConfiguration cfg,
     peeposredemption.Infrastructure.Persistence.AppDbContext db,
     BotPeepoCrateRequest req) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    const long CRATE_COST = 5000;
-
+    // Redirect to basic crate logic
     var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
     if (link == null) return Results.BadRequest(new { error = "Account not linked." });
     var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
     if (player == null) return Results.BadRequest(new { error = "No character found. Use /rpg start first." });
-    if (player.CoinBalance < CRATE_COST)
-        return Results.BadRequest(new { error = $"Not enough coins. Need {CRATE_COST:N0}, have {player.CoinBalance:N0}." });
+    const long LEGACY_COST = 200;
+    if (player.CoinBalance < LEGACY_COST)
+        return Results.BadRequest(new { error = $"Not enough coins. Need {LEGACY_COST:N0}, have {player.CoinBalance:N0}." });
 
     var roll = Random.Shared.NextDouble() * 100;
-    var rarity = roll < 0.5  ? GameItemRarity.Legendary
-               : roll < 4.0  ? GameItemRarity.Epic
-               : roll < 13.0 ? GameItemRarity.Rare
-               : roll < 38.0 ? GameItemRarity.Uncommon
+    var rarity = roll < 5.0  ? GameItemRarity.Rare
+               : roll < 30.0 ? GameItemRarity.Uncommon
                : GameItemRarity.Common;
+
+    var pool = await db.ItemDefinitions
+        .Where(i => i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo && i.Rarity == rarity)
+        .ToListAsync();
+    if (!pool.Any()) { rarity = GameItemRarity.Common; pool = await db.ItemDefinitions.Where(i => i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo && i.Rarity == GameItemRarity.Common).ToListAsync(); }
+    if (!pool.Any()) return Results.Problem("No peepos in catalog. Run /peepo sync first.");
+    var winner = pool[Random.Shared.Next(pool.Count)];
+    player.CoinBalance -= LEGACY_COST;
+    var inv = await db.PlayerInventoryItems.FirstOrDefaultAsync(i => i.PlayerId == player.Id && i.ItemDefinitionId == winner.Id);
+    bool isNew = inv == null;
+    if (inv != null) inv.Quantity++;
+    else db.PlayerInventoryItems.Add(new PlayerInventoryItem { PlayerId = player.Id, ItemDefinitionId = winner.Id, Quantity = 1 });
+    await db.SaveChangesAsync();
+    return Results.Ok(new { name = winner.Name, icon = winner.Icon, rarity = rarity.ToString(), isNew, newCoinBalance = player.CoinBalance });
+}).DisableAntiforgery();
+
+// POST /api/bot/peepos/crate — open basic (200 coins) or premium (100 orbs) crate
+app.MapPost("/api/bot/peepos/crate", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotPeepoCrateV2Request req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var crateType = req.CrateType?.ToLower();
+    if (crateType is not ("basic" or "premium"))
+        return Results.BadRequest(new { error = "crateType must be 'basic' or 'premium'." });
+
+    var link = await db.DiscordLinks
+        .Include(l => l.User)
+        .FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordId);
+    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.BadRequest(new { error = "No character found. Use /rpg start first." });
+
+    GameItemRarity rarity;
+    if (crateType == "basic")
+    {
+        const long BASIC_COST = 200;
+        if (player.CoinBalance < BASIC_COST)
+            return Results.BadRequest(new { error = $"Not enough coins. Need {BASIC_COST:N0}, have {player.CoinBalance:N0}." });
+
+        var roll = Random.Shared.NextDouble() * 100;
+        rarity = roll < 5.0  ? GameItemRarity.Rare
+               : roll < 30.0 ? GameItemRarity.Uncommon
+               : GameItemRarity.Common;  // 70% Common, 25% Uncommon, 5% Rare
+        player.CoinBalance -= BASIC_COST;
+    }
+    else // premium
+    {
+        const long PREMIUM_COST = 100;
+        if (link.User.OrbBalance < PREMIUM_COST)
+            return Results.BadRequest(new { error = $"Not enough orbs. Need {PREMIUM_COST:N0}, have {link.User.OrbBalance:N0}." });
+
+        var roll = Random.Shared.NextDouble() * 100;
+        rarity = roll < 5.0  ? GameItemRarity.Legendary
+               : roll < 20.0 ? GameItemRarity.Epic
+               : roll < 60.0 ? GameItemRarity.Rare
+               : GameItemRarity.Uncommon;  // 40% Uncommon, 40% Rare, 15% Epic, 5% Legendary
+        link.User.OrbBalance -= PREMIUM_COST;
+    }
 
     var pool = await db.ItemDefinitions
         .Where(i => i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo && i.Rarity == rarity)
@@ -1974,17 +2109,33 @@ app.MapPost("/api/bot/peepos/crate/open", async (
 
     var winner = pool[Random.Shared.Next(pool.Count)];
 
-    player.CoinBalance -= CRATE_COST;
-
     var inv = await db.PlayerInventoryItems
         .FirstOrDefaultAsync(i => i.PlayerId == player.Id && i.ItemDefinitionId == winner.Id);
-    bool isNew = inv == null;
-    if (inv != null) inv.Quantity++;
-    else db.PlayerInventoryItems.Add(new PlayerInventoryItem
-        { PlayerId = player.Id, ItemDefinitionId = winner.Id, Quantity = 1 });
+    bool alreadyOwned = inv != null;
+    long refundAmount = 0;
+
+    if (alreadyOwned)
+    {
+        // Give 50% coin refund of rarity price instead
+        refundAmount = PeepoRarityShopPrice(rarity) / 2;
+        if (refundAmount > 0) player.CoinBalance += refundAmount;
+        inv!.Quantity++;
+    }
+    else
+    {
+        db.PlayerInventoryItems.Add(new PlayerInventoryItem
+            { PlayerId = player.Id, ItemDefinitionId = winner.Id, Quantity = 1 });
+    }
 
     await db.SaveChangesAsync();
-    return Results.Ok(new { name = winner.Name, icon = winner.Icon, rarity = rarity.ToString(), isNew, newCoinBalance = player.CoinBalance });
+    return Results.Ok(new
+    {
+        peepo        = new { name = winner.Name, rarity = rarity.ToString(), icon = winner.Icon },
+        alreadyOwned,
+        refundAmount,
+        newCoinBalance = player.CoinBalance,
+        newOrbBalance  = link.User.OrbBalance
+    });
 }).DisableAntiforgery();
 
 // POST /api/bot/peepos/add — add a single peepo by name + URL (idempotent by name)
@@ -2066,7 +2217,7 @@ app.MapPost("/api/bot/game/gift-coins", async (
     return Results.Ok(new { success = true, senderNewBalance = sender.CoinBalance, recipientNewBalance = recipient.CoinBalance });
 }).DisableAntiforgery();
 
-// POST /api/bot/game/sync-level — sync chat level to RPG character level (never go backwards)
+// POST /api/bot/game/sync-level — store Discord chat level on character (used as XP multiplier)
 app.MapPost("/api/bot/game/sync-level", async (
     HttpContext ctx,
     IConfiguration cfg,
@@ -2083,42 +2234,32 @@ app.MapPost("/api/bot/game/sync-level", async (
     if (player == null)
         return Results.NotFound(new { error = "Player character not found." });
 
-    if (req.NewLevel <= player.Level)
-        return Results.Ok(new { synced = false, level = player.Level });
-
-    // Apply level-up stats once per level gained (same formulas as ProcessGameCommandHandler)
-    int levelsGained = req.NewLevel - player.Level;
-    for (int i = 0; i < levelsGained; i++)
-    {
-        player.Level++;
-        switch (player.Class)
-        {
-            case peeposredemption.Domain.Entities.GameClass.Warrior:
-                player.STR += 3; player.DEF += 3; player.INT += 1; player.DEX += 1; player.VIT += 2; player.LUK += 1;
-                break;
-            case peeposredemption.Domain.Entities.GameClass.Mage:
-                player.STR += 1; player.DEF += 1; player.INT += 3; player.DEX += 1; player.VIT += 2; player.LUK += 1;
-                break;
-            case peeposredemption.Domain.Entities.GameClass.Ranger:
-                player.STR += 1; player.DEF += 1; player.INT += 1; player.DEX += 3; player.VIT += 2; player.LUK += 2;
-                break;
-            case peeposredemption.Domain.Entities.GameClass.Cleric:
-                player.STR += 1; player.DEF += 2; player.INT += 2; player.DEX += 1; player.VIT += 3; player.LUK += 1;
-                break;
-            case peeposredemption.Domain.Entities.GameClass.Rogue:
-                player.STR += 2; player.DEF += 1; player.INT += 1; player.DEX += 3; player.VIT += 1; player.LUK += 2;
-                break;
-        }
-        player.MaxHp += 10 + player.VIT;
-        player.MaxMp += 5 + player.INT / 2;
-    }
-
-    // Heal to full on sync (mirrors RPG level-up behaviour)
-    player.CurrentHp = player.MaxHp;
-    player.CurrentMp = player.MaxMp;
-
+    player.ChatLevel = req.NewLevel;
     await db.SaveChangesAsync();
-    return Results.Ok(new { synced = true, level = player.Level });
+    return Results.Ok(new { synced = true, chatLevel = player.ChatLevel });
+}).DisableAntiforgery();
+
+// POST /api/bot/game/sync-level-bulk — backfill chat levels for all linked users
+app.MapPost("/api/bot/game/sync-level-bulk", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    List<BotSyncLevelRequest> requests) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    int synced = 0;
+    foreach (var req in requests)
+    {
+        var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordId);
+        if (link == null) continue;
+        var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+        if (player == null) continue;
+        player.ChatLevel = req.NewLevel;
+        synced++;
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok(new { synced });
 }).DisableAntiforgery();
 
 // =====================================================================
@@ -2327,6 +2468,8 @@ record BotPeepoMarketBuyRequest(string DiscordUserId, Guid ListingId);
 record BotPeepoTradeOfferRequest(string InitiatorDiscordId, string RecipientDiscordId, string InitiatorPeepoName, long InitiatorCoins);
 record BotPeepoTradeActionRequest(string DiscordUserId);
 record BotPeepoCrateRequest(string DiscordUserId);
+record BotPeepoBuyCoinsRequest(string DiscordId, Guid ItemDefinitionId);
+record BotPeepoCrateV2Request(string DiscordId, string CrateType);
 record BotGiftCoinsRequest(string SenderDiscordId, string RecipientDiscordId, long Amount);
 record BotSyncLevelRequest(string DiscordId, int NewLevel);
 record BotGameTradeItemEntry(Guid ItemDefinitionId, int Quantity);
