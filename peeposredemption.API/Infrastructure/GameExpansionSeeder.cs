@@ -75,6 +75,36 @@ public static class GameExpansionSeeder
         // Currently grants 20 HP instantly. Full HoT requires RegenHpPerTurn + RegenTurnsRemaining on CombatSession.
         GetOrCreate("Fish Stew",          () => Co("Fish Stew",          "A rich stew — restores 20 HP in combat.",        "🍲",  1, heal: 20,        buy:  60, sell: 30, rarity: GameItemRarity.Uncommon));
 
+        // ── GATHERING RESOURCES — MINING ──────────────────────────────────────
+        var silverOre      = GetOrCreate("Silver Ore",      () => Ma("Silver Ore",      "Shiny silver ore.",                     "⚪", buy: 10,  sell: 4));
+        var goldOre        = GetOrCreate("Gold Ore",        () => Ma("Gold Ore",        "Glittering gold ore.",                  "🟡", buy: 20,  sell: 8));
+        var mithrilOre     = GetOrCreate("Mithril Ore",     () => Ma("Mithril Ore",     "Lightweight yet incredibly strong.",    "🔵", buy: 40,  sell: 15));
+        var adamantiteOre  = GetOrCreate("Adamantite Ore",  () => Ma("Adamantite Ore",  "One of the hardest metals known.",      "🟢", buy: 65,  sell: 25));
+        var runiteOre      = GetOrCreate("Runite Ore",      () => Ma("Runite Ore",      "A rare and powerful ore.",              "🔷", buy: 100, sell: 40));
+        var voidstone      = GetOrCreate("Voidstone",       () => Ma("Voidstone",       "Pulsates with void energy.",            "🌑", buy: 250, sell: 100));
+        var sapphire       = GetOrCreate("Sapphire",        () => Ma("Sapphire",        "A brilliant blue gemstone.",            "💎", buy: 50,  sell: 20));
+        var emerald        = GetOrCreate("Emerald",         () => Ma("Emerald",         "A deep green gemstone.",                "💚", buy: 90,  sell: 35));
+        var ruby           = GetOrCreate("Ruby",            () => Ma("Ruby",            "A fiery red gemstone.",                 "❤️", buy: 130, sell: 50));
+        var diamond        = GetOrCreate("Diamond",         () => Ma("Diamond",         "The hardest and rarest gemstone.",      "💠", buy: 250, sell: 100));
+
+        // ── GATHERING RESOURCES — FISHING ─────────────────────────────────────
+        var rawShrimp      = GetOrCreate("Raw Shrimp",      () => Ma("Raw Shrimp",      "Tiny but edible shrimp.",               "🦐", buy: 3,   sell: 1));
+        var rawTrout       = GetOrCreate("Raw Trout",       () => Ma("Raw Trout",       "A freshwater trout.",                   "🐟", buy: 8,   sell: 3));
+        var rawSalmon      = GetOrCreate("Raw Salmon",      () => Ma("Raw Salmon",      "A pink-fleshed salmon.",                "🐠", buy: 14,  sell: 5));
+        var rawTuna        = GetOrCreate("Raw Tuna",        () => Ma("Raw Tuna",        "A large ocean tuna.",                   "🐡", buy: 22,  sell: 8));
+        var rawLobster     = GetOrCreate("Raw Lobster",     () => Ma("Raw Lobster",     "A hard-shelled lobster.",               "🦞", buy: 30,  sell: 12));
+        var rawSwordfish   = GetOrCreate("Raw Swordfish",   () => Ma("Raw Swordfish",   "A powerful, sharp-billed fish.",        "🐟", buy: 45,  sell: 18));
+        var rawShark       = GetOrCreate("Raw Shark",       () => Ma("Raw Shark",       "A formidable ocean predator.",          "🦈", buy: 70,  sell: 28));
+        var rawAbyssalEel  = GetOrCreate("Raw Abyssal Eel", () => Ma("Raw Abyssal Eel", "An eel from the deepest trenches.",     "🌑", buy: 110, sell: 45));
+
+        // ── GATHERING RESOURCES — WOODCUTTING ─────────────────────────────────
+        var oakLogs        = GetOrCreate("Oak Logs",        () => Ma("Oak Logs",        "Sturdy oak wood.",                      "🪵", buy: 10,  sell: 4));
+        var willowLogs     = GetOrCreate("Willow Logs",     () => Ma("Willow Logs",     "Flexible willow branches.",             "🪵", buy: 20,  sell: 8));
+        var mapleLogs      = GetOrCreate("Maple Logs",      () => Ma("Maple Logs",      "Dense maple wood.",                     "🪵", buy: 35,  sell: 14));
+        var yewLogs        = GetOrCreate("Yew Logs",        () => Ma("Yew Logs",        "Ancient yew wood.",                     "🪵", buy: 55,  sell: 22));
+        var magicLogs      = GetOrCreate("Magic Logs",      () => Ma("Magic Logs",      "Infused with residual magic.",          "✨", buy: 88,  sell: 35));
+        var voidWood       = GetOrCreate("Void Wood",       () => Ma("Void Wood",       "Wood twisted by void energy.",          "🌑", buy: 200, sell: 80));
+
         // ── NEW MATERIALS ──────────────────────────────────────────────────────
         var slimeCore     = GetOrCreate("Slime Core",     () => Ma("Slime Core",     "A gelatinous orb from a slime.",    "🔵", buy: 8,   sell: 3));
         var goblinEar     = GetOrCreate("Goblin Ear",     () => Ma("Goblin Ear",     "A pointy goblin ear.",              "👂", buy: 10,  sell: 4));

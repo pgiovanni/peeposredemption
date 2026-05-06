@@ -127,9 +127,9 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 new { cmd = "/inventory", desc = "View your inventory" },
                 new { cmd = "/equip [item]", desc = "Equip an item" },
                 new { cmd = "/unequip [slot]", desc = "Unequip from a slot" },
-                new { cmd = "/mine", desc = "Mine for ore (60s cooldown)" },
-                new { cmd = "/fish", desc = "Go fishing (60s cooldown)" },
-                new { cmd = "/chop", desc = "Chop wood (60s cooldown)" },
+                new { cmd = "/mine", desc = "Mine for ore — tier scales with Mining level (30s cooldown)" },
+                new { cmd = "/fish", desc = "Go fishing — tier scales with Fishing level (30s cooldown)" },
+                new { cmd = "/chop", desc = "Chop wood — tier scales with Woodcutting level (30s cooldown)" },
                 new { cmd = "/cook [raw fish]", desc = "Cook raw fish into food" },
                 new { cmd = "/craft [item]", desc = "Craft an item" },
                 new { cmd = "/recipes", desc = "View available recipes" },
@@ -419,7 +419,8 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         object? resultPayload = null;
         if (session.State == CombatState.Victory)
         {
-            var xpGained = monster.XpReward;
+            var xpMultiplier = 1.0 + Math.Min(player.ChatLevel * 0.05, 1.0);
+            var xpGained = (long)(monster.XpReward * xpMultiplier);
             var coinsGained = Random.Shared.NextInt64(monster.OrbRewardMin, monster.OrbRewardMax + 1);
 
             player.XP += xpGained;
@@ -598,9 +599,9 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
     private async Task<GameCommandResult> HandleGather(PlayerCharacter player, string command)
     {
-        if (player.LastGatherAt.HasValue && player.LastGatherAt.Value.AddSeconds(60) > DateTime.UtcNow)
+        if (player.LastGatherAt.HasValue && player.LastGatherAt.Value.AddSeconds(30) > DateTime.UtcNow)
         {
-            var remaining = (int)(player.LastGatherAt.Value.AddSeconds(60) - DateTime.UtcNow).TotalSeconds;
+            var remaining = (int)(player.LastGatherAt.Value.AddSeconds(30) - DateTime.UtcNow).TotalSeconds;
             return GameCommandResult.Single("error", new { message = $"Gathering on cooldown! {remaining}s remaining." });
         }
 
@@ -609,21 +610,17 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             return GameCommandResult.Single("error", new { message = "Cannot gather during combat!" });
 
         SkillType skillType;
-        string[] possibleItems;
 
         switch (command)
         {
             case "/mine":
                 skillType = SkillType.Mining;
-                possibleItems = new[] { "Iron Ore", "Copper Ore" };
                 break;
             case "/fish":
                 skillType = SkillType.Fishing;
-                possibleItems = new[] { "Raw Fish" };
                 break;
             case "/chop":
                 skillType = SkillType.Woodcutting;
-                possibleItems = new[] { "Wood" };
                 break;
             default:
                 return GameCommandResult.NotHandled();
@@ -636,8 +633,83 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             await _uow.PlayerSkills.AddAsync(skill);
         }
 
-        // Pick random item from possibilities
-        var itemName = possibleItems[Random.Shared.Next(possibleItems.Length)];
+        var level = skill.Level;
+
+        // Determine primary item name based on skill level (highest tier unlocked)
+        // 80% chance of highest tier, 20% chance of a random lower tier
+        string primaryItemName = command switch
+        {
+            "/mine" => level >= 85 ? "Voidstone"
+                     : level >= 70 ? "Runite Ore"
+                     : level >= 55 ? "Adamantite Ore"
+                     : level >= 40 ? "Mithril Ore"
+                     : level >= 30 ? "Gold Ore"
+                     : level >= 20 ? "Silver Ore"
+                     : level >= 10 ? "Iron Ore"
+                     : "Copper Ore",
+
+            "/fish" => level >= 90 ? "Raw Abyssal Eel"
+                     : level >= 80 ? "Raw Shark"
+                     : level >= 65 ? "Raw Swordfish"
+                     : level >= 50 ? "Raw Lobster"
+                     : level >= 35 ? "Raw Tuna"
+                     : level >= 20 ? "Raw Salmon"
+                     : level >= 10 ? "Raw Trout"
+                     : "Raw Shrimp",
+
+            "/chop" => level >= 90 ? "Void Wood"
+                     : level >= 75 ? "Magic Logs"
+                     : level >= 60 ? "Yew Logs"
+                     : level >= 45 ? "Maple Logs"
+                     : level >= 30 ? "Willow Logs"
+                     : level >= 15 ? "Oak Logs"
+                     : "Wood",
+
+            _ => "Wood"
+        };
+
+        // Build all tiers the player can access (for the 20% lower-tier roll)
+        string[] allUnlockedMine = level >= 85 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore", "Adamantite Ore", "Runite Ore", "Voidstone" }
+                                 : level >= 70 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore", "Adamantite Ore", "Runite Ore" }
+                                 : level >= 55 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore", "Adamantite Ore" }
+                                 : level >= 40 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore" }
+                                 : level >= 30 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore" }
+                                 : level >= 20 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore" }
+                                 : level >= 10 ? new[] { "Copper Ore", "Iron Ore" }
+                                 : new[] { "Copper Ore" };
+
+        string[] allUnlockedFish = level >= 90 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster", "Raw Swordfish", "Raw Shark", "Raw Abyssal Eel" }
+                                 : level >= 80 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster", "Raw Swordfish", "Raw Shark" }
+                                 : level >= 65 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster", "Raw Swordfish" }
+                                 : level >= 50 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster" }
+                                 : level >= 35 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna" }
+                                 : level >= 20 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon" }
+                                 : level >= 10 ? new[] { "Raw Shrimp", "Raw Trout" }
+                                 : new[] { "Raw Shrimp" };
+
+        string[] allUnlockedChop = level >= 90 ? new[] { "Wood", "Oak Logs", "Willow Logs", "Maple Logs", "Yew Logs", "Magic Logs", "Void Wood" }
+                                 : level >= 75 ? new[] { "Wood", "Oak Logs", "Willow Logs", "Maple Logs", "Yew Logs", "Magic Logs" }
+                                 : level >= 60 ? new[] { "Wood", "Oak Logs", "Willow Logs", "Maple Logs", "Yew Logs" }
+                                 : level >= 45 ? new[] { "Wood", "Oak Logs", "Willow Logs", "Maple Logs" }
+                                 : level >= 30 ? new[] { "Wood", "Oak Logs", "Willow Logs" }
+                                 : level >= 15 ? new[] { "Wood", "Oak Logs" }
+                                 : new[] { "Wood" };
+
+        // 80% chance of highest unlocked tier, 20% chance of a random lower tier
+        string[] unlockedTiers = command switch
+        {
+            "/mine" => allUnlockedMine,
+            "/fish" => allUnlockedFish,
+            "/chop" => allUnlockedChop,
+            _ => new[] { primaryItemName }
+        };
+
+        string itemName;
+        if (unlockedTiers.Length == 1 || Random.Shared.NextDouble() < 0.80)
+            itemName = primaryItemName;
+        else
+            itemName = unlockedTiers[Random.Shared.Next(unlockedTiers.Length - 1)]; // any tier except highest
+
         var itemDef = await _uow.ItemDefinitions.GetByNameAsync(itemName);
 
         int qty = 1 + skill.Level / 10;
@@ -645,6 +717,23 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
         if (itemDef != null)
             await AddItemToInventory(player.Id, itemDef.Id, qty);
+
+        // Gem bonus roll for mining (10% base + 0.5% per 10 levels)
+        string? bonusGemName = null;
+        if (command == "/mine")
+        {
+            double gemChance = 0.10 + (level / 10) * 0.005;
+            if (Random.Shared.NextDouble() < gemChance)
+            {
+                bonusGemName = level >= 70 ? "Diamond"
+                             : level >= 50 ? "Ruby"
+                             : level >= 30 ? "Emerald"
+                             : "Sapphire";
+                var gemDef = await _uow.ItemDefinitions.GetByNameAsync(bonusGemName);
+                if (gemDef != null)
+                    await AddItemToInventory(player.Id, gemDef.Id, 1);
+            }
+        }
 
         skill.XP += xpGained;
         CheckSkillLevelUp(skill);
@@ -657,6 +746,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             action = command.TrimStart('/'),
             item = itemName,
             quantity = qty,
+            bonusGem = bonusGemName,
             xpGained,
             skillLevel = skill.Level,
             skillXp = skill.XP,
