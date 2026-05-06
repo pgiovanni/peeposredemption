@@ -61,6 +61,20 @@ public static class GameExpansionSeeder
         var largeMpPot = GetOrCreate("Large Mana Potion",   () => Co("Large Mana Potion",   "Restores 80 MP.",  "💧", 20, mana: 80,  buy: 100, sell: 35));
         var elixir     = GetOrCreate("Elixir of Life",      () => Co("Elixir of Life",      "Restores 200 HP and 150 MP.", "⚗️", 40, heal: 200, mana: 150, rarity: GameItemRarity.Rare, buy: 500, sell: 175));
 
+        // ── COOKED FOOD (Cooking skill) ────────────────────────────────────────
+        GetOrCreate("Cooked Shrimp",      () => Co("Cooked Shrimp",      "Freshly cooked shrimp — restores 3 HP.",         "🍤",  1, heal:  3,        buy:   4, sell:  2));
+        GetOrCreate("Cooked Trout",       () => Co("Cooked Trout",       "A nicely grilled trout — restores 7 HP.",        "🐟",  1, heal:  7,        buy:  10, sell:  5));
+        GetOrCreate("Cooked Salmon",      () => Co("Cooked Salmon",      "Perfectly cooked salmon — restores 12 HP.",      "🐠",  1, heal: 12,        buy:  18, sell:  8));
+        GetOrCreate("Cooked Tuna",        () => Co("Cooked Tuna",        "A hearty cooked tuna — restores 18 HP.",         "🐡",  1, heal: 18,        buy:  28, sell: 12));
+        GetOrCreate("Cooked Lobster",     () => Co("Cooked Lobster",     "Succulent cooked lobster — restores 25 HP.",     "🦞",  1, heal: 25,        buy:  40, sell: 18));
+        GetOrCreate("Cooked Swordfish",   () => Co("Cooked Swordfish",   "A powerful swordfish steak — restores 35 HP.",   "🐟",  1, heal: 35,        buy:  55, sell: 25));
+        GetOrCreate("Cooked Shark",       () => Co("Cooked Shark",       "Thick shark meat — restores 50 HP.",             "🦈",  1, heal: 50,        buy:  80, sell: 38));
+        GetOrCreate("Cooked Abyssal Eel", () => Co("Cooked Abyssal Eel", "Mystical eel — restores 70 HP and 20 MP.",       "🌑",  1, heal: 70, mana: 20, buy: 140, sell: 60, rarity: GameItemRarity.Rare));
+        GetOrCreate("Burnt Fish",         () => Fo("Burnt Fish",         "You burnt it. Completely inedible.",             "🖤",  buy: 2, sell: 1));
+        // TODO: Fish Stew is intended to be a 15 HP/turn HoT over 3 turns (45 HP total).
+        // Currently grants 20 HP instantly. Full HoT requires RegenHpPerTurn + RegenTurnsRemaining on CombatSession.
+        GetOrCreate("Fish Stew",          () => Co("Fish Stew",          "A rich stew — restores 20 HP in combat.",        "🍲",  1, heal: 20,        buy:  60, sell: 30, rarity: GameItemRarity.Uncommon));
+
         // ── NEW MATERIALS ──────────────────────────────────────────────────────
         var slimeCore     = GetOrCreate("Slime Core",     () => Ma("Slime Core",     "A gelatinous orb from a slime.",    "🔵", buy: 8,   sell: 3));
         var goblinEar     = GetOrCreate("Goblin Ear",     () => Ma("Goblin Ear",     "A pointy goblin ear.",              "👂", buy: 10,  sell: 4));
@@ -358,6 +372,17 @@ public static class GameExpansionSeeder
         SubType = heal > 0 ? ItemSubType.HealthPotion : ItemSubType.ManaPotion,
         Rarity = rarity, LevelReq = levelReq, IsStackable = true,
         HealAmount = heal, ManaRestoreAmount = mana,
+        BuyPrice = buy, SellPrice = sell
+    };
+
+    /// <summary>Zero-effect food item (e.g. Burnt Fish). Consumable type so it shows in the item slot.</summary>
+    private static ItemDefinition Fo(string name, string desc, string icon,
+        long buy = 0, long sell = 0) => new()
+    {
+        Name = name, Description = desc, Icon = icon,
+        Type = GameItemType.Consumable, SubType = ItemSubType.HealthPotion,
+        Rarity = GameItemRarity.Common, LevelReq = 1, IsStackable = true,
+        HealAmount = 0, ManaRestoreAmount = 0,
         BuyPrice = buy, SellPrice = sell
     };
 

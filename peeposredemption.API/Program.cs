@@ -1208,6 +1208,100 @@ bool BotAuth(HttpContext ctx, IConfiguration cfg)
     return ctx.Request.Headers.TryGetValue("X-Bot-Key", out var v) && v == key;
 }
 
+// Ensures a DiscordLink + User + PlayerCharacter exist for the given Discord ID.
+// If any part is missing it is created automatically — no /link command required.
+async Task<PlayerCharacter> EnsureDiscordPlayer(
+    string discordId,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db)
+{
+    // 1. Find or create User + DiscordLink
+    var link = await db.DiscordLinks
+        .Include(l => l.User)
+        .FirstOrDefaultAsync(l => l.DiscordUserId == discordId);
+
+    peeposredemption.Domain.Entities.User user;
+    if (link == null)
+    {
+        // Build a unique username derived from the Discord ID
+        var baseUsername = $"discord_{discordId}";
+        baseUsername = baseUsername[..Math.Min(baseUsername.Length, 20)];
+        var username = baseUsername;
+        var suffix = 1;
+        while (await db.Users.AnyAsync(u => u.Username == username))
+            username = $"{baseUsername[..Math.Min(baseUsername.Length, 17)]}_{suffix++}";
+
+        user = new peeposredemption.Domain.Entities.User
+        {
+            Username      = username,
+            Email         = $"discord_{discordId}@bot.torvex.app",
+            PasswordHash  = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+            EmailConfirmed = true
+        };
+        db.Users.Add(user);
+
+        link = new peeposredemption.Domain.Entities.DiscordLink
+        {
+            DiscordUserId = discordId,
+            TorvexUserId  = user.Id,
+            User          = user
+        };
+        db.DiscordLinks.Add(link);
+        await db.SaveChangesAsync();
+    }
+    else
+    {
+        user = link.User;
+    }
+
+    // 2. Find or create PlayerCharacter
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player != null) return player;
+
+    player = new PlayerCharacter
+    {
+        UserId      = link.TorvexUserId,
+        CharacterName = user.Username,
+        Class       = GameClass.Warrior,
+        Level       = 1,
+        XP          = 0,
+        STR = 10, DEF = 10, INT = 10, DEX = 10, VIT = 10, LUK = 5,
+        CurrentHp = 100, MaxHp = 100,
+        CurrentMp = 50,  MaxMp = 50
+    };
+    db.PlayerCharacters.Add(player);
+
+    // Initialize all skills at level 1
+    foreach (SkillType skill in Enum.GetValues<SkillType>())
+    {
+        db.PlayerSkills.Add(new PlayerSkill
+        {
+            PlayerId        = player.Id,
+            SkillType       = skill,
+            Level           = 1,
+            XP              = 0,
+            XpToNextLevel   = 75
+        });
+    }
+
+    // Give starter weapon
+    var starterSword = await db.ItemDefinitions
+        .FirstOrDefaultAsync(i => i.Name == "Wooden Sword");
+    if (starterSword != null)
+    {
+        db.PlayerInventoryItems.Add(new PlayerInventoryItem
+        {
+            PlayerId         = player.Id,
+            ItemDefinitionId = starterSword.Id,
+            Quantity         = 1,
+            IsEquipped       = true,
+            EquippedSlot     = EquipSlot.MainHand
+        });
+    }
+
+    await db.SaveChangesAsync();
+    return player;
+}
+
 // Auto-create a Torvex account and link it for a Discord user (no manual link needed)
 app.MapPost("/api/bot/auto-link", async (
     HttpContext ctx,
@@ -1338,15 +1432,14 @@ app.MapPost("/api/bot/game/command", async (
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
 
-    var link = await db.DiscordLinks
+    await EnsureDiscordPlayer(req.DiscordUserId, db);
+    var cmdLink = await db.DiscordLinks
         .Include(l => l.User)
         .FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
-    if (link == null)
-        return Results.NotFound(new { error = "Discord account not linked. Use /link in Discord." });
 
     var result = await mediator.Send(new peeposredemption.Application.Features.Game.Commands.ProcessGameCommandRequest(
-        link.TorvexUserId,
-        link.User.Username,
+        cmdLink!.TorvexUserId,
+        cmdLink.User.Username,
         discordBotChannelId,
         req.Command));
 
@@ -1378,17 +1471,13 @@ app.MapGet("/api/bot/player/{discordUserId}", async (
     string discordUserId) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    var link = await db.DiscordLinks
+    var player = await EnsureDiscordPlayer(discordUserId, db);
+    var playerLink = await db.DiscordLinks
         .Include(l => l.User)
         .FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
-    if (link == null) return Results.NotFound();
-
-    var player = await db.PlayerCharacters
-        .FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null) return Results.NotFound();
 
     return Results.Ok(new {
-        username = link.User.Username,
+        username = playerLink!.User.Username,
         characterName = player.CharacterName,
         @class = player.Class.ToString(),
         level = player.Level,
@@ -1415,10 +1504,7 @@ app.MapGet("/api/bot/game/inventory/{discordUserId}", async (
     peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
-    if (link == null) return Results.NotFound();
-    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null) return Results.NotFound();
+    var player = await EnsureDiscordPlayer(discordUserId, db);
     var items = await db.PlayerInventoryItems
         .Include(i => i.ItemDefinition)
         .Where(i => i.PlayerId == player.Id)
@@ -1443,13 +1529,8 @@ app.MapPost("/api/bot/pvp/reward", async (
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
 
-    var winnerLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.WinnerDiscordId);
-    var loserLink  = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.LoserDiscordId);
-    if (winnerLink == null || loserLink == null) return Results.NotFound();
-
-    var winner = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == winnerLink.TorvexUserId);
-    var loser  = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == loserLink.TorvexUserId);
-    if (winner == null || loser == null) return Results.NotFound();
+    var winner = await EnsureDiscordPlayer(req.WinnerDiscordId, db);
+    var loser  = await EnsureDiscordPlayer(req.LoserDiscordId,  db);
 
     long winnerXp = Math.Max(50, loser.Level * 25);
     long loserXp  = Math.Max(10, loser.Level * 5);
@@ -1474,12 +1555,7 @@ app.MapPost("/api/bot/game/add-coins", async (
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
 
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordId);
-    if (link == null) return Results.NotFound(new { error = "Discord account not linked." });
-
-    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null) return Results.NotFound(new { error = "Player character not found." });
-
+    var player = await EnsureDiscordPlayer(req.DiscordId, db);
     player.CoinBalance += req.Amount;
     await db.SaveChangesAsync();
 
@@ -1745,10 +1821,7 @@ app.MapGet("/api/bot/peepos/inventory/{discordUserId}", async (
     peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
-    if (link == null) return Results.NotFound();
-    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null) return Results.NotFound();
+    var player = await EnsureDiscordPlayer(discordUserId, db);
     var items = await db.PlayerInventoryItems
         .Include(i => i.ItemDefinition)
         .Where(i => i.PlayerId == player.Id
@@ -1768,10 +1841,7 @@ app.MapPost("/api/bot/peepos/buy", async (
     BotPeepoBuyRequest req) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
-    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
-    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null) return Results.BadRequest(new { error = "No character found." });
+    var player = await EnsureDiscordPlayer(req.DiscordUserId, db);
     var itemDef = await db.ItemDefinitions.FirstOrDefaultAsync(i =>
         i.Name == req.PeepoName && i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo);
     if (itemDef == null) return Results.NotFound(new { error = "Peepo not found." });
@@ -1816,10 +1886,7 @@ app.MapPost("/api/bot/peepos/market/list", async (
     BotPeepoMarketListRequest req) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
-    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
-    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null) return Results.BadRequest(new { error = "No character found." });
+    var player = await EnsureDiscordPlayer(req.DiscordUserId, db);
     var itemDef = await db.ItemDefinitions.FirstOrDefaultAsync(i =>
         i.Name == req.PeepoName && i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo);
     if (itemDef == null) return Results.NotFound(new { error = "Peepo not found." });
@@ -1851,10 +1918,7 @@ app.MapPost("/api/bot/peepos/market/buy", async (
     BotPeepoMarketBuyRequest req) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
-    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
-    var buyer = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (buyer == null) return Results.BadRequest(new { error = "No character found." });
+    var buyer = await EnsureDiscordPlayer(req.DiscordUserId, db);
     var listing = await db.MarketplaceListings
         .Include(l => l.ItemDefinition)
         .FirstOrDefaultAsync(l => l.Id == req.ListingId
@@ -1893,10 +1957,7 @@ app.MapDelete("/api/bot/peepos/market/{listingId:guid}", async (
     peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
-    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
-    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null) return Results.BadRequest(new { error = "No character found." });
+    var player = await EnsureDiscordPlayer(discordUserId, db);
     var listing = await db.MarketplaceListings
         .FirstOrDefaultAsync(l => l.Id == listingId && l.SellerId == player.Id
             && l.Status == MarketListingStatus.Active);
@@ -1919,14 +1980,8 @@ app.MapPost("/api/bot/peepos/trade/offer", async (
     BotPeepoTradeOfferRequest req) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    var initLink  = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.InitiatorDiscordId);
-    var recipLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.RecipientDiscordId);
-    if (initLink == null || recipLink == null)
-        return Results.BadRequest(new { error = "Both users must be linked." });
-    var initiator = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == initLink.TorvexUserId);
-    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipLink.TorvexUserId);
-    if (initiator == null || recipient == null)
-        return Results.BadRequest(new { error = "Both users need a character." });
+    var initiator = await EnsureDiscordPlayer(req.InitiatorDiscordId, db);
+    var recipient = await EnsureDiscordPlayer(req.RecipientDiscordId, db);
 
     // Validate initiator owns the peepo
     if (!string.IsNullOrEmpty(req.InitiatorPeepoName))
@@ -1968,12 +2023,10 @@ app.MapPost("/api/bot/peepos/trade/{id:guid}/accept", async (
     BotPeepoTradeActionRequest req) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    var recipLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
-    if (recipLink == null) return Results.BadRequest(new { error = "Account not linked." });
+    var recipient = await EnsureDiscordPlayer(req.DiscordUserId, db);
     var trade = await db.TradeOffers.FirstOrDefaultAsync(t => t.Id == id && t.Status == TradeStatus.Pending);
     if (trade == null) return Results.NotFound(new { error = "Trade not found or already resolved." });
-    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipLink.TorvexUserId);
-    if (recipient == null || recipient.Id != trade.RecipientId) return Results.Forbid();
+    if (recipient.Id != trade.RecipientId) return Results.Forbid();
     if (trade.ExpiresAt < DateTime.UtcNow)
     {
         trade.Status = TradeStatus.Expired;
@@ -2020,14 +2073,11 @@ app.MapPost("/api/bot/peepos/crate/open", async (
     BotPeepoCrateRequest req) =>
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
-    // Redirect to basic crate logic
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
-    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
-    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null) return Results.BadRequest(new { error = "No character found. Use /rpg start first." });
-    const long LEGACY_COST = 200;
-    if (player.CoinBalance < LEGACY_COST)
-        return Results.BadRequest(new { error = $"Not enough coins. Need {LEGACY_COST:N0}, have {player.CoinBalance:N0}." });
+    const long CRATE_COST = 5000;
+
+    var player = await EnsureDiscordPlayer(req.DiscordUserId, db);
+    if (player.CoinBalance < CRATE_COST)
+        return Results.BadRequest(new { error = $"Not enough coins. Need {CRATE_COST:N0}, have {player.CoinBalance:N0}." });
 
     var roll = Random.Shared.NextDouble() * 100;
     var rarity = roll < 5.0  ? GameItemRarity.Rare
@@ -2197,15 +2247,8 @@ app.MapPost("/api/bot/game/gift-coins", async (
     if (req.SenderDiscordId == req.RecipientDiscordId)
         return Results.BadRequest(new { error = "You cannot gift coins to yourself." });
 
-    var senderLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.SenderDiscordId);
-    if (senderLink == null) return Results.BadRequest(new { error = "Sender account not linked." });
-    var sender = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == senderLink.TorvexUserId);
-    if (sender == null) return Results.BadRequest(new { error = "Sender has no character." });
-
-    var recipientLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.RecipientDiscordId);
-    if (recipientLink == null) return Results.BadRequest(new { error = "Recipient account not linked." });
-    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipientLink.TorvexUserId);
-    if (recipient == null) return Results.BadRequest(new { error = "Recipient has no character." });
+    var sender    = await EnsureDiscordPlayer(req.SenderDiscordId,    db);
+    var recipient = await EnsureDiscordPlayer(req.RecipientDiscordId, db);
 
     if (sender.CoinBalance < req.Amount)
         return Results.BadRequest(new { error = $"Not enough coins. You have {sender.CoinBalance:N0}, need {req.Amount:N0}." });
@@ -2226,13 +2269,7 @@ app.MapPost("/api/bot/game/sync-level", async (
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
 
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordId);
-    if (link == null)
-        return Results.NotFound(new { error = "Discord account not linked." });
-
-    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null)
-        return Results.NotFound(new { error = "Player character not found." });
+    var player = await EnsureDiscordPlayer(req.DiscordId, db);
 
     player.ChatLevel = req.NewLevel;
     await db.SaveChangesAsync();
@@ -2274,15 +2311,8 @@ app.MapPost("/api/bot/game/trade/offer", async (
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
 
-    var initLink  = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.InitiatorDiscordId);
-    var recipLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.RecipientDiscordId);
-    if (initLink == null || recipLink == null)
-        return Results.BadRequest(new { error = "Both users must be linked." });
-
-    var initiator = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == initLink.TorvexUserId);
-    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipLink.TorvexUserId);
-    if (initiator == null || recipient == null)
-        return Results.BadRequest(new { error = "Both users need a character." });
+    var initiator = await EnsureDiscordPlayer(req.InitiatorDiscordId, db);
+    var recipient = await EnsureDiscordPlayer(req.RecipientDiscordId, db);
 
     foreach (var offered in req.InitiatorItems ?? [])
     {
@@ -2358,14 +2388,11 @@ app.MapPost("/api/bot/game/trade/accept", async (
 {
     if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
 
-    var recipLink = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
-    if (recipLink == null) return Results.BadRequest(new { error = "Account not linked." });
-
+    var recipient = await EnsureDiscordPlayer(req.DiscordUserId, db);
     var trade = await db.TradeOffers.FirstOrDefaultAsync(t => t.Id == req.OfferId && t.Status == TradeStatus.Pending);
     if (trade == null) return Results.NotFound(new { error = "Trade not found or already resolved." });
 
-    var recipient = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == recipLink.TorvexUserId);
-    if (recipient == null || recipient.Id != trade.RecipientId) return Results.Forbid();
+    if (recipient.Id != trade.RecipientId) return Results.Forbid();
 
     if (trade.ExpiresAt < DateTime.UtcNow)
     {
@@ -2422,10 +2449,8 @@ app.MapPost("/api/bot/game/trade/decline", async (
     var trade = await db.TradeOffers.FirstOrDefaultAsync(t => t.Id == req.OfferId && t.Status == TradeStatus.Pending);
     if (trade == null) return Results.NotFound(new { error = "Trade not found." });
 
-    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == req.DiscordUserId);
-    if (link == null) return Results.BadRequest(new { error = "Account not linked." });
-    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
-    if (player == null || (player.Id != trade.InitiatorId && player.Id != trade.RecipientId))
+    var player = await EnsureDiscordPlayer(req.DiscordUserId, db);
+    if (player.Id != trade.InitiatorId && player.Id != trade.RecipientId)
         return Results.Forbid();
 
     trade.Status = TradeStatus.Declined;
