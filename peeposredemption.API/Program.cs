@@ -2653,7 +2653,9 @@ app.MapPost("/api/peepos/vote", async (
     if (string.IsNullOrWhiteSpace(req.Name) || !validRarities.Contains(req.Rarity))
         return Results.BadRequest();
 
-    var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var ip = ctx.Request.Headers["X-Real-IP"].FirstOrDefault()
+          ?? ctx.Connection.RemoteIpAddress?.ToString()
+          ?? "unknown";
     var existing = await db.PeepoRarityVotes
         .FirstOrDefaultAsync(v => v.PeepoName == req.Name && v.IpAddress == ip);
 

@@ -29,7 +29,9 @@ public class PeeposModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var ip = HttpContext.Request.Headers["X-Real-IP"].FirstOrDefault()
+              ?? HttpContext.Connection.RemoteIpAddress?.ToString()
+              ?? "unknown";
 
         var items = await _db.ItemDefinitions
             .Where(i => i.Type == GameItemType.Collectible && i.SubType == ItemSubType.Peepo)
