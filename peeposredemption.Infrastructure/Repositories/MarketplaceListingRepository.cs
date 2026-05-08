@@ -42,6 +42,14 @@ public class MarketplaceListingRepository : IMarketplaceListingRepository
             .OrderBy(l => l.PricePerUnit)
             .FirstOrDefaultAsync();
 
+    public Task<List<MarketplaceListing>> GetAllActiveAsync() =>
+        _db.MarketplaceListings
+            .Include(l => l.ItemDefinition)
+            .Where(l => l.Status == MarketListingStatus.Active && l.ExpiresAt > DateTime.UtcNow)
+            .OrderBy(l => l.ItemDefinition.Name)
+            .ThenBy(l => l.PricePerUnit)
+            .ToListAsync();
+
     public async Task AddAsync(MarketplaceListing listing) =>
         await _db.MarketplaceListings.AddAsync(listing);
 }

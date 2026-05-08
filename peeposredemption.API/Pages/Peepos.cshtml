@@ -1,0 +1,307 @@
+@page
+@model peeposredemption.API.Pages.PeeposModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Peepo Rarity Voting";
+    ViewData["OgTitle"] = "Vote on Peepo Rarities — Torvex";
+    ViewData["Description"] = "Browse all Torvex peepo collectibles and vote on what rarity tier you think each one should be. Community votes help finalize the rarity sheet.";
+
+    var rarities = new[] { "Common", "Uncommon", "Rare", "Epic", "Legendary" };
+    var rarityColors = new Dictionary<string, string>
+    {
+        ["Common"]    = "#b5bac1",
+        ["Uncommon"]  = "#57f287",
+        ["Rare"]      = "#5865f2",
+        ["Epic"]      = "#9b59b6",
+        ["Legendary"] = "#f0a500"
+    };
+
+    var grouped = Model.Peepos
+        .GroupBy(p => p.CurrentRarity)
+        .OrderBy(g => Array.IndexOf(rarities, g.Key))
+        .ToList();
+}
+
+<div class="peepos-page">
+    <div class="peepos-header">
+        <h1>Peepo Rarity Voting</h1>
+        <p>Browse all peepo collectibles and vote on what rarity tier each one should be. Your vote is remembered by IP — click a different button to change it.</p>
+    </div>
+
+    @foreach (var group in grouped)
+    {
+        var color = rarityColors.GetValueOrDefault(group.Key, "#b5bac1");
+        <div class="rarity-section">
+            <div class="rarity-header" style="border-left: 4px solid @color; color: @color">
+                @group.Key
+                <span class="rarity-count">@group.Count() peepo@(group.Count() != 1 ? "s" : "")</span>
+            </div>
+            <div class="peepo-grid">
+                @foreach (var peepo in group)
+                {
+                    var totalVotes = peepo.VoteCounts.Values.Sum();
+                    <div class="peepo-card" data-name="@peepo.Name">
+                        <div class="peepo-img-wrap">
+                            @if (!string.IsNullOrEmpty(peepo.Icon))
+                            {
+                                <img src="@peepo.Icon" alt="@peepo.Name" width="64" height="64" loading="lazy" />
+                            }
+                            else
+                            {
+                                <div class="peepo-img-placeholder">?</div>
+                            }
+                        </div>
+                        <div class="peepo-name">@peepo.Name</div>
+                        <div class="peepo-vote-buttons">
+                            @foreach (var rarity in rarities)
+                            {
+                                var btnColor = rarityColors[rarity];
+                                var isActive = peepo.MyVote == rarity;
+                                <button class="vote-btn @(isActive ? "active" : "")"
+                                        data-rarity="@rarity"
+                                        style="--rarity-color: @btnColor"
+                                        onclick="castVote(this, '@peepo.Name', '@rarity')">
+                                    @rarity
+                                </button>
+                            }
+                        </div>
+                        <div class="vote-bar-wrap" data-name="@peepo.Name">
+                            @{
+                                foreach (var rarity in rarities)
+                                {
+                                    var count = peepo.VoteCounts.GetValueOrDefault(rarity, 0);
+                                    var pct = totalVotes > 0 ? (double)count / totalVotes * 100 : 0;
+                                    var barColor = rarityColors[rarity];
+                                    <div class="vote-bar-segment" data-rarity="@rarity" style="width: @pct.ToString("F1")%; background: @barColor" title="@rarity: @count vote@(count != 1 ? "s" : "")"></div>
+                                }
+                            }
+                        </div>
+                        <div class="vote-total" data-name="@peepo.Name">@totalVotes vote@(totalVotes != 1 ? "s" : "")</div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (!Model.Peepos.Any())
+    {
+        <div class="peepos-empty">No peepos found yet. Check back soon!</div>
+    }
+</div>
+
+<style>
+    .peepos-page {
+        max-width: 1100px;
+        margin: 2.5rem auto;
+        padding: 0 1.5rem 4rem;
+    }
+
+    .peepos-header {
+        margin-bottom: 2.5rem;
+    }
+
+    .peepos-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .peepos-header p {
+        color: var(--text-muted, #b5bac1);
+        font-size: 1rem;
+        line-height: 1.5;
+        max-width: 650px;
+    }
+
+    .rarity-section {
+        margin-bottom: 2.5rem;
+    }
+
+    .rarity-header {
+        font-size: 1.1rem;
+        font-weight: 700;
+        padding: 0.4rem 0.8rem;
+        background: rgba(255,255,255,0.04);
+        border-radius: 0 6px 6px 0;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .rarity-count {
+        font-size: 0.75rem;
+        font-weight: 400;
+        color: #b5bac1;
+        text-transform: none;
+        letter-spacing: 0;
+    }
+
+    .peepo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 1rem;
+    }
+
+    .peepo-card {
+        background: #1e1f22;
+        border: 1px solid #3f4147;
+        border-radius: 10px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+        transition: border-color 0.15s;
+    }
+
+    .peepo-card:hover {
+        border-color: #5865f2;
+    }
+
+    .peepo-img-wrap {
+        width: 64px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .peepo-img-wrap img {
+        width: 64px;
+        height: 64px;
+        object-fit: contain;
+        border-radius: 6px;
+    }
+
+    .peepo-img-placeholder {
+        width: 64px;
+        height: 64px;
+        background: #2b2d31;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #72767d;
+        font-size: 1.5rem;
+    }
+
+    .peepo-name {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #dcddde;
+        text-align: center;
+        word-break: break-word;
+    }
+
+    .peepo-vote-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .vote-btn {
+        font-size: 0.68rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        border: 1px solid var(--rarity-color);
+        background: transparent;
+        color: var(--rarity-color);
+        cursor: pointer;
+        transition: background 0.12s, color 0.12s;
+        font-family: inherit;
+        line-height: 1;
+    }
+
+    .vote-btn:hover {
+        background: color-mix(in srgb, var(--rarity-color) 20%, transparent);
+    }
+
+    .vote-btn.active {
+        background: var(--rarity-color);
+        color: #000;
+    }
+
+    .vote-bar-wrap {
+        display: flex;
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+        background: #2b2d31;
+    }
+
+    .vote-bar-segment {
+        height: 100%;
+        transition: width 0.3s ease;
+        min-width: 0;
+    }
+
+    .vote-total {
+        font-size: 0.72rem;
+        color: #72767d;
+    }
+
+    .peepos-empty {
+        text-align: center;
+        color: #72767d;
+        padding: 4rem 0;
+        font-size: 1rem;
+    }
+
+    @@media (max-width: 600px) {
+        .peepo-grid {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+    }
+</style>
+
+@section Scripts {
+<script>
+    const rarities = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
+
+    async function castVote(btn, name, rarity) {
+        try {
+            const res = await fetch('/api/peepos/vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, rarity })
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            updateCard(name, data.myVote, data.counts);
+        } catch (e) {
+            console.error('Vote failed', e);
+        }
+    }
+
+    function updateCard(name, myVote, counts) {
+        const card = document.querySelector(`.peepo-card[data-name="${CSS.escape(name)}"]`);
+        if (!card) return;
+
+        // Update button highlights
+        card.querySelectorAll('.vote-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.rarity === myVote);
+        });
+
+        // Rebuild vote bar
+        const total = counts.reduce((sum, c) => sum + c.count, 0);
+        const barWrap = card.querySelector('.vote-bar-wrap');
+        barWrap.querySelectorAll('.vote-bar-segment').forEach(seg => {
+            const c = counts.find(x => x.rarity === seg.dataset.rarity);
+            const pct = total > 0 && c ? (c.count / total * 100) : 0;
+            seg.style.width = pct.toFixed(1) + '%';
+            seg.title = `${seg.dataset.rarity}: ${c ? c.count : 0} vote${c && c.count !== 1 ? 's' : ''}`;
+        });
+
+        // Update total
+        const totalEl = card.querySelector('.vote-total');
+        if (totalEl) totalEl.textContent = `${total} vote${total !== 1 ? 's' : ''}`;
+    }
+</script>
+}

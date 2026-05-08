@@ -8,5 +8,6 @@ public interface IMarketplaceListingRepository
     Task<List<MarketplaceListing>> GetActiveByItemNameAsync(string itemName);
     Task<List<MarketplaceListing>> GetActiveBySellerIdAsync(Guid sellerId);
     Task<MarketplaceListing?> GetCheapestByItemNameAsync(string itemName);
+    Task<List<MarketplaceListing>> GetAllActiveAsync();
     Task AddAsync(MarketplaceListing listing);
 }
