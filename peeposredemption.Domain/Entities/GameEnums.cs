@@ -36,7 +36,9 @@ public enum ItemSubType
     // Materials
     Ore, Herb, Wood, Gem, MonsterDrop, Leather, Cloth,
     // Collectibles
-    Peepo = 22
+    Peepo = 22,
+    // Enchanting
+    EnchantBook = 23
 }
 
 public enum EquipSlot
@@ -68,7 +70,8 @@ public enum Element
     Lightning,
     Earth,
     Dark,
-    Holy
+    Holy,
+    Void = 7
 }
 
 public enum CombatState

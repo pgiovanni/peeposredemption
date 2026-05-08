@@ -37,4 +37,7 @@ public class ItemDefinition
 
     // Collectible — links to ServerEmoji for idempotent re-sync
     public Guid? SourceEmojiId { get; set; }
+
+    // Enchant book — tier 1-5 (0 = not an enchant book)
+    public int EnchantTier { get; set; }
 }

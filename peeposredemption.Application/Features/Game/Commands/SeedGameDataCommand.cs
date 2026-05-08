@@ -15,6 +15,7 @@ public class SeedGameDataCommandHandler : IRequestHandler<SeedGameDataCommand>
     {
         await PatchMonsterAbilitiesAsync();
         await PatchConsumablesAsync();
+        await PatchEnchantMaterialsAsync();
 
         if (await _uow.ItemDefinitions.AnyAsync()) return; // Already seeded
 
@@ -152,7 +153,7 @@ public class SeedGameDataCommandHandler : IRequestHandler<SeedGameDataCommand>
         int minDmg = 0, int maxDmg = 0,
         int bonusSTR = 0, int bonusDEF = 0, int bonusINT = 0, int bonusDEX = 0, int bonusVIT = 0, int bonusLUK = 0,
         int healAmount = 0, int manaRestore = 0, bool stackable = false,
-        long buyPrice = 0, long sellPrice = 0, Element element = Element.None)
+        long buyPrice = 0, long sellPrice = 0, Element element = Element.None, int enchantTier = 0)
     {
         return new ItemDefinition
         {
@@ -163,7 +164,7 @@ public class SeedGameDataCommandHandler : IRequestHandler<SeedGameDataCommand>
             BonusDEX = bonusDEX, BonusVIT = bonusVIT, BonusLUK = bonusLUK,
             HealAmount = healAmount, ManaRestoreAmount = manaRestore,
             IsStackable = stackable, BuyPrice = buyPrice, SellPrice = sellPrice,
-            Element = element
+            Element = element, EnchantTier = enchantTier
         };
     }
 
@@ -184,6 +185,98 @@ public class SeedGameDataCommandHandler : IRequestHandler<SeedGameDataCommand>
     // Shorthand for StatusEffects.Abilities(...)
     private static string SA(params (string type, float chance, int strength, int turns)[] abilities) =>
         StatusEffects.Abilities(abilities);
+
+    private async Task PatchEnchantMaterialsAsync()
+    {
+        var existing = await _uow.ItemDefinitions.GetAllAsync();
+        var existingNames = existing.Select(i => i.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Elemental materials (monster drops): basic shards/essences
+        var materials = new[]
+        {
+            // Basic materials — Tier 1 drops from elemental monsters
+            ("Ember Shard",      "A shard infused with fire energy.",          Element.Fire,      GameItemRarity.Common),
+            ("Frost Crystal",    "A crystal crackling with cold energy.",       Element.Ice,       GameItemRarity.Common),
+            ("Storm Essence",    "Essence crackling with lightning.",           Element.Lightning, GameItemRarity.Common),
+            ("Stone Fragment",   "A fragment pulsing with earth energy.",       Element.Earth,     GameItemRarity.Common),
+            ("Dark Essence",     "Condensed dark energy from the abyss.",       Element.Dark,      GameItemRarity.Common),
+            ("Holy Dust",        "Sacred dust shimmering with divine light.",   Element.Holy,      GameItemRarity.Common),
+            ("Void Fragment",    "A fragment torn from the void.",              Element.Void,      GameItemRarity.Uncommon),
+
+            // Refined materials — Tier 2 upgrade ingredients
+            ("Fire Essence",     "Concentrated flame essence.",                 Element.Fire,      GameItemRarity.Uncommon),
+            ("Ice Essence",      "Crystallized cold essence.",                  Element.Ice,       GameItemRarity.Uncommon),
+            ("Lightning Core",   "A crackling core of storm energy.",           Element.Lightning, GameItemRarity.Uncommon),
+            ("Earth Essence",    "Dense earth essence compressed over eons.",   Element.Earth,     GameItemRarity.Uncommon),
+            ("Shadow Core",      "A core of solidified shadow.",               Element.Dark,      GameItemRarity.Uncommon),
+            ("Light Essence",    "Liquid light compressed into essence.",       Element.Holy,      GameItemRarity.Uncommon),
+            ("Abyssal Core",     "A core torn from a void beast. Very rare.",   Element.Void,      GameItemRarity.Rare),
+
+            // Higher materials — Tier 2 books
+            ("Magma Core",       "A core of solidified magma.",                Element.Fire,      GameItemRarity.Rare),
+            ("Ice Core",         "A dense core of ancient ice.",               Element.Ice,       GameItemRarity.Rare),
+            ("Thunder Core",     "A crackling sphere of pure lightning.",       Element.Lightning, GameItemRarity.Rare),
+            ("Earth Core",       "A dense sphere of compressed earth.",        Element.Earth,     GameItemRarity.Rare),
+            ("Void Shard",       "A volatile shard of the void.",              Element.Void,      GameItemRarity.Rare),
+            ("Sacred Ash",       "Ash from a celestial fire. Glows softly.",   Element.Holy,      GameItemRarity.Rare),
+
+            // Boss drops — Tier 3 books
+            ("Dragon Scale",     "A scale from a dragon. Extremely durable.",  Element.None,      GameItemRarity.Epic),
+            ("Demon Heart",      "Still beating heart of a demon lord.",        Element.Dark,      GameItemRarity.Epic),
+            ("Angel Feather",    "A feather that radiates warmth and hope.",   Element.Holy,      GameItemRarity.Epic),
+
+            // Endgame — Tier 4-5 books
+            ("Primordial Flame", "Fire from before the world was made.",        Element.Fire,      GameItemRarity.Legendary),
+            ("Eternal Frost",    "Ice that has never melted in all of time.",   Element.Ice,       GameItemRarity.Legendary),
+            ("Storm Heart",      "The heart of the first storm.",              Element.Lightning, GameItemRarity.Legendary),
+            ("Ancient Stone",    "Stone as old as the world itself.",          Element.Earth,     GameItemRarity.Legendary),
+            ("Soul Crystal",     "A crystal containing a thousand lost souls.", Element.Dark,      GameItemRarity.Legendary),
+            ("Divine Shard",     "A shard of a broken god.",                   Element.Holy,      GameItemRarity.Legendary),
+            ("Null Essence",     "Pure nothingness compressed into matter.",   Element.Void,      GameItemRarity.Legendary),
+            ("World Shard",      "A shard shattered from the World Core.",     Element.Void,      GameItemRarity.Legendary),
+        };
+
+        // Enchant books — seeded at Tier 1 so players can find + buy them
+        var books = EnchantRecipeConfig.Recipes
+            .Where(r => r.Tier == 1)
+            .Select(r => (
+                name: r.BookName,
+                desc: $"A tome of {r.Element} enchanting (Tier {r.Tier}). Apply to equipment with /enchant.",
+                element: r.Element,
+                tier: r.Tier));
+
+        bool changed = false;
+
+        foreach (var (name, desc, element, rarity) in materials)
+        {
+            if (existingNames.Contains(name)) continue;
+            await _uow.ItemDefinitions.AddAsync(new ItemDefinition
+            {
+                Name = name, Description = desc, Type = GameItemType.Material,
+                SubType = ItemSubType.MonsterDrop, Rarity = rarity, Icon = "✨",
+                IsStackable = true, Element = element,
+                BuyPrice = rarity switch { GameItemRarity.Common => 8, GameItemRarity.Uncommon => 25, GameItemRarity.Rare => 80, GameItemRarity.Epic => 300, _ => 1000 },
+                SellPrice = rarity switch { GameItemRarity.Common => 3, GameItemRarity.Uncommon => 10, GameItemRarity.Rare => 30, GameItemRarity.Epic => 100, _ => 400 },
+            });
+            changed = true;
+        }
+
+        foreach (var (name, desc, element, tier) in books)
+        {
+            if (existingNames.Contains(name)) continue;
+            await _uow.ItemDefinitions.AddAsync(new ItemDefinition
+            {
+                Name = name, Description = desc, Type = GameItemType.Consumable,
+                SubType = ItemSubType.EnchantBook, Rarity = GameItemRarity.Uncommon,
+                Icon = ElementSystem.GetElementIcon(element), IsStackable = true,
+                Element = element, EnchantTier = tier,
+                BuyPrice = 500, SellPrice = 100
+            });
+            changed = true;
+        }
+
+        if (changed) await _uow.SaveChangesAsync();
+    }
 
     private async Task PatchConsumablesAsync()
     {

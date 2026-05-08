@@ -30,6 +30,10 @@ public class MonsterDefinition
     // Types: Poison, Burn, Bleed, Freeze, Stone, Silence, Confusion, DefenseDown, AttackDown, Blind, Slow, Curse, MpDrain, Berserk
     public string? AbilityJson { get; set; }
 
+    // Enchanted drops — chance to drop an elemental material on kill
+    public float EnchantedDropChance { get; set; }
+    public Element? EnchantDropElement { get; set; }
+
     // Navigation
     public ICollection<MonsterLootEntry> LootTable { get; set; } = new List<MonsterLootEntry>();
 }

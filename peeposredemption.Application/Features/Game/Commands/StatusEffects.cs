@@ -30,11 +30,15 @@ public static class StatusEffects
         ["Berserk"]    = "😡",
         ["PhysResist"] = "🪖",   // passive: % physical damage reduction
         ["MagicResist"]= "✨",   // passive: % magic damage reduction
+        ["Shock"]      = "⚡",   // Lightning DoT + 25% skip chance
+        ["Corrupt"]    = "🌀",   // Void DoT + resistance drain
+        ["Regeneration"]= "💚",  // Holy buff: heals HP per turn
+        ["Windblast"]  = "🌪️",  // Wind CC: skip turn (no damage)
     };
 
     // DoT effects that stack additively when reapplied (up to 3× base strength)
     private static readonly HashSet<string> _additiveDots = new(StringComparer.OrdinalIgnoreCase)
-        { "Burn", "Bleed", "Poison", "MpDrain" };
+        { "Burn", "Bleed", "Poison", "MpDrain", "Shock", "Corrupt" };
 
     // ── Serialise / Deserialise ───────────────────────────────────────────────
 
@@ -147,6 +151,36 @@ public static class StatusEffects
                     log.Add($"💧 MP Drain saps **{mpDrain}** MP!");
                     break;
 
+                case "shock":
+                    int shockDmg = Math.Max(1, fx.Strength);
+                    player.CurrentHp = Math.Max(1, player.CurrentHp - shockDmg);
+                    hpLost += shockDmg;
+                    bool shocked = Random.Shared.NextDouble() < 0.25;
+                    if (shocked) skip = true;
+                    log.Add($"⚡ Shock deals **{shockDmg}** damage!{(shocked ? " You're stunned!" : "")}");
+                    break;
+
+                case "corrupt":
+                    int corruptDmg = Math.Max(1, fx.Strength);
+                    player.CurrentHp = Math.Max(1, player.CurrentHp - corruptDmg);
+                    hpLost += corruptDmg;
+                    log.Add($"🌀 Corruption drains **{corruptDmg}** HP!");
+                    break;
+
+                case "regeneration":
+                    int regenAmt = Math.Min(fx.Strength, player.MaxHp - player.CurrentHp);
+                    if (regenAmt > 0)
+                    {
+                        player.CurrentHp += regenAmt;
+                        log.Add($"💚 Regeneration restores **{regenAmt}** HP!");
+                    }
+                    break;
+
+                case "windblast":
+                    skip = true;
+                    log.Add($"🌪️ Windblasted! You cannot act this turn!");
+                    break;
+
                 case "curse":
                 case "defensedown":
                 case "attackdown":
@@ -221,7 +255,7 @@ public static class StatusEffects
     // CC effects (Freeze, Stone, Silence, Confusion) are combat-only and cleared.
 
     private static readonly HashSet<string> _combatOnly = new(StringComparer.OrdinalIgnoreCase)
-        { "Freeze", "Stone", "Silence", "Confusion" };
+        { "Freeze", "Stone", "Silence", "Confusion", "Windblast" };
 
     public static List<ActiveStatus> Persistent(List<ActiveStatus> effects) =>
         effects.Where(e => !_combatOnly.Contains(e.Type)).ToList();
@@ -233,6 +267,60 @@ public static class StatusEffects
         if (effects.Count == 0) return "";
         return string.Join(" ", effects.Select(e =>
             $"{Icons.GetValueOrDefault(e.Type, "❓")}{e.Type}({e.TurnsLeft}t)"));
+    }
+
+    // ── Tick monster DoT effects (Burn, Bleed, Shock, Corrupt, Poison) ───────
+    // Returns (log lines, total HP damage dealt to monster).
+
+    public static (List<string> log, int hpLost) TickMonster(List<ActiveStatus> effects, string monsterName)
+    {
+        var log      = new List<string>();
+        int hpLost   = 0;
+        var toRemove = new List<ActiveStatus>();
+
+        foreach (var fx in effects.ToList())
+        {
+            switch (fx.Type.ToLower())
+            {
+                case "burn":
+                    hpLost += fx.Strength;
+                    log.Add($"🔥 **{monsterName}** takes **{fx.Strength}** burn damage!");
+                    break;
+                case "shock":
+                    hpLost += fx.Strength;
+                    log.Add($"⚡ **{monsterName}** takes **{fx.Strength}** shock damage!");
+                    break;
+                case "corrupt":
+                    hpLost += fx.Strength;
+                    log.Add($"🌀 **{monsterName}** takes **{fx.Strength}** corruption damage!");
+                    break;
+                case "bleed":
+                    hpLost += fx.Strength;
+                    log.Add($"🩸 **{monsterName}** bleeds for **{fx.Strength}** damage!");
+                    break;
+                case "poison":
+                    hpLost += fx.Strength;
+                    log.Add($"☠️ **{monsterName}** takes **{fx.Strength}** poison damage!");
+                    break;
+            }
+
+            if (fx.TurnsLeft > 0)
+            {
+                var updated = fx with { TurnsLeft = fx.TurnsLeft - 1 };
+                effects.Remove(fx);
+                if (updated.TurnsLeft <= 0)
+                {
+                    toRemove.Add(updated);
+                    log.Add($"✨ {Icons.GetValueOrDefault(fx.Type, fx.Type)} **{fx.Type}** wore off {monsterName}.");
+                }
+                else
+                {
+                    effects.Add(updated);
+                }
+            }
+        }
+        foreach (var r in toRemove) effects.Remove(r);
+        return (log, hpLost);
     }
 
     // ── Helper: build AbilityJson string for seeders ─────────────────────────

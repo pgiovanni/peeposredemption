@@ -59,6 +59,8 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             "/market" => await HandleMarket(player, args),
             "/leaderboard" or "/lb" => await HandleLeaderboard(),
             "/game" => await HandleGameConfig(request.UserId, request.ChannelId, args),
+            "/enchant" => await HandleEnchant(player, args),
+            "/craftbook" => await HandleCraftBook(player, args),
             _ => GameCommandResult.NotHandled()
         };
     }
@@ -140,7 +142,9 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 new { cmd = "/trade @user [item] [qty]", desc = "Trade with another player" },
                 new { cmd = "/market list/browse/buy", desc = "Marketplace commands" },
                 new { cmd = "/leaderboard", desc = "View top players" },
-                new { cmd = "/game mute/unmute", desc = "Mute/unmute game bot (mods)" }
+                new { cmd = "/game mute/unmute", desc = "Mute/unmute game bot (mods)" },
+                new { cmd = "/enchant [book] [slot?]", desc = "Apply enchant book to equipped item" },
+                new { cmd = "/craftbook [book name]", desc = "Craft an enchant book from materials" }
             }
         };
         return GameCommandResult.Single("help", helpText);
@@ -346,12 +350,13 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             return await HandleCombatAction(player, CombatAction.Magic, args);
 
         // Out of combat — utility spells only
-        var spellName = args.Trim().ToLower();
+        // Use first word only so "/magic heal" works even if extra text follows
+        var spellName = args.Trim().ToLower().Split(' ')[0];
         if (string.IsNullOrWhiteSpace(spellName))
             return GameCommandResult.Single("error", new { message = "Specify a spell: /magic <name>" });
 
         if (!_utilitySpells.TryGetValue(spellName, out var spell))
-            return GameCommandResult.Single("error", new { message = $"'{args.Trim()}' can't be cast outside of combat." });
+            return GameCommandResult.Single("error", new { message = $"Unknown spell '{spellName}'. Out-of-combat spells: {string.Join(", ", _utilitySpells.Keys)}." });
 
         // Resolve target — defaults to self
         var target = targetUserId.HasValue
@@ -457,6 +462,23 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             logEntries.Add("⏳ **Slowed!** You move sluggishly and lose your turn.");
         }
 
+        // ── Tick monster DoTs (Burn, Shock, Corrupt, etc. applied by player) ─────
+        if (!combatEnded)
+        {
+            var (monsterDotLog, monsterDotDmg) = StatusEffects.TickMonster(monsterFx, monster.Name);
+            if (monsterDotLog.Count > 0)
+            {
+                logEntries.AddRange(monsterDotLog);
+                session.MonsterCurrentHp = Math.Max(0, session.MonsterCurrentHp - monsterDotDmg);
+                if (session.MonsterCurrentHp <= 0)
+                {
+                    session.State = CombatState.Victory;
+                    session.EndedAt = DateTime.UtcNow;
+                    combatEnded = true;
+                }
+            }
+        }
+
         // ── Apply effective stats with status modifiers ───────────────────────
         int effDEF = StatusEffects.EffectiveDef(playerFx, totalDEF);
         int effSTR = StatusEffects.EffectiveStr(playerFx, totalSTR);
@@ -499,7 +521,10 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 case CombatAction.Attack:
                     int minDmg = weapon?.ItemDefinition.MinDamage ?? 1;
                     int maxDmg = weapon?.ItemDefinition.MaxDamage ?? 3;
-                    var weaponElement = weapon?.ItemDefinition.Element ?? Element.None;
+                    // Enchant element overrides base weapon element
+                    var weaponBaseElement   = weapon?.ItemDefinition.Element ?? Element.None;
+                    var weaponEnchantElement = weapon?.GetPrimaryElement() ?? Element.None;
+                    var weaponElement = weaponEnchantElement != Element.None ? weaponEnchantElement : weaponBaseElement;
 
                     // Confusion: 50% chance to hit self
                     bool confused = StatusEffects.IsConfused(playerFx) && Random.Shared.NextDouble() < 0.5;
@@ -520,15 +545,27 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                     {
                         int playerAttack = Random.Shared.Next(minDmg, maxDmg + 1) + (int)(effSTR * 0.5);
                         int damage = Math.Max(1, playerAttack - (int)(monster.DEF * 0.3));
-                        double elementBonus = GetElementMultiplier(weaponElement, monster.Element);
+                        double elementBonus = ElementSystem.GetMultiplier(weaponElement, monster.Element);
                         double critChance = Math.Min(0.25, totalLUK * 0.005 + totalDEX * 0.002);
                         bool crit = Random.Shared.NextDouble() < critChance;
                         int finalDamage = (int)(damage * elementBonus * (crit ? 1.5 : 1.0) * (1.0 - physResist));
                         finalDamage = Math.Max(1, finalDamage);
 
                         session.MonsterCurrentHp = Math.Max(0, session.MonsterCurrentHp - finalDamage);
-                        string resistNote = physResist > 0 ? $" 🪖 *({(int)(physResist*100)}% resisted)*" : "";
-                        logEntries.Add($"You attack for **{finalDamage}** damage!{resistNote}{(crit ? " **CRITICAL HIT!**" : "")}{(elementBonus > 1.0 ? " ⚡ Super effective!" : "")}");
+                        string resistNote  = physResist > 0 ? $" 🪖 *({(int)(physResist*100)}% resisted)*" : "";
+                        string elementMsg  = elementBonus >= 1.5 ? $" {ElementSystem.GetElementIcon(weaponElement)} **Super effective!**"
+                                           : elementBonus <= 0.75 ? " 🛡️ *Not very effective...*"
+                                           : "";
+                        logEntries.Add($"You attack for **{finalDamage}** damage!{resistNote}{(crit ? " **CRITICAL HIT!**" : "")}{elementMsg}");
+
+                        // Apply weapon element status effect to monster (30% base chance)
+                        var weaponEffect = ElementSystem.GetElementalStatusEffect(weaponElement);
+                        if (weaponEffect != null && session.MonsterCurrentHp > 0 && Random.Shared.NextDouble() < 0.30)
+                        {
+                            var (effStr, effTurns) = ElementSystem.GetStatusParams(weaponElement);
+                            StatusEffects.Apply(monsterFx, weaponEffect, effStr, effTurns);
+                            logEntries.Add($"{StatusEffects.Icons.GetValueOrDefault(weaponEffect, "")} **{weaponElement}** inflicts **{weaponEffect}** on {monster.Name}!");
+                        }
                     }
 
                     if (session.MonsterCurrentHp <= 0)
@@ -666,9 +703,9 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
             // Loot drops
             var lootDrops = new List<object>();
+            double luckBonus = totalLUK * 0.002;
             foreach (var loot in monster.LootTable)
             {
-                double luckBonus = totalLUK * 0.002;
                 if (Random.Shared.NextDouble() < (double)loot.DropChance + luckBonus)
                 {
                     int qty = Random.Shared.Next(loot.MinQuantity, loot.MaxQuantity + 1);
@@ -679,6 +716,33 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                         quantity = qty,
                         rarity = loot.ItemDefinition.Rarity.ToString()
                     });
+                }
+            }
+
+            // Elemental material drop — based on monster element
+            var dropElement = monster.EnchantDropElement ?? monster.Element;
+            if (dropElement != Element.None)
+            {
+                double enchantDropChance = monster.EnchantedDropChance > 0
+                    ? (double)monster.EnchantedDropChance
+                    : 0.10;  // 10% base chance for any elemental monster
+                if (Random.Shared.NextDouble() < enchantDropChance + luckBonus)
+                {
+                    var materialName = ElementSystem.GetElementalMaterial(dropElement);
+                    if (materialName != null)
+                    {
+                        var matDef = await _uow.ItemDefinitions.GetByNameAsync(materialName);
+                        if (matDef != null)
+                        {
+                            await AddItemToInventory(player.Id, matDef.Id, 1);
+                            lootDrops.Add(new
+                            {
+                                name     = matDef.Name,
+                                quantity = 1,
+                                rarity   = matDef.Rarity.ToString()
+                            });
+                        }
+                    }
                 }
             }
 
@@ -756,6 +820,21 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         List<string> log, PlayerCharacter player)
     {
         var abilities = StatusEffects.LoadAbilities(monster.AbilityJson);
+
+        // Apply monster's base element status effect (30% chance, if not already in ability list)
+        var baseElementEffect = ElementSystem.GetElementalStatusEffect(monster.Element);
+        if (baseElementEffect != null)
+        {
+            bool coveredByAbility = abilities.Any(a => a.Type.Equals(baseElementEffect, StringComparison.OrdinalIgnoreCase));
+            if (!coveredByAbility && Random.Shared.NextDouble() < 0.30)
+            {
+                var (elemStr, elemTurns) = ElementSystem.GetStatusParams(monster.Element);
+                StatusEffects.Apply(playerFx, baseElementEffect, elemStr, elemTurns);
+                var icon = StatusEffects.Icons.GetValueOrDefault(baseElementEffect, "");
+                log.Add($"{icon} {monster.Name}'s **{monster.Element}** essence inflicts **{baseElementEffect}**!");
+            }
+        }
+
         if (abilities.Count == 0) return;
 
         foreach (var ability in abilities)
@@ -940,8 +1019,13 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             return GameCommandResult.Single("error", new { message = $"You don't have {qty}x {itemDef.Name}." });
 
         // 45% of buy price per unit (or explicit sell price if set)
-        long basePrice  = itemDef.SellPrice > 0 ? itemDef.SellPrice : (long)(itemDef.BuyPrice * 0.45);
-        long total      = basePrice * qty;
+        long basePrice = itemDef.SellPrice > 0 ? itemDef.SellPrice : (long)(itemDef.BuyPrice * 0.45);
+
+        // Enchant bonus: +15 coins per tier per enchant slot
+        var enchants     = inv.GetEnchants();
+        long enchantBonus = enchants.Sum(e => (long)e.Tier * 15);
+        long priceEach   = basePrice + enchantBonus;
+        long total       = priceEach * qty;
 
         inv.Quantity -= qty;
         if (inv.Quantity <= 0) _uow.PlayerInventoryItems.Remove(inv);
@@ -954,7 +1038,8 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             icon           = itemDef.Icon,
             qty,
             total,
-            priceEach      = basePrice,
+            priceEach,
+            enchantBonus,
             newCoinBalance = player.CoinBalance
         });
     }
@@ -962,14 +1047,28 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
     private async Task<GameCommandResult> HandleInventory(PlayerCharacter player)
     {
         var items = await _uow.PlayerInventoryItems.GetByPlayerIdAsync(player.Id);
-        var itemList = items.Select(i => new
+        var itemList = items.Select(i =>
         {
-            name = i.ItemDefinition.Name,
-            type = i.ItemDefinition.Type.ToString(),
-            rarity = i.ItemDefinition.Rarity.ToString(),
-            quantity = i.Quantity,
-            equipped = i.IsEquipped,
-            slot = i.EquippedSlot?.ToString()
+            var enchants = i.GetEnchants();
+            return new
+            {
+                name     = i.ItemDefinition.Name,
+                type     = i.ItemDefinition.Type.ToString(),
+                rarity   = i.ItemDefinition.Rarity.ToString(),
+                quantity = i.Quantity,
+                equipped = i.IsEquipped,
+                slot     = i.EquippedSlot?.ToString(),
+                enchants = enchants.Select(e => new
+                {
+                    element = e.Element.ToString(),
+                    icon    = ElementSystem.GetElementIcon(e.Element),
+                    name    = e.Name,
+                    tier    = e.Tier,
+                    bonus   = e.Bonus
+                }),
+                maxSlots = PlayerInventoryItem.MaxSlotsForRarity(i.ItemDefinition.Rarity),
+                usedSlots = enchants.Count
+            };
         }).ToList();
 
         return GameCommandResult.Single("inventory", new { items = itemList });
@@ -1674,6 +1773,234 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         }
     }
 
+    // ── /enchant ──────────────────────────────────────────────────────────────
+    // Usage:
+    //   /enchant                     — show guide
+    //   /enchant info <item name>    — show enchants on an item
+    //   /enchant <book> [slot]       — apply book to equipped slot (default: MainHand)
+
+    private async Task<GameCommandResult> HandleEnchant(PlayerCharacter player, string args)
+    {
+        var parts = args.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (parts.Length == 0)
+        {
+            var guide = EnchantRecipeConfig.Recipes
+                .GroupBy(r => r.Element)
+                .Select(g => $"{ElementSystem.GetElementIcon(g.Key)} **{g.Key}** — {g.Key} enchants (Tiers {g.Min(r => r.Tier)}-{g.Max(r => r.Tier)}): {ElementSystem.GetElementalStatusEffect(g.Key) ?? "no effect"}");
+
+            return GameCommandResult.Single("enchant_guide", new
+            {
+                message = "**Enchanting Guide**\n" +
+                          "Apply enchant books to equipped gear using `/enchant <book name>`.\n" +
+                          "Max slots: Common=1, Uncommon=2, Rare=3, Epic=4, Legendary=5.\n" +
+                          "Craft books with `/craftbook`. Duplicate elements not allowed on the same item.\n\n" +
+                          string.Join("\n", guide)
+            });
+        }
+
+        // /enchant info <item name>
+        if (parts[0].Equals("info", StringComparison.OrdinalIgnoreCase) && parts.Length > 1)
+        {
+            var itemName = string.Join(' ', parts[1..]);
+            var itemDef  = await _uow.ItemDefinitions.GetByNameAsync(itemName.Trim());
+            if (itemDef == null)
+                return GameCommandResult.Single("error", new { message = $"Item '{itemName}' not found." });
+
+            var invItem = await _uow.PlayerInventoryItems.GetByPlayerAndItemAsync(player.Id, itemDef.Id);
+            if (invItem == null)
+                return GameCommandResult.Single("error", new { message = $"You don't have '{itemDef.Name}'." });
+
+            var enchants  = invItem.GetEnchants();
+            var maxSlots  = PlayerInventoryItem.MaxSlotsForRarity(itemDef.Rarity);
+            var enchantDisplay = enchants.Count > 0
+                ? string.Join(", ", enchants.Select(e => $"{ElementSystem.GetElementIcon(e.Element)} **{e.Name}** (+{e.Bonus})"))
+                : "*(unenchanted)*";
+
+            return GameCommandResult.Single("enchant_info", new
+            {
+                item     = itemDef.Name,
+                rarity   = itemDef.Rarity.ToString(),
+                enchants = enchantDisplay,
+                slots    = $"{enchants.Count}/{maxSlots}"
+            });
+        }
+
+        // /enchant <book name> [slot]
+        // Parse optional trailing slot keyword (mainhand, offhand, head, chest, legs, feet, ring, amulet)
+        EquipSlot targetSlot = EquipSlot.MainHand;
+        var bookName = args.Trim();
+        var slotNames = Enum.GetNames<EquipSlot>();
+        var lastWord  = parts[^1];
+        if (slotNames.Any(s => s.Equals(lastWord, StringComparison.OrdinalIgnoreCase)))
+        {
+            targetSlot = Enum.Parse<EquipSlot>(lastWord, true);
+            bookName   = string.Join(' ', parts[..^1]);
+        }
+
+        // Find the enchant book in inventory
+        var bookDef = await _uow.ItemDefinitions.GetByNameAsync(bookName.Trim());
+        if (bookDef == null || bookDef.SubType != ItemSubType.EnchantBook)
+            return GameCommandResult.Single("error", new { message = $"'{bookName.Trim()}' is not an enchant book." });
+
+        var bookInv = await _uow.PlayerInventoryItems.GetByPlayerAndItemAsync(player.Id, bookDef.Id);
+        if (bookInv == null || bookInv.Quantity <= 0)
+            return GameCommandResult.Single("error", new { message = $"You don't have any {bookDef.Name}." });
+
+        // Find the target equipped item
+        var equipped  = await _uow.PlayerInventoryItems.GetEquippedItemsAsync(player.Id);
+        var targetInv = equipped.FirstOrDefault(e => e.EquippedSlot == targetSlot);
+        if (targetInv == null)
+            return GameCommandResult.Single("error", new { message = $"Nothing equipped in {targetSlot} slot. Equip an item first." });
+
+        // Validate enchantable (weapons + armor only, not consumables/collectibles)
+        if (targetInv.ItemDefinition.Type is not GameItemType.Weapon and not GameItemType.Armor)
+            return GameCommandResult.Single("error", new { message = $"{targetInv.ItemDefinition.Name} cannot be enchanted." });
+
+        // Check slots
+        var currentEnchants = targetInv.GetEnchants();
+        int maxSlots2 = PlayerInventoryItem.MaxSlotsForRarity(targetInv.ItemDefinition.Rarity);
+        if (currentEnchants.Count >= maxSlots2)
+            return GameCommandResult.Single("error", new
+            {
+                message = $"{targetInv.ItemDefinition.Name} is at max enchants ({maxSlots2}/{maxSlots2}). " +
+                          $"Use a higher rarity item for more slots."
+            });
+
+        // Check duplicate element
+        var bookElement = bookDef.Element;
+        if (currentEnchants.Any(e => e.Element == bookElement))
+            return GameCommandResult.Single("error", new
+            {
+                message = $"{targetInv.ItemDefinition.Name} already has a {bookElement} enchant. Cannot stack the same element."
+            });
+
+        // Apply enchant
+        int tier  = bookDef.EnchantTier > 0 ? bookDef.EnchantTier : 1;
+        int bonus = ElementSystem.BonusForTier(tier);
+        var newEnchant = new EnchantmentSlot(bookElement, tier, bonus, ElementSystem.MakeEnchantName(bookElement, tier));
+        currentEnchants.Add(newEnchant);
+        targetInv.SetEnchants(currentEnchants);
+
+        // Consume book
+        bookInv.Quantity--;
+        if (bookInv.Quantity <= 0) _uow.PlayerInventoryItems.Remove(bookInv);
+
+        // Grant Enchanting XP
+        var enchSkill = await _uow.PlayerSkills.GetByPlayerAndSkillAsync(player.Id, SkillType.Enchanting);
+        if (enchSkill != null)
+        {
+            enchSkill.XP += 30 + tier * 20;
+            CheckSkillLevelUp(enchSkill);
+        }
+
+        await _uow.SaveChangesAsync();
+
+        var allEnchants = currentEnchants
+            .Select(e => $"{ElementSystem.GetElementIcon(e.Element)} **{e.Name}** (+{e.Bonus})");
+
+        return GameCommandResult.Single("enchant_applied", new
+        {
+            book     = bookDef.Name,
+            item     = targetInv.ItemDefinition.Name,
+            enchant  = newEnchant.Name,
+            element  = bookElement.ToString(),
+            icon     = ElementSystem.GetElementIcon(bookElement),
+            tier,
+            bonus,
+            slots    = $"{currentEnchants.Count}/{maxSlots2}",
+            allEnchants = string.Join(", ", allEnchants),
+            message  = $"{ElementSystem.GetElementIcon(bookElement)} Applied **{newEnchant.Name}** (+{bonus}) to **{targetInv.ItemDefinition.Name}**! " +
+                       $"({currentEnchants.Count}/{maxSlots2} slots)"
+        });
+    }
+
+    // ── /craftbook ────────────────────────────────────────────────────────────
+    // Usage:
+    //   /craftbook               — list all recipes
+    //   /craftbook <book name>   — craft that enchant book
+
+    private async Task<GameCommandResult> HandleCraftBook(PlayerCharacter player, string args)
+    {
+        if (string.IsNullOrWhiteSpace(args))
+        {
+            // List all recipes grouped by element
+            var inventory = await _uow.PlayerInventoryItems.GetByPlayerIdAsync(player.Id);
+            var invMap    = inventory.ToDictionary(i => i.ItemDefinition.Name, i => i.Quantity, StringComparer.OrdinalIgnoreCase);
+
+            var recipeLines = EnchantRecipeConfig.Recipes.Select(r =>
+            {
+                var ingrs = r.Ingredients.Select(ing =>
+                {
+                    int have = invMap.GetValueOrDefault(ing.ItemName, 0);
+                    string status = have >= ing.Qty ? "✅" : $"❌({have}/{ing.Qty})";
+                    return $"{status} {ing.Qty}× {ing.ItemName}";
+                });
+                return $"{ElementSystem.GetElementIcon(r.Element)} **{r.BookName}** — {string.Join(", ", ingrs)}";
+            });
+
+            return GameCommandResult.Single("craftbook_list", new
+            {
+                message = "**Enchant Book Recipes** — `/craftbook <name>` to craft\n" + string.Join("\n", recipeLines)
+            });
+        }
+
+        var recipe = EnchantRecipeConfig.FindByName(args.Trim());
+        if (recipe == null)
+            return GameCommandResult.Single("error", new { message = $"No enchant book recipe named '{args.Trim()}'." });
+
+        // Validate materials
+        var inv2 = await _uow.PlayerInventoryItems.GetByPlayerIdAsync(player.Id);
+        var invMap2 = inv2.ToDictionary(i => i.ItemDefinition.Name, i => i, StringComparer.OrdinalIgnoreCase);
+        var missing = new List<string>();
+
+        foreach (var (itemName, qty) in recipe.Ingredients)
+        {
+            int have = invMap2.TryGetValue(itemName, out var slot) ? slot.Quantity : 0;
+            if (have < qty) missing.Add($"{qty - have}× {itemName}");
+        }
+
+        if (missing.Count > 0)
+            return GameCommandResult.Single("error", new
+            {
+                message = $"Not enough materials for **{recipe.BookName}**. Missing: {string.Join(", ", missing)}."
+            });
+
+        // Consume materials
+        foreach (var (itemName, qty) in recipe.Ingredients)
+        {
+            var slot = invMap2[itemName];
+            slot.Quantity -= qty;
+            if (slot.Quantity <= 0) _uow.PlayerInventoryItems.Remove(slot);
+        }
+
+        // Add the crafted book
+        var bookItemDef = await _uow.ItemDefinitions.GetByNameAsync(recipe.BookName);
+        if (bookItemDef == null)
+            return GameCommandResult.Single("error", new { message = $"'{recipe.BookName}' item not found in DB. Run /rpg sync to seed it." });
+
+        await AddItemToInventory(player.Id, bookItemDef.Id, 1);
+
+        // Grant Enchanting XP
+        var enchSkill = await _uow.PlayerSkills.GetByPlayerAndSkillAsync(player.Id, SkillType.Enchanting);
+        if (enchSkill != null)
+        {
+            enchSkill.XP += 50 + recipe.Tier * 30;
+            CheckSkillLevelUp(enchSkill);
+        }
+
+        await _uow.SaveChangesAsync();
+
+        return GameCommandResult.Single("craftbook", new
+        {
+            book    = recipe.BookName,
+            element = recipe.Element.ToString(),
+            icon    = ElementSystem.GetElementIcon(recipe.Element),
+            tier    = recipe.Tier,
+            message = $"{ElementSystem.GetElementIcon(recipe.Element)} Crafted **{recipe.BookName}**! Use `/enchant {recipe.BookName}` to apply it."
+        });
+    }
+
     // ── Helpers ──
 
     private async Task AddItemToInventory(Guid playerId, Guid itemDefId, int qty)
@@ -1703,26 +2030,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         return Math.Max(1, damage);
     }
 
-    private static double GetElementMultiplier(Element attacker, Element defender)
-    {
-        if (attacker == Element.None || defender == Element.None) return 1.0;
-        // Fire > Ice > Lightning > Earth > Fire
-        if ((attacker == Element.Fire && defender == Element.Ice) ||
-            (attacker == Element.Ice && defender == Element.Lightning) ||
-            (attacker == Element.Lightning && defender == Element.Earth) ||
-            (attacker == Element.Earth && defender == Element.Fire))
-            return 1.25;
-        if ((defender == Element.Fire && attacker == Element.Ice) ||
-            (defender == Element.Ice && attacker == Element.Lightning) ||
-            (defender == Element.Lightning && attacker == Element.Earth) ||
-            (defender == Element.Earth && attacker == Element.Fire))
-            return 0.75;
-        // Dark <-> Holy
-        if ((attacker == Element.Dark && defender == Element.Holy) ||
-            (attacker == Element.Holy && defender == Element.Dark))
-            return 1.25;
-        return 1.0;
-    }
+    // Element advantage is now in ElementSystem.GetMultiplier()
 
     private static long XpToLevel(int level) => (long)Math.Floor(20 * Math.Pow(level, 2.5));
 
