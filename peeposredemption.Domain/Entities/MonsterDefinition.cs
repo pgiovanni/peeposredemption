@@ -26,6 +26,10 @@ public class MonsterDefinition
     public long OrbRewardMin { get; set; }
     public long OrbRewardMax { get; set; }
 
+    // Special abilities — JSON array: [{"type":"Poison","chance":0.3,"strength":3,"turns":4}, ...]
+    // Types: Poison, Burn, Bleed, Freeze, Stone, Silence, Confusion, DefenseDown, AttackDown, Blind, Slow, Curse, MpDrain, Berserk
+    public string? AbilityJson { get; set; }
+
     // Navigation
     public ICollection<MonsterLootEntry> LootTable { get; set; } = new List<MonsterLootEntry>();
 }

@@ -34,4 +34,5 @@ public record ProcessGameCommandRequest(
     Guid UserId,
     string Username,
     Guid ChannelId,
-    string RawInput) : IRequest<GameCommandResult>;
+    string RawInput,
+    Guid? TargetUserId = null) : IRequest<GameCommandResult>;

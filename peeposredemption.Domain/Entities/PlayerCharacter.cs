@@ -33,6 +33,9 @@ public class PlayerCharacter
     // Chat integration
     public int ChatLevel { get; set; }
 
+    // Persistent status effects (survive between combats)
+    public string? StatusJson { get; set; }
+
     // Cooldowns
     public DateTime? LastGatherAt { get; set; }
 

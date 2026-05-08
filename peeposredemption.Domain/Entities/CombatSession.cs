@@ -18,6 +18,10 @@ public class CombatSession
     public int PlayerHpAtStart { get; set; }
     public bool PlayerDefending { get; set; }
 
+    // Active status effects — JSON: [{"type":"Poison","strength":3,"turnsLeft":4}, ...]
+    public string? PlayerStatusJson { get; set; }
+    public string? MonsterStatusJson { get; set; }
+
     // Log
     public string CombatLog { get; set; } = "[]";
 

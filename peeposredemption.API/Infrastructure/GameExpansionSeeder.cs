@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using peeposredemption.Application.Features.Game.Commands;
 using peeposredemption.Domain.Entities;
 using peeposredemption.Infrastructure.Persistence;
 
@@ -292,6 +293,28 @@ public static class GameExpansionSeeder
         Add(Mo("Cyclops",    "One eye, one crushing fist.",         "🔵", 44, "Dungeon", 1165, 36, 28, 8, 7, 53, 88, Element.None,       1260, 88, 430),
             (ogreTusk, 0.60m, 2, 3), (boneCrusher, 0.06m, 1, 1), (steelChest, 0.04m, 1, 1), (largeHpPot, 0.30m, 1, 2));
 
+        // ── BOSSES ─────────────────────────────────────────────────────────────
+        // Boss HP is 5–10x a regular monster at the same level.
+        // Players must use /rpg boss <name> to target them — they won't appear in random fights.
+        Add(Mo("King Slime Prime",   "An enormous, crowned slime that shakes the earth.",   "👑", 15, "Plains",   3500,  25, 20, 15, 12, 60, 200, Element.Earth,  8000, 800,  2000),
+            (slimeCore, 0.80m, 3, 5), (largeHpPot, 0.50m, 1, 2), (largeMpPot, 0.50m, 1, 2));
+        Add(Mo("Goblin Overlord",    "Commands goblin armies with an iron fist.",            "👺", 20, "Forest",   5000,  35, 25, 20, 18, 80, 260, Element.None,   12000, 1200, 3000),
+            (goblinEar, 0.80m, 4, 6), (steelSword, 0.30m, 1, 1), (largeHpPot, 0.50m, 1, 3));
+        Add(Mo("Elder Forest Troll", "Ancient beyond reckoning — regenerates rapidly.",     "🧌", 25, "Forest",   7000,  45, 38, 10,  8, 100, 320, Element.Earth, 18000, 1800, 4500),
+            (trollHide, 0.80m, 3, 5), (frostSword, 0.20m, 1, 1), (largeHpPot, 0.60m, 2, 3));
+        Add(Mo("Dungeon Warden",     "An undead guardian that never tires, never yields.",  "💀", 30, "Dungeon",  9000,  50, 42, 30, 20, 120, 380, Element.Dark,  25000, 2500, 6000),
+            (skullFragment, 0.80m, 3, 5), (voidStaff, 0.15m, 1, 1), (shadowRobe, 0.15m, 1, 1), (elixir, 0.60m, 1, 2));
+        Add(Mo("Volcanic Titan",     "A mountain given form, burning with inner fire.",     "🌋", 40, "Volcano", 15000,  65, 55, 25, 15, 160, 500, Element.Fire,  40000, 4000, 10000),
+            (golemCore, 0.80m, 3, 5), (obsidianBlade, 0.25m, 1, 1), (dsChest, 0.10m, 1, 1), (elixir, 0.70m, 1, 3));
+        Add(Mo("Abyssal Overlord",   "Its very presence erases light from existence.",      "🌑", 50, "Abyss",   25000,  80, 65, 60, 35, 220, 680, Element.Dark,  65000, 6500, 16000),
+            (demonHorn, 0.80m, 4, 6), (voidStaff, 0.25m, 1, 1), (dsChest, 0.15m, 1, 1), (elixir, 0.80m, 2, 3));
+        Add(Mo("Lich King",          "Death incarnate — commands all undead in the abyss.", "💀", 60, "Abyss",   35000,  75, 60, 85, 30, 280, 860, Element.Dark,  90000, 9000, 22000),
+            (lichDust, 0.90m, 4, 8), (voidStaff, 0.30m, 1, 1), (holyLance, 0.15m, 1, 1), (elixir, 0.90m, 2, 4));
+        Add(Mo("Primordial Dragon",  "The first dragon — reality warps in its wake.",       "🐉", 80, "Abyss",   60000, 100, 85, 75, 50, 400, 1200, Element.Fire, 150000, 15000, 40000),
+            (dragonScale, 0.90m, 5, 10), (dsChest, 0.20m, 1, 1), (dsHelmet, 0.20m, 1, 1), (elixir, 1.00m, 3, 5));
+        Add(Mo("World Serpent",      "The omega of all things. To fight it is madness.",   "🐍", 90, "Abyss",  100000, 120, 100, 90, 70, 550, 1650, Element.Dark, 250000, 25000, 65000),
+            (voidstone, 0.90m, 5, 10), (dragonScale, 0.50m, 3, 6), (elixir, 1.00m, 5, 8), (dsChest, 0.30m, 1, 1));
+
         if (pending.Count > 0)
         {
             var lootEntries = new List<MonsterLootEntry>();
@@ -427,12 +450,14 @@ public static class GameExpansionSeeder
 
     private static MonsterDefinition Mo(string name, string desc, string icon, int level, string zone,
         int maxHp, int str, int def, int @int, int dex, int minDmg, int maxDmg,
-        Element element, long xpReward, long orbMin, long orbMax) => new()
+        Element element, long xpReward, long orbMin, long orbMax,
+        string? abilities = null) => new()
     {
         Name = name, Description = desc, Icon = icon, Level = level, Zone = zone,
         MaxHp = maxHp, STR = str, DEF = def, INT = @int, DEX = dex,
         MinDamage = minDmg, MaxDamage = maxDmg, Element = element,
-        XpReward = xpReward, OrbRewardMin = orbMin, OrbRewardMax = orbMax
+        XpReward = xpReward, OrbRewardMin = orbMin, OrbRewardMax = orbMax,
+        AbilityJson = abilities
     };
 
     // Peepo collectible factory — drop-only (BuyPrice = 0)

@@ -41,8 +41,8 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             "/fight" => await HandleFight(player, args, request.ChannelId),
             "/attack" => await HandleCombatAction(player, CombatAction.Attack, args),
             "/defend" => await HandleCombatAction(player, CombatAction.Defend, args),
-            "/magic" => await HandleCombatAction(player, CombatAction.Magic, args),
-            "/item" => await HandleCombatAction(player, CombatAction.UseItem, args),
+            "/magic" => await HandleCastSpell(player, args, request.TargetUserId),
+            "/item" => await HandleUseItem(player, args),
             "/flee" => await HandleCombatAction(player, CombatAction.Flee, args),
             "/inventory" or "/inv" => await HandleInventory(player),
             "/equip" => await HandleEquip(player, args),
@@ -51,6 +51,10 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             "/cook" => await HandleCook(player, args),
             "/craft" => await HandleCraft(player, args),
             "/recipes" => await HandleRecipes(player),
+            "/boss" => await HandleFight(player, args, request.ChannelId, bossOnly: true),
+            "/shop" => await HandleShop(player, args),
+            "/buy"  => await HandleBuy(player, args),
+            "/sell" => await HandleSell(player, args),
             "/trade" => await HandleTrade(player, args, request.ChannelId),
             "/market" => await HandleMarket(player, args),
             "/leaderboard" or "/lb" => await HandleLeaderboard(),
@@ -190,7 +194,10 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         });
     }
 
-    private async Task<GameCommandResult> HandleFight(PlayerCharacter player, string args, Guid channelId)
+    // Bosses: HP > level * 200 (all regular monsters are well below this threshold)
+    private static bool IsBoss(MonsterDefinition m) => m.MaxHp > m.Level * 200;
+
+    private async Task<GameCommandResult> HandleFight(PlayerCharacter player, string args, Guid channelId, bool bossOnly = false)
     {
         var existing = await _uow.CombatSessions.GetActiveByPlayerIdAsync(player.Id);
         if (existing != null)
@@ -204,9 +211,30 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
         MonsterDefinition? monster;
         if (!string.IsNullOrWhiteSpace(args))
+        {
             monster = await _uow.MonsterDefinitions.GetByNameAsync(args.Trim());
+            if (monster == null)
+                return GameCommandResult.Single("error", new { message = $"No monster named '{args.Trim()}' found." });
+            if (bossOnly && !IsBoss(monster))
+                return GameCommandResult.Single("error", new { message = $"**{monster.Name}** is not a boss. Use `/rpg fight` for regular monsters." });
+        }
+        else if (bossOnly)
+        {
+            // List available bosses near player level
+            var all = await _uow.MonsterDefinitions.GetByLevelRangeAsync(1, 999);
+            var bosses = all.Where(IsBoss).OrderBy(b => b.Level).ToList();
+            if (!bosses.Any())
+                return GameCommandResult.Single("error", new { message = "No bosses found. Ask an admin to run /rpg sync." });
+            var lines = bosses.Select(b => $"**{b.Icon} {b.Name}** (Lv{b.Level}) — ❤️ {b.MaxHp:N0} HP");
+            return GameCommandResult.Single("boss_list", new { bosses = string.Join("\n", lines) });
+        }
         else
+        {
             monster = await _uow.MonsterDefinitions.GetRandomNearLevelAsync(player.Level);
+            // Random fight should never pick a boss
+            if (monster != null && IsBoss(monster))
+                monster = await _uow.MonsterDefinitions.GetRandomNearLevelAsync(player.Level);
+        }
 
         if (monster == null)
             return GameCommandResult.Single("error", new { message = "No monster found! Try /fight without arguments." });
@@ -222,7 +250,8 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             MonsterCurrentHp = monster.MaxHp,
             MonsterMaxHp = monster.MaxHp,
             PlayerHpAtStart = player.CurrentHp,
-            CombatLog = "[]"
+            CombatLog = "[]",
+            PlayerStatusJson = player.StatusJson   // carry over persistent effects
         };
 
         await _uow.CombatSessions.AddAsync(session);
@@ -240,6 +269,141 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             monsterMaxHp = monster.MaxHp,
             monsterZone = monster.Zone,
             monsterElement = monster.Element.ToString()
+        });
+    }
+
+    private async Task<GameCommandResult> HandleUseItem(PlayerCharacter player, string args)
+    {
+        // In combat — hand off to the combat turn handler (monster still attacks back)
+        var session = await _uow.CombatSessions.GetActiveByPlayerIdAsync(player.Id);
+        if (session != null)
+            return await HandleCombatAction(player, CombatAction.UseItem, args);
+
+        // Out of combat — apply item directly, no monster retaliation
+        if (string.IsNullOrWhiteSpace(args))
+            return GameCommandResult.Single("error", new { message = "Specify an item: /item <name>" });
+
+        var itemDef = await _uow.ItemDefinitions.GetByNameAsync(args.Trim());
+        if (itemDef == null)
+            return GameCommandResult.Single("error", new { message = $"Item '{args.Trim()}' not found." });
+
+        var invItem = await _uow.PlayerInventoryItems.GetByPlayerAndItemAsync(player.Id, itemDef.Id);
+        if (invItem == null || invItem.Quantity <= 0)
+            return GameCommandResult.Single("error", new { message = $"You don't have any {itemDef.Name}." });
+
+        if (itemDef.Type != GameItemType.Consumable)
+            return GameCommandResult.Single("error", new { message = $"{itemDef.Name} is not a consumable." });
+
+        var log = new List<string>();
+
+        if (itemDef.HealAmount > 0)
+        {
+            int healed = Math.Min((int)(player.MaxHp * itemDef.HealAmount / 100.0), player.MaxHp - player.CurrentHp);
+            player.CurrentHp += healed;
+            log.Add(healed > 0 ? $"Restored {healed} HP." : "HP is already full.");
+        }
+        if (itemDef.ManaRestoreAmount > 0)
+        {
+            int restored = Math.Min((int)(player.MaxMp * itemDef.ManaRestoreAmount / 100.0), player.MaxMp - player.CurrentMp);
+            player.CurrentMp += restored;
+            log.Add(restored > 0 ? $"Restored {restored} MP." : "MP is already full.");
+        }
+        if (itemDef.HealAmount == 0 && itemDef.ManaRestoreAmount == 0)
+            log.Add($"Used {itemDef.Name}. (No effect — might taste good though.)");
+
+        invItem.Quantity--;
+        if (invItem.Quantity <= 0) _uow.PlayerInventoryItems.Remove(invItem);
+        await _uow.SaveChangesAsync();
+
+        return GameCommandResult.Single("use_item", new
+        {
+            item    = itemDef.Name,
+            message = $"🍖 {itemDef.Name} — {string.Join(" ", log)}",
+            hp      = player.CurrentHp,
+            maxHp   = player.MaxHp,
+            mp      = player.CurrentMp,
+            maxMp   = player.MaxMp,
+        });
+    }
+
+    // Utility spells usable out of combat: (mpCost, hpHeal% of INT, mpRestore% of INT)
+    private static readonly Dictionary<string, (int MpCost, float HpScale, float MpScale, string Desc)> _utilitySpells = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["heal"]         = (15,  3.0f, 0f,   "Restored {hp} HP."),
+        ["barrier"]      = (20,  0f,   2.5f, "Fortified your mind. Restored {mp} MP."),
+        ["revitalize"]   = (30,  5.0f, 0f,   "Revitalized! Restored {hp} HP."),
+        ["regen"]        = (35,  4.0f, 0f,   "Regenerated {hp} HP."),
+        ["ward"]         = (25,  0f,   3.0f, "Warded yourself. Restored {mp} MP."),
+        ["cleanse"]      = (20,  0f,   0f,   "Cleansed! Status effects removed."),
+        ["resurrection"] = (100, 100f, 0f,   "Fully restored HP!"),
+    };
+
+    private async Task<GameCommandResult> HandleCastSpell(PlayerCharacter player, string args, Guid? targetUserId = null)
+    {
+        // In combat — use the existing combat magic handler (targeting not supported in combat)
+        var session = await _uow.CombatSessions.GetActiveByPlayerIdAsync(player.Id);
+        if (session != null)
+            return await HandleCombatAction(player, CombatAction.Magic, args);
+
+        // Out of combat — utility spells only
+        var spellName = args.Trim().ToLower();
+        if (string.IsNullOrWhiteSpace(spellName))
+            return GameCommandResult.Single("error", new { message = "Specify a spell: /magic <name>" });
+
+        if (!_utilitySpells.TryGetValue(spellName, out var spell))
+            return GameCommandResult.Single("error", new { message = $"'{args.Trim()}' can't be cast outside of combat." });
+
+        // Resolve target — defaults to self
+        var target = targetUserId.HasValue
+            ? await _uow.PlayerCharacters.GetByUserIdAsync(targetUserId.Value) ?? player
+            : player;
+        bool isSelf = target.Id == player.Id;
+
+        if (player.CurrentMp < spell.MpCost)
+            return GameCommandResult.Single("error", new
+            {
+                message = $"Not enough MP! {args.Trim()} costs {spell.MpCost} MP, you have {player.CurrentMp}."
+            });
+
+        player.CurrentMp -= spell.MpCost;
+
+        int hpRestored = 0, mpRestored = 0;
+
+        if (spell.HpScale > 0)
+        {
+            int rawHeal = spellName == "resurrection"
+                ? target.MaxHp
+                : (int)(player.INT * spell.HpScale) + 5;   // caster's INT determines potency
+            hpRestored = Math.Min(rawHeal, target.MaxHp - target.CurrentHp);
+            target.CurrentHp += hpRestored;
+        }
+        if (spell.MpScale > 0)
+        {
+            int rawMp = (int)(player.INT * spell.MpScale) + 5;
+            mpRestored = Math.Min(rawMp, target.MaxMp - target.CurrentMp);
+            target.CurrentMp += mpRestored;
+        }
+
+        await _uow.SaveChangesAsync();
+
+        var effectMsg = spell.Desc
+            .Replace("{hp}", hpRestored.ToString())
+            .Replace("{mp}", mpRestored.ToString());
+
+        var spellTitle = $"{char.ToUpper(args.Trim()[0])}{args.Trim()[1..]}";
+        var targetName = isSelf ? "yourself" : target.CharacterName;
+        var message    = $"✨ {spellTitle} → **{targetName}** — {effectMsg} (-{spell.MpCost} MP)";
+
+        return GameCommandResult.Single("cast_spell", new
+        {
+            spell      = args.Trim(),
+            message,
+            targetName,
+            isSelf,
+            hp         = target.CurrentHp,
+            maxHp      = target.MaxHp,
+            casterMp   = player.CurrentMp,
+            casterMaxMp= player.MaxMp,
         });
     }
 
@@ -268,143 +432,204 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         var logEntries = new List<string>();
         bool combatEnded = false;
 
-        switch (action)
+        // ── Load active status effects ────────────────────────────────────────
+        var playerFx  = StatusEffects.Load(session.PlayerStatusJson);
+        var monsterFx = StatusEffects.Load(session.MonsterStatusJson);
+
+        // ── Monster passive resistances (PhysResist / MagicResist) ───────────
+        var monsterAbilities = StatusEffects.LoadAbilities(monster.AbilityJson);
+        double physResist  = Math.Min(0.75, monsterAbilities
+            .Where(a => a.Type.Equals("PhysResist",  StringComparison.OrdinalIgnoreCase))
+            .Sum(a => a.Strength) / 100.0);
+        double magicResist = Math.Min(0.75, monsterAbilities
+            .Where(a => a.Type.Equals("MagicResist", StringComparison.OrdinalIgnoreCase))
+            .Sum(a => a.Strength) / 100.0);
+
+        // ── Tick status effects at turn start ─────────────────────────────────
+        var (fxLog, fxHpLost, fxMpLost, skipTurn, silenced) =
+            StatusEffects.Tick(playerFx, player, Random.Shared);
+        logEntries.AddRange(fxLog);
+
+        // Slow: skip every other turn (odd turns only when slowed)
+        if (StatusEffects.IsSlowed(playerFx) && session.TurnNumber % 2 == 0)
         {
-            case CombatAction.Flee:
-                double fleeChance = Math.Clamp(0.3 + (totalDEX - monster.DEX) * 0.02, 0.1, 0.9);
-                if (Random.Shared.NextDouble() < fleeChance)
-                {
-                    session.State = CombatState.Fled;
-                    session.EndedAt = DateTime.UtcNow;
-                    combatEnded = true;
-                    logEntries.Add("You fled from battle!");
-                }
-                else
-                {
-                    logEntries.Add("Failed to flee!");
-                    // Monster retaliates
-                    var fleeDmg = CalculateMonsterDamage(monster, totalDEF, false);
-                    player.CurrentHp = Math.Max(0, player.CurrentHp - fleeDmg);
-                    logEntries.Add($"{monster.Name} attacks for {fleeDmg} damage!");
-                }
-                break;
-
-            case CombatAction.Defend:
-                session.PlayerDefending = true;
-                logEntries.Add("You take a defensive stance!");
-                // Monster attacks but damage halved
-                var defDmg = CalculateMonsterDamage(monster, totalDEF, true);
-                player.CurrentHp = Math.Max(0, player.CurrentHp - defDmg);
-                logEntries.Add($"{monster.Name} attacks for {defDmg} damage! (defended)");
-                break;
-
-            case CombatAction.Attack:
-                int minDmg = weapon?.ItemDefinition.MinDamage ?? 1;
-                int maxDmg = weapon?.ItemDefinition.MaxDamage ?? 3;
-                var weaponElement = weapon?.ItemDefinition.Element ?? Element.None;
-
-                int playerAttack = Random.Shared.Next(minDmg, maxDmg + 1) + (int)(totalSTR * 0.5);
-                int damage = Math.Max(1, playerAttack - (int)(monster.DEF * 0.3));
-                double elementBonus = GetElementMultiplier(weaponElement, monster.Element);
-                double critChance = Math.Min(0.25, totalLUK * 0.005 + totalDEX * 0.002);
-                bool crit = Random.Shared.NextDouble() < critChance;
-                int finalDamage = (int)(damage * elementBonus * (crit ? 1.5 : 1.0));
-
-                session.MonsterCurrentHp = Math.Max(0, session.MonsterCurrentHp - finalDamage);
-                logEntries.Add($"You attack for {finalDamage} damage!{(crit ? " CRITICAL HIT!" : "")}{(elementBonus > 1.0 ? " Super effective!" : "")}");
-
-                if (session.MonsterCurrentHp <= 0)
-                {
-                    session.State = CombatState.Victory;
-                    session.EndedAt = DateTime.UtcNow;
-                    combatEnded = true;
-                }
-                else
-                {
-                    // Monster retaliates
-                    session.PlayerDefending = false;
-                    var atkDmg = CalculateMonsterDamage(monster, totalDEF, false);
-                    player.CurrentHp = Math.Max(0, player.CurrentHp - atkDmg);
-                    logEntries.Add($"{monster.Name} attacks for {atkDmg} damage!");
-                }
-                break;
-
-            case CombatAction.Magic:
-                int spellDamage = (int)(totalINT * 1.5) + Random.Shared.Next(5, 15);
-                int mpCost = 10 + player.Level;
-                if (player.CurrentMp < mpCost)
-                {
-                    logEntries.Add($"Not enough MP! Need {mpCost} MP.");
-                    break;
-                }
-                player.CurrentMp -= mpCost;
-                int magicDmg = Math.Max(1, spellDamage - (int)(monster.DEF * 0.15));
-                session.MonsterCurrentHp = Math.Max(0, session.MonsterCurrentHp - magicDmg);
-                logEntries.Add($"You cast a spell for {magicDmg} damage! (-{mpCost} MP)");
-
-                if (session.MonsterCurrentHp <= 0)
-                {
-                    session.State = CombatState.Victory;
-                    session.EndedAt = DateTime.UtcNow;
-                    combatEnded = true;
-                }
-                else
-                {
-                    session.PlayerDefending = false;
-                    var magRetDmg = CalculateMonsterDamage(monster, totalDEF, false);
-                    player.CurrentHp = Math.Max(0, player.CurrentHp - magRetDmg);
-                    logEntries.Add($"{monster.Name} attacks for {magRetDmg} damage!");
-                }
-                break;
-
-            case CombatAction.UseItem:
-                if (string.IsNullOrWhiteSpace(args))
-                {
-                    logEntries.Add("Specify an item name: /item Health Potion");
-                    break;
-                }
-                var itemDef = await _uow.ItemDefinitions.GetByNameAsync(args.Trim());
-                if (itemDef == null)
-                {
-                    logEntries.Add($"Item '{args.Trim()}' not found.");
-                    break;
-                }
-                var invItem = await _uow.PlayerInventoryItems.GetByPlayerAndItemAsync(player.Id, itemDef.Id);
-                if (invItem == null || invItem.Quantity <= 0)
-                {
-                    logEntries.Add($"You don't have any {itemDef.Name}.");
-                    break;
-                }
-                if (itemDef.Type != GameItemType.Consumable)
-                {
-                    logEntries.Add($"{itemDef.Name} is not a consumable.");
-                    break;
-                }
-
-                if (itemDef.HealAmount > 0)
-                {
-                    int healed = Math.Min(itemDef.HealAmount, player.MaxHp - player.CurrentHp);
-                    player.CurrentHp += healed;
-                    logEntries.Add($"Used {itemDef.Name}! Restored {healed} HP.");
-                }
-                if (itemDef.ManaRestoreAmount > 0)
-                {
-                    int restored = Math.Min(itemDef.ManaRestoreAmount, player.MaxMp - player.CurrentMp);
-                    player.CurrentMp += restored;
-                    logEntries.Add($"Used {itemDef.Name}! Restored {restored} MP.");
-                }
-
-                invItem.Quantity--;
-                if (invItem.Quantity <= 0) _uow.PlayerInventoryItems.Remove(invItem);
-
-                // Monster still attacks
-                var itemDmg = CalculateMonsterDamage(monster, totalDEF, session.PlayerDefending);
-                player.CurrentHp = Math.Max(0, player.CurrentHp - itemDmg);
-                logEntries.Add($"{monster.Name} attacks for {itemDmg} damage!");
-                break;
+            skipTurn = true;
+            logEntries.Add("⏳ **Slowed!** You move sluggishly and lose your turn.");
         }
 
-        // Check player death
+        // ── Apply effective stats with status modifiers ───────────────────────
+        int effDEF = StatusEffects.EffectiveDef(playerFx, totalDEF);
+        int effSTR = StatusEffects.EffectiveStr(playerFx, totalSTR);
+
+        // Monster berserk: boost its damage
+        bool monsterBerserk = monsterFx.Any(e => e.Type.Equals("Berserk", StringComparison.OrdinalIgnoreCase));
+
+        if (!skipTurn)
+        {
+            switch (action)
+            {
+                case CombatAction.Flee:
+                    double fleeChance = Math.Clamp(0.3 + (totalDEX - monster.DEX) * 0.02, 0.1, 0.9);
+                    if (Random.Shared.NextDouble() < fleeChance)
+                    {
+                        session.State = CombatState.Fled;
+                        session.EndedAt = DateTime.UtcNow;
+                        combatEnded = true;
+                        logEntries.Add("You fled from battle!");
+                    }
+                    else
+                    {
+                        logEntries.Add("Failed to flee!");
+                        var fleeDmg = CalculateMonsterDamage(monster, effDEF, false, monsterBerserk);
+                        player.CurrentHp = Math.Max(0, player.CurrentHp - fleeDmg);
+                        logEntries.Add($"{monster.Name} attacks for {fleeDmg} damage!");
+                        ApplyMonsterAbility(monster, playerFx, logEntries, player);
+                    }
+                    break;
+
+                case CombatAction.Defend:
+                    session.PlayerDefending = true;
+                    logEntries.Add("You take a defensive stance!");
+                    var defDmg = CalculateMonsterDamage(monster, effDEF, true, monsterBerserk);
+                    player.CurrentHp = Math.Max(0, player.CurrentHp - defDmg);
+                    logEntries.Add($"{monster.Name} attacks for {defDmg} damage! *(defended)*");
+                    ApplyMonsterAbility(monster, playerFx, logEntries, player);
+                    break;
+
+                case CombatAction.Attack:
+                    int minDmg = weapon?.ItemDefinition.MinDamage ?? 1;
+                    int maxDmg = weapon?.ItemDefinition.MaxDamage ?? 3;
+                    var weaponElement = weapon?.ItemDefinition.Element ?? Element.None;
+
+                    // Confusion: 50% chance to hit self
+                    bool confused = StatusEffects.IsConfused(playerFx) && Random.Shared.NextDouble() < 0.5;
+                    // Blind: 50% miss chance
+                    bool blind    = StatusEffects.IsBlind(playerFx)    && Random.Shared.NextDouble() < 0.5;
+
+                    if (confused)
+                    {
+                        int selfDmg = Math.Max(1, Random.Shared.Next(minDmg, maxDmg + 1) + (int)(effSTR * 0.3));
+                        player.CurrentHp = Math.Max(0, player.CurrentHp - selfDmg);
+                        logEntries.Add($"💫 **Confused!** You attack yourself for **{selfDmg}** damage!");
+                    }
+                    else if (blind)
+                    {
+                        logEntries.Add("👁️ **Blinded!** Your attack misses!");
+                    }
+                    else
+                    {
+                        int playerAttack = Random.Shared.Next(minDmg, maxDmg + 1) + (int)(effSTR * 0.5);
+                        int damage = Math.Max(1, playerAttack - (int)(monster.DEF * 0.3));
+                        double elementBonus = GetElementMultiplier(weaponElement, monster.Element);
+                        double critChance = Math.Min(0.25, totalLUK * 0.005 + totalDEX * 0.002);
+                        bool crit = Random.Shared.NextDouble() < critChance;
+                        int finalDamage = (int)(damage * elementBonus * (crit ? 1.5 : 1.0) * (1.0 - physResist));
+                        finalDamage = Math.Max(1, finalDamage);
+
+                        session.MonsterCurrentHp = Math.Max(0, session.MonsterCurrentHp - finalDamage);
+                        string resistNote = physResist > 0 ? $" 🪖 *({(int)(physResist*100)}% resisted)*" : "";
+                        logEntries.Add($"You attack for **{finalDamage}** damage!{resistNote}{(crit ? " **CRITICAL HIT!**" : "")}{(elementBonus > 1.0 ? " ⚡ Super effective!" : "")}");
+                    }
+
+                    if (session.MonsterCurrentHp <= 0)
+                    {
+                        session.State = CombatState.Victory;
+                        session.EndedAt = DateTime.UtcNow;
+                        combatEnded = true;
+                    }
+                    else
+                    {
+                        session.PlayerDefending = false;
+                        var atkDmg = CalculateMonsterDamage(monster, effDEF, false, monsterBerserk);
+                        player.CurrentHp = Math.Max(0, player.CurrentHp - atkDmg);
+                        logEntries.Add($"{monster.Name} attacks for **{atkDmg}** damage!");
+                        ApplyMonsterAbility(monster, playerFx, logEntries, player);
+                    }
+                    break;
+
+                case CombatAction.Magic:
+                    if (silenced)
+                    {
+                        logEntries.Add("🔇 **Silenced!** Cannot cast magic this turn!");
+                        // Monster still gets a free attack
+                        var silDmg = CalculateMonsterDamage(monster, effDEF, false, monsterBerserk);
+                        player.CurrentHp = Math.Max(0, player.CurrentHp - silDmg);
+                        logEntries.Add($"{monster.Name} attacks for **{silDmg}** damage!");
+                        ApplyMonsterAbility(monster, playerFx, logEntries, player);
+                        break;
+                    }
+                    int spellDamage = (int)(totalINT * 1.5) + Random.Shared.Next(5, 15);
+                    int mpCost = 10 + player.Level;
+                    if (player.CurrentMp < mpCost)
+                    {
+                        logEntries.Add($"Not enough MP! Need {mpCost} MP.");
+                        break;
+                    }
+                    player.CurrentMp -= mpCost;
+                    int magicDmg = Math.Max(1, (int)((spellDamage - (int)(monster.DEF * 0.15)) * (1.0 - magicResist)));
+                    session.MonsterCurrentHp = Math.Max(0, session.MonsterCurrentHp - magicDmg);
+                    string magResistNote = magicResist > 0 ? $" ✨ *({(int)(magicResist*100)}% resisted)*" : "";
+                    logEntries.Add($"You cast a spell for **{magicDmg}** damage! (-{mpCost} MP){magResistNote}");
+
+                    if (session.MonsterCurrentHp <= 0)
+                    {
+                        session.State = CombatState.Victory;
+                        session.EndedAt = DateTime.UtcNow;
+                        combatEnded = true;
+                    }
+                    else
+                    {
+                        session.PlayerDefending = false;
+                        var magRetDmg = CalculateMonsterDamage(monster, effDEF, false, monsterBerserk);
+                        player.CurrentHp = Math.Max(0, player.CurrentHp - magRetDmg);
+                        logEntries.Add($"{monster.Name} attacks for **{magRetDmg}** damage!");
+                        ApplyMonsterAbility(monster, playerFx, logEntries, player);
+                    }
+                    break;
+
+                case CombatAction.UseItem:
+                    if (string.IsNullOrWhiteSpace(args))
+                    {
+                        logEntries.Add("Specify an item name: /item Health Potion");
+                        break;
+                    }
+                    var itemDef = await _uow.ItemDefinitions.GetByNameAsync(args.Trim());
+                    if (itemDef == null) { logEntries.Add($"Item '{args.Trim()}' not found."); break; }
+                    var invItem = await _uow.PlayerInventoryItems.GetByPlayerAndItemAsync(player.Id, itemDef.Id);
+                    if (invItem == null || invItem.Quantity <= 0) { logEntries.Add($"You don't have any {itemDef.Name}."); break; }
+                    if (itemDef.Type != GameItemType.Consumable) { logEntries.Add($"{itemDef.Name} is not a consumable."); break; }
+
+                    if (itemDef.HealAmount > 0)
+                    {
+                        int healAmt = (int)(player.MaxHp * itemDef.HealAmount / 100.0);
+                        if (StatusEffects.IsCursed(playerFx)) healAmt /= 2;  // Curse halves healing
+                        int healed = Math.Min(healAmt, player.MaxHp - player.CurrentHp);
+                        player.CurrentHp += healed;
+                        logEntries.Add($"Used {itemDef.Name}! Restored **{healed}** HP.{(StatusEffects.IsCursed(playerFx) ? " *(Curse halved healing!)*" : "")}");
+                    }
+                    if (itemDef.ManaRestoreAmount > 0)
+                    {
+                        int restored = Math.Min((int)(player.MaxMp * itemDef.ManaRestoreAmount / 100.0), player.MaxMp - player.CurrentMp);
+                        player.CurrentMp += restored;
+                        logEntries.Add($"Used {itemDef.Name}! Restored **{restored}** MP.");
+                    }
+
+                    invItem.Quantity--;
+                    if (invItem.Quantity <= 0) _uow.PlayerInventoryItems.Remove(invItem);
+
+                    var itemDmg = CalculateMonsterDamage(monster, effDEF, session.PlayerDefending, monsterBerserk);
+                    player.CurrentHp = Math.Max(0, player.CurrentHp - itemDmg);
+                    logEntries.Add($"{monster.Name} attacks for **{itemDmg}** damage!");
+                    ApplyMonsterAbility(monster, playerFx, logEntries, player);
+                    break;
+            }
+        }
+
+        // ── Save status effects back ──────────────────────────────────────────
+        session.PlayerStatusJson  = StatusEffects.Save(playerFx);
+        session.MonsterStatusJson = StatusEffects.Save(monsterFx);
+
+        // ── Check player death ────────────────────────────────────────────────
         if (player.CurrentHp <= 0 && !combatEnded)
         {
             session.State = CombatState.Defeat;
@@ -419,8 +644,12 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         object? resultPayload = null;
         if (session.State == CombatState.Victory)
         {
-            var xpMultiplier = 1.0 + Math.Min(player.ChatLevel * 0.05, 1.0);
-            var xpGained = (long)(monster.XpReward * xpMultiplier);
+            var chatBonus    = 1.0 + Math.Min(player.ChatLevel * 0.05, 1.0);
+            // Level-relative XP: bonus for punching up, penalty for farming weaklings
+            var levelDiff    = monster.Level - player.Level;
+            var levelMult    = Math.Max(0.3, Math.Min(2.0, 1.0 + levelDiff * 0.15));
+            var xpMultiplier = chatBonus * levelMult;
+            var xpGained     = (long)(monster.XpReward * xpMultiplier);
             var coinsGained = Random.Shared.NextInt64(monster.OrbRewardMin, monster.OrbRewardMax + 1);
 
             player.XP += xpGained;
@@ -462,12 +691,6 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 ApplyLevelUpStats(player);
             }
 
-            if (leveledUp)
-            {
-                player.CurrentHp = player.MaxHp;
-                player.CurrentMp = player.MaxMp;
-            }
-
             resultPayload = new
             {
                 result = "victory",
@@ -484,34 +707,255 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             long coinPenalty = 0;
             if (player.CoinBalance > 0)
             {
-                coinPenalty = (long)(player.CoinBalance * 0.10);
+                coinPenalty = (long)(player.CoinBalance * 0.20);
                 player.CoinBalance -= coinPenalty;
             }
-            player.CurrentHp = (int)(player.MaxHp * 0.25);
+            // Lose 10% of XP progress toward next level (can't drop below current level floor)
+            long xpFloor   = XpToLevel(player.Level);
+            long xpPenalty = (long)((player.XP - xpFloor) * 0.10);
+            player.XP      = Math.Max(xpFloor, player.XP - xpPenalty);
+            player.CurrentHp = (int)(player.MaxHp * 0.10);
 
             resultPayload = new
             {
-                result = "defeat",
-                coinsLost = coinPenalty
+                result    = "defeat",
+                coinsLost = coinPenalty,
+                xpLost    = xpPenalty
             };
         }
+
+        // ── Persist status effects back to player when combat ends ───────────
+        if (combatEnded)
+            player.StatusJson = StatusEffects.Save(StatusEffects.Persistent(playerFx));
 
         await _uow.SaveChangesAsync();
 
         return GameCommandResult.Broadcast("combat_turn", new
         {
-            playerName = player.CharacterName,
-            playerHp = player.CurrentHp,
+            playerName  = player.CharacterName,
+            playerHp    = player.CurrentHp,
             playerMaxHp = player.MaxHp,
-            playerMp = player.CurrentMp,
+            playerMp    = player.CurrentMp,
             playerMaxMp = player.MaxMp,
             monsterName = monster.Name,
-            monsterHp = session.MonsterCurrentHp,
-            monsterMaxHp = session.MonsterMaxHp,
-            turn = session.TurnNumber,
-            log = logEntries,
-            state = session.State.ToString(),
+            monsterIcon = monster.Icon,
+            monsterHp   = session.MonsterCurrentHp,
+            monsterMaxHp= session.MonsterMaxHp,
+            turn        = session.TurnNumber,
+            log         = logEntries,
+            state       = session.State.ToString(),
+            statusEffects = StatusEffects.Format(StatusEffects.Load(session.PlayerStatusJson)),
             combatResult = resultPayload
+        });
+    }
+
+    // ── Roll monster's special abilities and apply to player ─────────────────
+
+    private static void ApplyMonsterAbility(
+        MonsterDefinition monster, List<ActiveStatus> playerFx,
+        List<string> log, PlayerCharacter player)
+    {
+        var abilities = StatusEffects.LoadAbilities(monster.AbilityJson);
+        if (abilities.Count == 0) return;
+
+        foreach (var ability in abilities)
+        {
+            if (Random.Shared.NextDouble() >= ability.Chance) continue;
+
+            // Scale strength by monster INT for relevant effects
+            int strength = ability.Type.ToLower() switch
+            {
+                "poison"   => Math.Max(1, ability.Strength + monster.INT / 10),
+                "burn"     => Math.Max(1, ability.Strength + monster.INT / 5),
+                "bleed"    => Math.Max(1, ability.Strength + monster.STR / 8),
+                "freeze"   => Math.Max(1, ability.Strength + monster.INT / 8),
+                "mpdrain"  => Math.Max(1, ability.Strength + monster.INT / 6),
+                _          => ability.Strength
+            };
+
+            StatusEffects.Apply(playerFx, ability.Type, strength, ability.Turns);
+
+            var icon = StatusEffects.Icons.GetValueOrDefault(ability.Type, "❓");
+            var desc = ability.Type.ToLower() switch
+            {
+                "poison"     => $"{icon} **{monster.Name}** poisons you! ({strength}% HP/turn for {ability.Turns} turns)",
+                "burn"       => $"{icon} **{monster.Name}** sets you ablaze! ({strength} dmg/turn for {ability.Turns} turns)",
+                "bleed"      => $"{icon} **{monster.Name}** causes you to bleed! ({strength} dmg/turn for {ability.Turns} turns)",
+                "freeze"     => $"{icon} **{monster.Name}** freezes you solid! ({strength} dmg/turn, immobile)",
+                "stone"      => $"{icon} **{monster.Name}** petrifies you! (immobile for {ability.Turns} turns)",
+                "silence"    => $"{icon} **{monster.Name}** silences you! (no magic for {ability.Turns} turns)",
+                "confusion"  => $"{icon} **{monster.Name}** confuses you! (may attack yourself for {ability.Turns} turns)",
+                "defensedown"=> $"{icon} **{monster.Name}** shatters your guard! (DEF-{strength} for {ability.Turns} turns)",
+                "attackdown" => $"{icon} **{monster.Name}** weakens your strikes! (STR-{strength} for {ability.Turns} turns)",
+                "blind"      => $"{icon} **{monster.Name}** blinds you! (50% miss for {ability.Turns} turns)",
+                "slow"       => $"{icon} **{monster.Name}** slows you down! (skip every other turn for {ability.Turns} turns)",
+                "curse"      => $"{icon} **{monster.Name}** curses you! (healing halved for {ability.Turns} turns)",
+                "mpdrain"    => $"{icon} **{monster.Name}** drains your mana! ({strength} MP/turn for {ability.Turns} turns)",
+                _            => $"{icon} **{monster.Name}** uses {ability.Type}!"
+            };
+            log.Add(desc);
+        }
+    }
+
+    private async Task<GameCommandResult> HandleShop(PlayerCharacter player, string category)
+    {
+        var all = await _uow.ItemDefinitions.GetAllAsync();
+        var shopItems = all
+            .Where(i => i.BuyPrice > 0 && i.Type != GameItemType.Collectible)
+            .OrderBy(i => i.Type)
+            .ThenBy(i => i.BuyPrice)
+            .ToList();
+
+        // Subcategory filter — supports "potions health", "potions mana", "weapons swords", etc.
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            var cat = category.Trim().ToLower();
+            shopItems = shopItems.Where(i => cat switch
+            {
+                // Potions
+                "potions health" or "health potions" => i.SubType == ItemSubType.HealthPotion && i.ManaRestoreAmount == 0,
+                "potions mana"   or "mana potions"   => i.SubType == ItemSubType.ManaPotion   && i.HealAmount == 0,
+                "potions elixirs" or "elixirs"        => i.HealAmount > 0 && i.ManaRestoreAmount > 0,
+                "potions" or "potion"                 => i.Type == GameItemType.Consumable && i.SubType is ItemSubType.HealthPotion or ItemSubType.ManaPotion,
+                // Food
+                "food" or "food fish" or "fish"       => i.Type == GameItemType.Consumable && i.HealAmount > 0,
+                // Weapons
+                "weapons swords" or "swords"          => i.SubType == ItemSubType.Sword,
+                "weapons axes"   or "axes"            => i.SubType == ItemSubType.Axe,
+                "weapons bows"   or "bows"            => i.SubType == ItemSubType.Bow,
+                "weapons staves" or "staves" or "staffs" => i.SubType == ItemSubType.Staff,
+                "weapons daggers" or "daggers"        => i.SubType == ItemSubType.Dagger,
+                "weapons"                             => i.Type == GameItemType.Weapon,
+                // Armor
+                "armor helmets" or "helmets"          => i.SubType == ItemSubType.Helmet,
+                "armor chest"   or "chest"            => i.SubType == ItemSubType.Chestplate,
+                "armor legs"    or "legs"             => i.SubType == ItemSubType.Leggings,
+                "armor boots"   or "boots"            => i.SubType == ItemSubType.Boots,
+                "armor shields" or "shields"          => i.SubType == ItemSubType.Shield,
+                "armor rings"   or "rings"            => i.SubType == ItemSubType.Ring,
+                "armor amulets" or "amulets"          => i.SubType == ItemSubType.Amulet,
+                "armor"                               => i.Type == GameItemType.Armor,
+                _                                     => true
+            }).ToList();
+        }
+
+        return GameCommandResult.Single("shop", new
+        {
+            coins    = player.CoinBalance,
+            category = string.IsNullOrWhiteSpace(category) ? "All" : category.Trim(),
+            items = shopItems.Select(i => new
+            {
+                name      = i.Name,
+                icon      = i.Icon,
+                type      = i.Type.ToString(),
+                subType   = i.SubType.ToString(),
+                rarity    = i.Rarity.ToString(),
+                levelReq  = i.LevelReq,
+                buyPrice  = i.BuyPrice,
+                effect    = i.HealAmount > 0 && i.ManaRestoreAmount > 0
+                    ? $"+{i.HealAmount}% HP / +{i.ManaRestoreAmount}% MP"
+                    : i.HealAmount > 0 ? $"+{i.HealAmount}% HP"
+                    : i.ManaRestoreAmount > 0 ? $"+{i.ManaRestoreAmount}% MP"
+                    : "",
+                bonuses   = string.Join(" ", new[]
+                {
+                    i.BonusSTR > 0 ? $"STR+{i.BonusSTR}" : "",
+                    i.BonusDEF > 0 ? $"DEF+{i.BonusDEF}" : "",
+                    i.BonusINT > 0 ? $"INT+{i.BonusINT}" : "",
+                    i.BonusDEX > 0 ? $"DEX+{i.BonusDEX}" : "",
+                    i.BonusLUK > 0 ? $"LUK+{i.BonusLUK}" : "",
+                }.Where(s => s.Length > 0))
+            })
+        });
+    }
+
+    private async Task<GameCommandResult> HandleBuy(PlayerCharacter player, string args)
+    {
+        if (string.IsNullOrWhiteSpace(args))
+            return GameCommandResult.Single("error", new { message = "Specify an item: /buy <name>" });
+
+        // Support optional quantity: /buy Mana Potion 5
+        int qty = 1;
+        var parts = args.Trim().Split(' ');
+        if (parts.Length > 1 && int.TryParse(parts[^1], out int parsed) && parsed > 0)
+        {
+            qty  = Math.Min(parsed, 99);
+            args = string.Join(' ', parts[..^1]);
+        }
+
+        var itemDef = await _uow.ItemDefinitions.GetByNameAsync(args.Trim());
+        if (itemDef == null)
+            return GameCommandResult.Single("error", new { message = $"'{args.Trim()}' not found in shop." });
+        if (itemDef.BuyPrice <= 0)
+            return GameCommandResult.Single("error", new { message = $"{itemDef.Name} is not sold here." });
+
+        long total = itemDef.BuyPrice * qty;
+        if (player.CoinBalance < total)
+            return GameCommandResult.Single("error", new
+            {
+                message = $"Not enough coins. {qty}x {itemDef.Name} costs 🪙 {total:N0}, you have 🪙 {player.CoinBalance:N0}."
+            });
+
+        player.CoinBalance -= total;
+
+        var inv = await _uow.PlayerInventoryItems.GetByPlayerAndItemAsync(player.Id, itemDef.Id);
+        if (inv != null)
+            inv.Quantity += qty;
+        else
+            await _uow.PlayerInventoryItems.AddAsync(new PlayerInventoryItem
+                { PlayerId = player.Id, ItemDefinitionId = itemDef.Id, Quantity = qty });
+
+        await _uow.SaveChangesAsync();
+
+        return GameCommandResult.Single("buy", new
+        {
+            item           = itemDef.Name,
+            icon           = itemDef.Icon,
+            qty,
+            total,
+            newCoinBalance = player.CoinBalance
+        });
+    }
+
+    private async Task<GameCommandResult> HandleSell(PlayerCharacter player, string args)
+    {
+        if (string.IsNullOrWhiteSpace(args))
+            return GameCommandResult.Single("error", new { message = "Specify an item: /sell <name> [qty]" });
+
+        // Optional quantity suffix: /sell Wolf Pelt 5
+        int qty   = 1;
+        var parts = args.Trim().Split(' ');
+        if (parts.Length > 1 && int.TryParse(parts[^1], out int parsed) && parsed > 0)
+        {
+            qty  = Math.Min(parsed, 9999);
+            args = string.Join(' ', parts[..^1]);
+        }
+
+        var itemDef = await _uow.ItemDefinitions.GetByNameAsync(args.Trim());
+        if (itemDef == null)
+            return GameCommandResult.Single("error", new { message = $"'{args.Trim()}' not found." });
+
+        var inv = await _uow.PlayerInventoryItems.GetByPlayerAndItemAsync(player.Id, itemDef.Id);
+        if (inv == null || inv.Quantity < qty)
+            return GameCommandResult.Single("error", new { message = $"You don't have {qty}x {itemDef.Name}." });
+
+        // 45% of buy price per unit (or explicit sell price if set)
+        long basePrice  = itemDef.SellPrice > 0 ? itemDef.SellPrice : (long)(itemDef.BuyPrice * 0.45);
+        long total      = basePrice * qty;
+
+        inv.Quantity -= qty;
+        if (inv.Quantity <= 0) _uow.PlayerInventoryItems.Remove(inv);
+        player.CoinBalance += total;
+        await _uow.SaveChangesAsync();
+
+        return GameCommandResult.Single("sell", new
+        {
+            item           = itemDef.Name,
+            icon           = itemDef.Icon,
+            qty,
+            total,
+            priceEach      = basePrice,
+            newCoinBalance = player.CoinBalance
         });
     }
 
@@ -1042,12 +1486,29 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 if (listParts.Length < 2)
                     return GameCommandResult.Single("error", new { message = "Usage: /market list [item] [price] [qty]" });
 
-                // Parse: last part is qty (optional), second-to-last is price, rest is item name
-                if (!long.TryParse(listParts[^1], out var price))
+                // Parse: if last two tokens are both numbers → item=rest, price=second-to-last, qty=last
+                //        otherwise → item=all-but-last, price=last, qty=1
+                long price;
+                string listItemName;
+                int listQty;
+                if (listParts.Length >= 3
+                    && long.TryParse(listParts[^1], out var parsedQty)
+                    && long.TryParse(listParts[^2], out var parsedPrice))
+                {
+                    price        = parsedPrice;
+                    listQty      = (int)Math.Max(1, parsedQty);
+                    listItemName = string.Join(' ', listParts[..^2]);
+                }
+                else if (long.TryParse(listParts[^1], out var singlePrice))
+                {
+                    price        = singlePrice;
+                    listQty      = 1;
+                    listItemName = string.Join(' ', listParts[..^1]);
+                }
+                else
+                {
                     return GameCommandResult.Single("error", new { message = "Invalid price." });
-
-                var listItemName = string.Join(' ', listParts[..^1]);
-                int listQty = 1;
+                }
 
                 var listItemDef = await _uow.ItemDefinitions.GetByNameAsync(listItemName);
                 if (listItemDef == null)
@@ -1062,11 +1523,12 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
                 await _uow.MarketplaceListings.AddAsync(new MarketplaceListing
                 {
-                    SellerId = player.Id,
+                    SellerId         = player.Id,
                     ItemDefinitionId = listItemDef.Id,
-                    Quantity = listQty,
-                    PricePerUnit = price,
-                    Status = MarketListingStatus.Active
+                    Quantity         = listQty,
+                    PricePerUnit     = price,
+                    Status           = MarketListingStatus.Active,
+                    CurrencyType     = MarketplaceCurrencyType.Coins,
                 });
                 await _uow.SaveChangesAsync();
 
@@ -1080,35 +1542,18 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 if (cheapest == null)
                     return GameCommandResult.Single("error", new { message = $"No listings found for '{subArgs}'." });
 
-                var totalCost = cheapest.PricePerUnit * cheapest.Quantity;
-                var tax = (long)(totalCost * 0.05);
+                var totalCost    = cheapest.PricePerUnit * cheapest.Quantity;
+                var tax          = (long)(totalCost * 0.05);
                 var totalWithTax = totalCost + tax;
 
-                var buyer = await _uow.Users.GetByIdAsync(player.UserId);
-                if (buyer == null || buyer.OrbBalance < totalWithTax)
-                    return GameCommandResult.Single("error", new { message = $"Need {totalWithTax} orbs ({totalCost} + {tax} tax)." });
+                if (player.CoinBalance < totalWithTax)
+                    return GameCommandResult.Single("error", new { message = $"Not enough coins. Need 🪙 {totalWithTax:N0} ({totalCost:N0} + {tax:N0} tax), you have 🪙 {player.CoinBalance:N0}." });
 
-                buyer.OrbBalance -= totalWithTax;
-                await _uow.OrbTransactions.AddAsync(new OrbTransaction
-                {
-                    UserId = player.UserId,
-                    Amount = -totalWithTax,
-                    Type = OrbTransactionType.MarketplacePurchase,
-                    Description = $"Bought {cheapest.ItemDefinition.Name} from marketplace"
-                });
+                player.CoinBalance -= totalWithTax;
 
-                var sellerUser = await _uow.Users.GetByIdAsync(cheapest.Seller.UserId);
-                if (sellerUser != null)
-                {
-                    sellerUser.OrbBalance += totalCost;
-                    await _uow.OrbTransactions.AddAsync(new OrbTransaction
-                    {
-                        UserId = sellerUser.Id,
-                        Amount = totalCost,
-                        Type = OrbTransactionType.MarketplaceSale,
-                        Description = $"Sold {cheapest.ItemDefinition.Name} on marketplace"
-                    });
-                }
+                // Pay seller (minus 5% tax which goes to the house)
+                if (cheapest.Seller != null)
+                    cheapest.Seller.CoinBalance += totalCost;
 
                 await AddItemToInventory(player.Id, cheapest.ItemDefinitionId, cheapest.Quantity);
                 cheapest.Status = MarketListingStatus.Sold;
@@ -1150,8 +1595,26 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
                 return GameCommandResult.Single("market_cancelled", new { item = listing.ItemDefinition.Name });
 
+            case "search":
+                var allListings = await _uow.MarketplaceListings.GetAllActiveAsync();
+                var searchFilter = subArgs.Trim().ToLower();
+                var grouped = allListings
+                    .GroupBy(l => l.ItemDefinitionId)
+                    .Select(g => new
+                    {
+                        icon     = g.First().ItemDefinition.Icon,
+                        name     = g.First().ItemDefinition.Name,
+                        cheapest = g.Min(l => l.PricePerUnit),
+                        totalQty = g.Sum(l => l.Quantity),
+                        sellers  = g.Count()
+                    })
+                    .Where(g => string.IsNullOrEmpty(searchFilter) || g.name.ToLower().Contains(searchFilter))
+                    .OrderBy(g => g.name)
+                    .ToList();
+                return GameCommandResult.Single("market_search", new { items = grouped, query = subArgs.Trim() });
+
             default:
-                return GameCommandResult.Single("error", new { message = "Usage: /market list|browse|buy|cancel|listings" });
+                return GameCommandResult.Single("error", new { message = "Usage: /market list|browse|buy|cancel|listings|search" });
         }
     }
 
@@ -1231,9 +1694,10 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         }
     }
 
-    private static int CalculateMonsterDamage(MonsterDefinition monster, int playerDEF, bool defending)
+    private static int CalculateMonsterDamage(MonsterDefinition monster, int playerDEF, bool defending, bool berserk = false)
     {
-        int raw = Random.Shared.Next(monster.MinDamage, monster.MaxDamage + 1) + (int)(monster.STR * 0.3);
+        int raw = Random.Shared.Next(monster.MinDamage, monster.MaxDamage + 1) + (int)(monster.STR * 0.3) + monster.Level * 2;
+        if (berserk) raw = (int)(raw * 1.5);
         int damage = Math.Max(1, raw - (int)(playerDEF * 0.3));
         if (defending) damage /= 2;
         return Math.Max(1, damage);
@@ -1260,7 +1724,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         return 1.0;
     }
 
-    private static long XpToLevel(int level) => (long)Math.Floor(100 * Math.Pow(level, 1.5));
+    private static long XpToLevel(int level) => (long)Math.Floor(20 * Math.Pow(level, 2.5));
 
     private static void ApplyLevelUpStats(PlayerCharacter player)
     {
