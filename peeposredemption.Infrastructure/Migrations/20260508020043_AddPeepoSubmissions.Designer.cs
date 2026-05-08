@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using peeposredemption.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using peeposredemption.Infrastructure.Persistence;
 namespace peeposredemption.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260508020043_AddPeepoSubmissions")]
+    partial class AddPeepoSubmissions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1540,34 +1543,6 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.HasIndex("ParentUserId");
 
                     b.ToTable("parental_links");
-                });
-
-            modelBuilder.Entity("peeposredemption.Domain.Entities.PeepoRarityVote", b =>
-                {
-                    b.Property<string>("PeepoName")
-                        .HasColumnType("text")
-                        .HasColumnName("peepo_name");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("text")
-                        .HasColumnName("ip_address");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("VotedRarity")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("voted_rarity");
-
-                    b.HasKey("PeepoName", "IpAddress");
-
-                    b.ToTable("peepo_rarity_votes");
                 });
 
             modelBuilder.Entity("peeposredemption.Domain.Entities.PeepoSubmission", b =>

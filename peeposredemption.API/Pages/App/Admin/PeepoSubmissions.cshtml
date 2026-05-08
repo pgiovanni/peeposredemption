@@ -1,0 +1,146 @@
+@page
+@model peeposredemption.API.Pages.App.Admin.PeepoSubmissionsModel
+@using peeposredemption.Domain.Entities
+@{
+    ViewData["Title"] = "Admin — Peepo Submissions";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Admin/Index" class="icon-btn" title="Back">&#x2190;</a>
+            <span>Peepo Submissions</span>
+        </div>
+    </div>
+
+    <div class="content-area settings-page" style="overflow-y:auto">
+        <section class="settings-section" style="padding:1.5rem">
+            <h3 class="settings-heading">PEEPO SUBMISSIONS</h3>
+
+            @if (!string.IsNullOrEmpty(Model.StatusMessage))
+            {
+                <div style="background:#3ba55c;color:white;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem">
+                    @Model.StatusMessage
+                </div>
+            }
+
+            <div class="referral-stats" style="margin-bottom:1.5rem">
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Submissions.Count</div>
+                    <div class="referral-stat-label">Total</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Submissions.Count(s => s.Status == SubmissionStatus.Pending)</div>
+                    <div class="referral-stat-label">Pending</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Submissions.Count(s => s.Status == SubmissionStatus.Approved)</div>
+                    <div class="referral-stat-label">Approved</div>
+                </div>
+                <div class="referral-stat">
+                    <div class="referral-stat-value">@Model.Submissions.Count(s => s.Status == SubmissionStatus.Rejected)</div>
+                    <div class="referral-stat-label">Rejected</div>
+                </div>
+            </div>
+
+            @if (!Model.Submissions.Any())
+            {
+                <div class="sidebar-empty">No peepo submissions yet.</div>
+            }
+            else
+            {
+                @foreach (var sub in Model.Submissions)
+                {
+                    var statusColor = sub.Status switch
+                    {
+                        SubmissionStatus.Pending  => "#faa61a",
+                        SubmissionStatus.Approved => "#3ba55c",
+                        SubmissionStatus.Rejected => "#f04747",
+                        _ => "#b5bac1"
+                    };
+
+                    <div class="sub-card">
+                        <div class="sub-card-header">
+                            <div>
+                                <strong style="font-size:1.05rem">@sub.Name</strong>
+                                @if (!string.IsNullOrEmpty(sub.SubmitterName))
+                                {
+                                    <span style="color:var(--text-muted,#b5bac1);margin-left:8px">by @sub.SubmitterName</span>
+                                }
+                                <span class="sub-status-badge" style="background:@statusColor">@sub.Status</span>
+                            </div>
+                            <div style="color:var(--text-muted,#b5bac1);font-size:0.8rem">
+                                @sub.SubmittedAt.ToString("MMM d, yyyy h:mm tt") UTC
+                            </div>
+                        </div>
+
+                        <div style="display:flex;gap:1rem;align-items:flex-start;margin-top:0.5rem">
+                            <a href="@sub.ImageUrl" target="_blank">
+                                <img src="@sub.ImageUrl" alt="@sub.Name" style="width:80px;height:80px;object-fit:contain;border-radius:8px;border:2px solid #3f4147;background:#111" />
+                            </a>
+                            <div class="sub-card-details">
+                                <div style="word-break:break-all"><strong>URL:</strong> <a href="@sub.ImageUrl" target="_blank" style="color:#5865f2">@sub.ImageUrl</a></div>
+                                @if (!string.IsNullOrEmpty(sub.Note))
+                                {
+                                    <div style="margin-top:6px"><strong>Note:</strong> @sub.Note</div>
+                                }
+                            </div>
+                        </div>
+
+                        @if (sub.Status == SubmissionStatus.Pending)
+                        {
+                            <div class="sub-card-actions">
+                                <form method="post" asp-page-handler="Approve" style="display:inline">
+                                    <input type="hidden" name="submissionId" value="@sub.Id" />
+                                    <button type="submit" class="btn-primary btn-sm" style="background:#3ba55c">Approve &amp; Add to Pool</button>
+                                </form>
+                                <form method="post" asp-page-handler="Reject" style="display:inline;margin-left:8px">
+                                    <input type="hidden" name="submissionId" value="@sub.Id" />
+                                    <button type="submit" class="btn-primary btn-sm" style="background:#f04747">Reject</button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </section>
+    </div>
+</div>
+
+<style>
+    .sub-card {
+        background: #2b2d31;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        border: 1px solid #3f4147;
+    }
+    .sub-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .sub-status-badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: white;
+        margin-left: 10px;
+        vertical-align: middle;
+    }
+    .sub-card-details {
+        font-size: 0.9rem;
+        line-height: 1.6;
+        flex: 1;
+    }
+    .sub-card-actions {
+        margin-top: 1rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #3f4147;
+    }
+</style>

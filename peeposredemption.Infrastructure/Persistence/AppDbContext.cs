@@ -38,6 +38,7 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<ArtistCommission> ArtistCommissions { get; set; }
         public DbSet<ArtistPayout> ArtistPayouts { get; set; }
         public DbSet<ArtistSubmission> ArtistSubmissions { get; set; }
+        public DbSet<PeepoSubmission> PeepoSubmissions { get; set; }
 
         // Game system
         public DbSet<PlayerCharacter> PlayerCharacters { get; set; }
@@ -78,6 +79,9 @@ namespace peeposredemption.Infrastructure.Persistence
 
         // Discord bot integration
         public DbSet<DiscordLink> DiscordLinks { get; set; }
+
+        // Peepo rarity voting
+        public DbSet<PeepoRarityVote> PeepoRarityVotes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -388,6 +392,10 @@ namespace peeposredemption.Infrastructure.Persistence
             modelBuilder.Entity<ArtistSubmission>()
                 .HasIndex(s => new { s.UserId, s.Status });
 
+            // PeepoSubmission
+            modelBuilder.Entity<PeepoSubmission>()
+                .HasIndex(p => p.Status);
+
             // ── Game System ────────────────────────────────────────────
 
             // PlayerCharacter — one per user
@@ -678,6 +686,10 @@ namespace peeposredemption.Infrastructure.Persistence
 
             modelBuilder.Entity<MessageAttachment>()
                 .HasIndex(a => a.UploaderId);
+
+            // ── Peepo Rarity Votes ─────────────────────────────────────────
+            modelBuilder.Entity<PeepoRarityVote>()
+                .HasKey(v => new { v.PeepoName, v.IpAddress });
         }
 
         // Converts PascalCase to snake_case

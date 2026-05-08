@@ -1,0 +1,182 @@
+@page
+@model peeposredemption.API.Pages.PeepoSubmitModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Submit a Peepo";
+    ViewData["OgTitle"] = "Submit a Peepo — Torvex";
+    ViewData["Description"] = "Submit your peepo to the Torvex collectibles pool. Approved peepos appear in crates for everyone to collect.";
+}
+
+<div class="peepo-submit-page">
+    <div class="peepo-submit-header">
+        <h1>Submit a Peepo</h1>
+        <p>Got a peepo you want in the game? Submit it here. Approved peepos get added to the collectibles pool and can be pulled from crates.</p>
+    </div>
+
+    @if (Model.Success)
+    {
+        <div class="peepo-submit-success">
+            <div class="peepo-submit-success-icon">🐸</div>
+            <h2>Submission received!</h2>
+            <p>We'll review your peepo and add it to the pool if it fits. Thanks for contributing!</p>
+            <a href="/PeepoSubmit" class="btn-primary" style="display:inline-block;margin-top:1rem">Submit another</a>
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="peepo-submit-error">@Model.ErrorMessage</div>
+        }
+
+        <form method="post" class="peepo-submit-form">
+            @Html.AntiForgeryToken()
+
+            <div class="peepo-form-group">
+                <label for="name">Peepo name <span class="required">*</span></label>
+                <input type="text" id="name" name="name" placeholder="e.g. peepoHappy" maxlength="64" required value="@Model.FormName" />
+                <span class="form-hint">No spaces. Use camelCase like Discord emoji names.</span>
+            </div>
+
+            <div class="peepo-form-group">
+                <label for="imageUrl">Image URL <span class="required">*</span></label>
+                <input type="url" id="imageUrl" name="imageUrl" placeholder="https://..." required value="@Model.FormImageUrl" oninput="previewImage(this.value)" />
+                <span class="form-hint">Direct link to the image (.png, .gif, .webp). Must be publicly accessible.</span>
+                <div class="peepo-preview" id="previewBox" style="display:none">
+                    <img id="previewImg" src="" alt="Preview" />
+                </div>
+            </div>
+
+            <div class="peepo-form-group">
+                <label for="submitterName">Your name or handle <span class="optional">(optional)</span></label>
+                <input type="text" id="submitterName" name="submitterName" placeholder="e.g. YourUsername" maxlength="64" value="@Model.FormSubmitterName" />
+            </div>
+
+            <div class="peepo-form-group">
+                <label for="note">Note <span class="optional">(optional)</span></label>
+                <textarea id="note" name="note" placeholder="Anything you want to add about this peepo..." maxlength="500" rows="3">@Model.FormNote</textarea>
+            </div>
+
+            <button type="submit" class="btn-primary peepo-submit-btn">Submit Peepo</button>
+        </form>
+    }
+</div>
+
+<style>
+    .peepo-submit-page {
+        max-width: 600px;
+        margin: 3rem auto;
+        padding: 0 1.5rem;
+    }
+    .peepo-submit-header {
+        margin-bottom: 2rem;
+    }
+    .peepo-submit-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .peepo-submit-header p {
+        color: var(--text-muted, #b5bac1);
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+    .peepo-submit-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+    .peepo-form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    .peepo-form-group label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #dcddde;
+    }
+    .peepo-form-group input,
+    .peepo-form-group textarea {
+        background: #1e1f22;
+        border: 1px solid #3f4147;
+        border-radius: 6px;
+        color: #dcddde;
+        font-size: 0.95rem;
+        padding: 0.6rem 0.75rem;
+        outline: none;
+        transition: border-color 0.15s;
+        font-family: inherit;
+        resize: vertical;
+    }
+    .peepo-form-group input:focus,
+    .peepo-form-group textarea:focus {
+        border-color: #5865f2;
+    }
+    .form-hint {
+        font-size: 0.78rem;
+        color: var(--text-muted, #b5bac1);
+    }
+    .required { color: #f04747; }
+    .optional { color: var(--text-muted, #b5bac1); font-weight: 400; font-size: 0.8rem; }
+    .peepo-preview {
+        margin-top: 0.5rem;
+        background: #1e1f22;
+        border: 1px solid #3f4147;
+        border-radius: 8px;
+        padding: 0.75rem;
+        display: inline-block;
+    }
+    .peepo-preview img {
+        max-width: 128px;
+        max-height: 128px;
+        border-radius: 6px;
+        display: block;
+    }
+    .peepo-submit-btn {
+        align-self: flex-start;
+        margin-top: 0.5rem;
+        font-size: 1rem;
+        padding: 0.65rem 1.5rem;
+    }
+    .peepo-submit-error {
+        background: rgba(240,71,71,0.15);
+        border: 1px solid #f04747;
+        color: #f04747;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+    .peepo-submit-success {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+    .peepo-submit-success-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    .peepo-submit-success h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .peepo-submit-success p {
+        color: var(--text-muted, #b5bac1);
+    }
+</style>
+
+<script>
+    function previewImage(url) {
+        var box = document.getElementById('previewBox');
+        var img = document.getElementById('previewImg');
+        if (!url) { box.style.display = 'none'; return; }
+        img.onload = function () { box.style.display = 'inline-block'; };
+        img.onerror = function () { box.style.display = 'none'; };
+        img.src = url;
+    }
+    // Restore preview on page load if URL was pre-filled (e.g. validation error)
+    window.addEventListener('DOMContentLoaded', function () {
+        var input = document.getElementById('imageUrl');
+        if (input && input.value) previewImage(input.value);
+    });
+</script>
