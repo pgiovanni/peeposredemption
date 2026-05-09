@@ -62,6 +62,28 @@ public static class GameExpansionSeeder
         var largeMpPot = GetOrCreate("Large Mana Potion",   () => Co("Large Mana Potion",   "Restores 80 MP.",  "💧", 20, mana: 80,  buy: 100, sell: 35));
         var elixir     = GetOrCreate("Elixir of Life",      () => Co("Elixir of Life",      "Restores 200 HP and 150 MP.", "⚗️", 40, heal: 200, mana: 150, rarity: GameItemRarity.Rare, buy: 500, sell: 175));
 
+        // ── GATHERING TOOLS ────────────────────────────────────────────────────
+        // BonusLUK = gather bonus (extra qty per action). Intentionally weak weapons.
+        // Pickaxes — equip in MainHand for mining bonus
+        GetOrCreate("Bronze Pickaxe", () => To("Bronze Pickaxe", "A basic copper-tipped pickaxe. +1 ore per mine.",        "⛏️",  1, ItemSubType.Pickaxe,    gatherBonus: 1,  buy:    50, sell:   15));
+        GetOrCreate("Iron Pickaxe",   () => To("Iron Pickaxe",   "Tougher iron head. +2 ore per mine.",                   "⛏️", 10, ItemSubType.Pickaxe,    gatherBonus: 2,  buy:   200, sell:   60));
+        GetOrCreate("Steel Pickaxe",  () => To("Steel Pickaxe",  "Well-balanced steel. +3 ore per mine.",                 "⛏️", 20, ItemSubType.Pickaxe,    gatherBonus: 3,  buy:   600, sell:  180));
+        GetOrCreate("Mithril Pickaxe",() => To("Mithril Pickaxe","Lightweight mithril head. +5 ore per mine.",            "⛏️", 40, ItemSubType.Pickaxe,    gatherBonus: 5,  buy:  2000, sell:  600, rarity: GameItemRarity.Rare));
+        GetOrCreate("Adamantium Pickaxe", () => To("Adamantium Pickaxe", "Effortlessly splits stone. +7 ore per mine.",    "⛏️", 60, ItemSubType.Pickaxe,    gatherBonus: 7,  buy:  6000, sell: 1800, rarity: GameItemRarity.Rare));
+        GetOrCreate("Dragon Pickaxe", () => To("Dragon Pickaxe", "Dragonbone head — mines faster than thought. +10 ore.", "⛏️", 80, ItemSubType.Pickaxe,    gatherBonus: 10, buy: 20000, sell: 6000, rarity: GameItemRarity.Epic));
+
+        // Axes — equip in MainHand for woodcutting bonus
+        GetOrCreate("Bronze Axe",     () => To("Bronze Axe",     "A crude bronze axe. +1 log per chop.",                  "🪓",  1, ItemSubType.Axe,        gatherBonus: 1,  buy:    40, sell:   12));
+        GetOrCreate("Iron Axe",       () => To("Iron Axe",       "A reliable iron axe. +2 logs per chop.",                "🪓", 10, ItemSubType.Axe,        gatherBonus: 2,  buy:   180, sell:   55));
+        GetOrCreate("Steel Axe",      () => To("Steel Axe",      "Sharp and sturdy. +3 logs per chop.",                   "🪓", 20, ItemSubType.Axe,        gatherBonus: 3,  buy:   500, sell:  150));
+        GetOrCreate("Dragon Axe",     () => To("Dragon Axe",     "Splits ancient trees in one swing. +7 logs per chop.",  "🪓", 60, ItemSubType.Axe,        gatherBonus: 7,  buy:  8000, sell: 2400, rarity: GameItemRarity.Epic));
+
+        // Fishing Rods — equip in MainHand for fishing bonus
+        GetOrCreate("Fishing Rod",    () => To("Fishing Rod",    "A basic bamboo rod. +1 fish per cast.",                 "🎣",  1, ItemSubType.FishingRod, gatherBonus: 1,  buy:    30, sell:   10));
+        GetOrCreate("Fly Rod",        () => To("Fly Rod",        "A finely crafted fly rod. +2 fish per cast.",           "🎣", 15, ItemSubType.FishingRod, gatherBonus: 2,  buy:   150, sell:   45));
+        GetOrCreate("Crystal Rod",    () => To("Crystal Rod",    "Crystal tip attracts rare fish. +4 fish per cast.",     "🎣", 35, ItemSubType.FishingRod, gatherBonus: 4,  buy:   800, sell:  240, rarity: GameItemRarity.Rare));
+        GetOrCreate("Abyssal Rod",    () => To("Abyssal Rod",    "Reaches the deepest trenches. +7 fish per cast.",       "🎣", 65, ItemSubType.FishingRod, gatherBonus: 7,  buy:  4000, sell: 1200, rarity: GameItemRarity.Rare));
+
         // ── COOKED FOOD (Cooking skill) ────────────────────────────────────────
         GetOrCreate("Cooked Shrimp",      () => Co("Cooked Shrimp",      "Freshly cooked shrimp — restores 3 HP.",         "🍤",  1, heal:  3,        buy:   4, sell:  2));
         GetOrCreate("Cooked Trout",       () => Co("Cooked Trout",       "A nicely grilled trout — restores 7 HP.",        "🐟",  1, heal:  7,        buy:  10, sell:  5));
@@ -77,34 +99,34 @@ public static class GameExpansionSeeder
         GetOrCreate("Fish Stew",          () => Co("Fish Stew",          "A rich stew — restores 20 HP in combat.",        "🍲",  1, heal: 20,        buy:  60, sell: 30, rarity: GameItemRarity.Uncommon));
 
         // ── GATHERING RESOURCES — MINING ──────────────────────────────────────
-        var silverOre      = GetOrCreate("Silver Ore",      () => Ma("Silver Ore",      "Shiny silver ore.",                     "⚪", buy: 10,  sell: 4));
-        var goldOre        = GetOrCreate("Gold Ore",        () => Ma("Gold Ore",        "Glittering gold ore.",                  "🟡", buy: 20,  sell: 8));
-        var mithrilOre     = GetOrCreate("Mithril Ore",     () => Ma("Mithril Ore",     "Lightweight yet incredibly strong.",    "🔵", buy: 40,  sell: 15));
-        var adamantiteOre  = GetOrCreate("Adamantite Ore",  () => Ma("Adamantite Ore",  "One of the hardest metals known.",      "🟢", buy: 65,  sell: 25));
-        var runiteOre      = GetOrCreate("Runite Ore",      () => Ma("Runite Ore",      "A rare and powerful ore.",              "🔷", buy: 100, sell: 40));
-        var voidstone      = GetOrCreate("Voidstone",       () => Ma("Voidstone",       "Pulsates with void energy.",            "🌑", buy: 250, sell: 100));
-        var sapphire       = GetOrCreate("Sapphire",        () => Ma("Sapphire",        "A brilliant blue gemstone.",            "💎", buy: 50,  sell: 20));
-        var emerald        = GetOrCreate("Emerald",         () => Ma("Emerald",         "A deep green gemstone.",                "💚", buy: 90,  sell: 35));
-        var ruby           = GetOrCreate("Ruby",            () => Ma("Ruby",            "A fiery red gemstone.",                 "❤️", buy: 130, sell: 50));
-        var diamond        = GetOrCreate("Diamond",         () => Ma("Diamond",         "The hardest and rarest gemstone.",      "💠", buy: 250, sell: 100));
+        var silverOre      = GetOrCreate("Silver Ore",      () => Ma("Silver Ore",      "Shiny silver ore.",                     "⚪", buy:   50, sell:   20));
+        var goldOre        = GetOrCreate("Gold Ore",        () => Ma("Gold Ore",        "Glittering gold ore.",                  "🟡", buy:  120, sell:   45));
+        var mithrilOre     = GetOrCreate("Mithril Ore",     () => Ma("Mithril Ore",     "Lightweight yet incredibly strong.",    "🔵", buy:  280, sell:  100));
+        var adamantiteOre  = GetOrCreate("Adamantite Ore",  () => Ma("Adamantite Ore",  "One of the hardest metals known.",      "🟢", buy:  600, sell:  220));
+        var runiteOre      = GetOrCreate("Adamantium Ore",  () => Ma("Adamantium Ore",  "Dense and near-indestructible ore.",    "🔷", buy: 1300, sell:  480));
+        var voidstone      = GetOrCreate("Voidstone",       () => Ma("Voidstone",       "Pulsates with void energy.",            "🌑", buy: 2800, sell: 1000));
+        var sapphire       = GetOrCreate("Sapphire",        () => Ma("Sapphire",        "A brilliant blue gemstone.",            "💎", buy:  100, sell:   35));
+        var emerald        = GetOrCreate("Emerald",         () => Ma("Emerald",         "A deep green gemstone.",                "💚", buy:  220, sell:   80));
+        var ruby           = GetOrCreate("Ruby",            () => Ma("Ruby",            "A fiery red gemstone.",                 "❤️", buy:  480, sell:  175));
+        var diamond        = GetOrCreate("Diamond",         () => Ma("Diamond",         "The hardest and rarest gemstone.",      "💠", buy: 1100, sell:  400));
 
         // ── GATHERING RESOURCES — FISHING ─────────────────────────────────────
-        var rawShrimp      = GetOrCreate("Raw Shrimp",      () => Ma("Raw Shrimp",      "Tiny but edible shrimp.",               "🦐", buy: 3,   sell: 1));
-        var rawTrout       = GetOrCreate("Raw Trout",       () => Ma("Raw Trout",       "A freshwater trout.",                   "🐟", buy: 8,   sell: 3));
-        var rawSalmon      = GetOrCreate("Raw Salmon",      () => Ma("Raw Salmon",      "A pink-fleshed salmon.",                "🐠", buy: 14,  sell: 5));
-        var rawTuna        = GetOrCreate("Raw Tuna",        () => Ma("Raw Tuna",        "A large ocean tuna.",                   "🐡", buy: 22,  sell: 8));
-        var rawLobster     = GetOrCreate("Raw Lobster",     () => Ma("Raw Lobster",     "A hard-shelled lobster.",               "🦞", buy: 30,  sell: 12));
-        var rawSwordfish   = GetOrCreate("Raw Swordfish",   () => Ma("Raw Swordfish",   "A powerful, sharp-billed fish.",        "🐟", buy: 45,  sell: 18));
-        var rawShark       = GetOrCreate("Raw Shark",       () => Ma("Raw Shark",       "A formidable ocean predator.",          "🦈", buy: 70,  sell: 28));
-        var rawAbyssalEel  = GetOrCreate("Raw Abyssal Eel", () => Ma("Raw Abyssal Eel", "An eel from the deepest trenches.",     "🌑", buy: 110, sell: 45));
+        var rawShrimp      = GetOrCreate("Raw Shrimp",      () => Ma("Raw Shrimp",      "Tiny but edible shrimp.",               "🦐", buy:   10, sell:    4));
+        var rawTrout       = GetOrCreate("Raw Trout",       () => Ma("Raw Trout",       "A freshwater trout.",                   "🐟", buy:   30, sell:   12));
+        var rawSalmon      = GetOrCreate("Raw Salmon",      () => Ma("Raw Salmon",      "A pink-fleshed salmon.",                "🐠", buy:   70, sell:   28));
+        var rawTuna        = GetOrCreate("Raw Tuna",        () => Ma("Raw Tuna",        "A large ocean tuna.",                   "🐡", buy:  160, sell:   60));
+        var rawLobster     = GetOrCreate("Raw Lobster",     () => Ma("Raw Lobster",     "A hard-shelled lobster.",               "🦞", buy:  350, sell:  130));
+        var rawSwordfish   = GetOrCreate("Raw Swordfish",   () => Ma("Raw Swordfish",   "A powerful, sharp-billed fish.",        "🐟", buy:  750, sell:  280));
+        var rawShark       = GetOrCreate("Raw Shark",       () => Ma("Raw Shark",       "A formidable ocean predator.",          "🦈", buy: 1600, sell:  580));
+        var rawAbyssalEel  = GetOrCreate("Raw Abyssal Eel", () => Ma("Raw Abyssal Eel", "An eel from the deepest trenches.",     "🌑", buy: 3300, sell: 1200));
 
         // ── GATHERING RESOURCES — WOODCUTTING ─────────────────────────────────
-        var oakLogs        = GetOrCreate("Oak Logs",        () => Ma("Oak Logs",        "Sturdy oak wood.",                      "🪵", buy: 10,  sell: 4));
-        var willowLogs     = GetOrCreate("Willow Logs",     () => Ma("Willow Logs",     "Flexible willow branches.",             "🪵", buy: 20,  sell: 8));
-        var mapleLogs      = GetOrCreate("Maple Logs",      () => Ma("Maple Logs",      "Dense maple wood.",                     "🪵", buy: 35,  sell: 14));
-        var yewLogs        = GetOrCreate("Yew Logs",        () => Ma("Yew Logs",        "Ancient yew wood.",                     "🪵", buy: 55,  sell: 22));
-        var magicLogs      = GetOrCreate("Magic Logs",      () => Ma("Magic Logs",      "Infused with residual magic.",          "✨", buy: 88,  sell: 35));
-        var voidWood       = GetOrCreate("Void Wood",       () => Ma("Void Wood",       "Wood twisted by void energy.",          "🌑", buy: 200, sell: 80));
+        var oakLogs        = GetOrCreate("Oak Logs",        () => Ma("Oak Logs",        "Sturdy oak wood.",                      "🪵", buy:   30, sell:   12));
+        var willowLogs     = GetOrCreate("Willow Logs",     () => Ma("Willow Logs",     "Flexible willow branches.",             "🪵", buy:   75, sell:   28));
+        var mapleLogs      = GetOrCreate("Maple Logs",      () => Ma("Maple Logs",      "Dense maple wood.",                     "🪵", buy:  175, sell:   65));
+        var yewLogs        = GetOrCreate("Yew Logs",        () => Ma("Yew Logs",        "Ancient yew wood.",                     "🪵", buy:  400, sell:  150));
+        var magicLogs      = GetOrCreate("Magic Logs",      () => Ma("Magic Logs",      "Infused with residual magic.",          "✨", buy:  900, sell:  340));
+        var voidWood       = GetOrCreate("Void Wood",       () => Ma("Void Wood",       "Wood twisted by void energy.",          "🌑", buy: 2000, sell:  750));
 
         // ── NEW MATERIALS ──────────────────────────────────────────────────────
         var slimeCore     = GetOrCreate("Slime Core",     () => Ma("Slime Core",     "A gelatinous orb from a slime.",    "🔵", buy: 8,   sell: 3));
@@ -161,9 +183,25 @@ public static class GameExpansionSeeder
                 pending.Add((m, loot));
         }
 
-        // SLIMES (Slime Lv1 exists)
+        // SLIMES (Slime Lv1 exists — Easy tier)
+        // Lv 1 band: Easy = Slime (base seeder), Normal = Goopling, Hard = Corrosive Ooze, Very Hard = Chaos Jelly
+        Add(Mo("Goopling",        "A slightly feisty blob with attitude.",      "🟩",  1, "Plains",    38,  2, 1,  1, 2,  2,  4, Element.None,        22,  4,  15),
+            (slimeCore, 0.30m, 1, 1));
+        Add(Mo("Corrosive Ooze",  "Acidic slime that eats through metal.",      "🟨",  1, "Plains",    70,  3, 1,  3, 2,  3,  6, Element.Poison,       50,  8,  28),
+            (slimeCore, 0.55m, 1, 1), (smallHpPotion, 0.15m, 1, 1));
+        Add(Mo("Chaos Jelly",     "Unpredictably violent blob of pure mayhem.", "🌀",  1, "Plains",   110,  4, 1,  4, 3,  5,  9, Element.Dark,          85, 12,  45),
+            (slimeCore, 0.65m, 1, 2), (smallMpPotion, 0.20m, 1, 1));
+
+        // Lv 4 band: Easy = Blue Slime, Normal = Tar Glob, Hard = Plague Blot, Very Hard = Void Bubble
         Add(Mo("Blue Slime",    "A cool, ice-tinged blob.",         "🔵",  4, "Plains",    84,  3, 2,  3, 2,  5,  8, Element.Ice,         60,  8,  30),
             (slimeCore, 0.50m, 1, 1), (smallMpPotion, 0.25m, 1, 1));
+        Add(Mo("Tar Glob",      "Sticky, slow, and surprisingly tough.",        "🟤",  4, "Plains",   140,  4, 3,  2, 1,  6, 10, Element.None,        100, 12,  42),
+            (slimeCore, 0.55m, 1, 2), (copperOre, 0.25m, 1, 1));
+        Add(Mo("Plague Blot",   "Pestilent ooze that spreads disease.",         "🟫",  4, "Plains",   200,  5, 2,  5, 2,  7, 12, Element.Poison,       155, 16,  60),
+            (slimeCore, 0.60m, 1, 2), (smallHpPotion, 0.20m, 1, 1));
+        Add(Mo("Void Bubble",   "A sphere of nothingness that devours light.",  "⚫",  4, "Plains",   280,  6, 2,  7, 3,  9, 15, Element.Void,          225, 22,  80),
+            (slimeCore, 0.65m, 1, 2), (smallMpPotion, 0.30m, 1, 1));
+
         Add(Mo("Red Slime",     "Burns on contact.",                "🔴",  8, "Forest",   156,  5, 4,  6, 3, 10, 16, Element.Fire,        110, 16,  55),
             (slimeCore, 0.55m, 1, 2), (smallHpPotion, 0.20m, 1, 1));
         Add(Mo("Purple Slime",  "Oozes dark toxins.",              "🟣", 13, "Forest",   246,  8, 7,  9, 5, 16, 26, Element.Dark,        195, 26,  90),
@@ -173,7 +211,15 @@ public static class GameExpansionSeeder
         Add(Mo("Slime King",    "An enormous, regal blob.",        "👑", 35, "Dungeon",   920, 20, 18, 18, 10, 42, 70, Element.Earth,      820, 70, 320),
             (slimeCore, 0.90m, 2, 5), (largeHpPot, 0.30m, 1, 1), (steelSword, 0.04m, 1, 1));
 
-        // GOBLINS (Goblin Lv3 exists)
+        // GOBLINS (Goblin Lv3 exists — Normal tier)
+        // Lv 3 band: Easy = Scrappy Runt, Hard = Spear Goblin, Very Hard = Darkspawn Imp
+        Add(Mo("Scrappy Runt",    "Barely armed, mostly just annoying.",        "👶",  3, "Plains",    52,  2, 1,  1, 4,  3,  5, Element.None,         32,  5,  18),
+            (goblinEar, 0.35m, 1, 1));
+        Add(Mo("Spear Goblin",    "Throws crude spears with surprising aim.",   "🏹",  3, "Plains",   110,  4, 2,  2, 6,  5,  9, Element.None,          80, 10,  38),
+            (goblinEar, 0.55m, 1, 2), (copperOre, 0.20m, 1, 1));
+        Add(Mo("Darkspawn Imp",   "Tiny demon-goblin hybrid with vile magic.", "😈",  3, "Plains",   155,  5, 2,  5, 5,  7, 11, Element.Dark,          120, 14,  52),
+            (goblinEar, 0.60m, 1, 2), (smallMpPotion, 0.20m, 1, 1));
+
         Add(Mo("Cave Goblin",     "Sneaks through the darkness.",    "👺",  6, "Forest",   120,  4, 3,  4, 5,  7, 12, Element.None,         80, 10,  40),
             (goblinEar, 0.55m, 1, 2), (copperOre, 0.25m, 1, 2));
         Add(Mo("Hobgoblin",       "Bigger, meaner cousin.",          "👺", 11, "Mountains", 220, 10, 7,  5, 6, 13, 22, Element.None,        165, 22,  80),
@@ -182,6 +228,14 @@ public static class GameExpansionSeeder
             (goblinEar, 0.40m, 1, 2), (smallMpPotion, 0.35m, 1, 2), (shadowDagger, 0.03m, 1, 1));
         Add(Mo("Goblin Warchief", "Commands entire goblin armies.", "👿", 26, "Dungeon",  590, 22, 15, 10, 14, 31, 52, Element.None,        520, 52, 220),
             (goblinEar, 0.60m, 2, 4), (steelSword, 0.05m, 1, 1), (hpPotion, 0.30m, 1, 2));
+
+        // Lv 6 band extra tiers: Easy = Meadow Sprite, Hard = Venomfang, Very Hard = Gloomhunter
+        Add(Mo("Meadow Sprite",   "A gentle forest spirit gone slightly feral.",  "🧚",  6, "Forest",    88,  3, 2,  4, 6,  5,  8, Element.Wind,          55,  8,  30),
+            (witchHerb, 0.40m, 1, 1));
+        Add(Mo("Venomfang",       "A giant centipede with paralysing venom.",     "🐛",  6, "Forest",   180,  5, 3,  3, 5,  8, 13, Element.Poison,        130, 14,  52),
+            (witchHerb, 0.40m, 1, 1), (smallHpPotion, 0.20m, 1, 1));
+        Add(Mo("Gloomhunter",     "A shadowy beast that stalks from above.",      "🦅",  6, "Forest",   240,  6, 3,  4, 8, 10, 16, Element.Dark,           190, 18,  68),
+            (leather, 0.50m, 1, 2), (smallMpPotion, 0.20m, 1, 1));
 
         // TROLLS (Forest Troll Lv10 exists)
         Add(Mo("Cave Troll",    "Massive and dim-witted.",          "🧌", 16, "Mountains", 360, 15, 14, 4, 4, 19, 32, Element.None,        250, 32, 115),
@@ -458,6 +512,20 @@ public static class GameExpansionSeeder
         MinDamage = minDmg, MaxDamage = maxDmg, Element = element,
         XpReward = xpReward, OrbRewardMin = orbMin, OrbRewardMax = orbMax,
         AbilityJson = abilities
+    };
+
+    /// <summary>Gathering tool factory. BonusLUK = extra qty per gather action.</summary>
+    private static ItemDefinition To(string name, string desc, string icon, int levelReq,
+        ItemSubType subType, int gatherBonus,
+        long buy = 0, long sell = 0,
+        GameItemRarity rarity = GameItemRarity.Uncommon) => new()
+    {
+        Name = name, Description = desc, Icon = icon,
+        Type = GameItemType.Weapon, SubType = subType, EquipSlot = EquipSlot.MainHand,
+        Rarity = rarity, LevelReq = levelReq,
+        MinDamage = 1, MaxDamage = gatherBonus + 1,
+        BonusLUK = gatherBonus,
+        BuyPrice = buy, SellPrice = sell
     };
 
     // Peepo collectible factory — drop-only (BuyPrice = 0)

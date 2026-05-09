@@ -28,7 +28,7 @@ public enum MarketplaceCurrencyType
 public enum ItemSubType
 {
     // Weapons
-    Sword, Axe, Bow, Staff, Dagger,
+    Sword, Axe, Bow, Staff, Dagger, Gun,
     // Armor
     Helmet, Chestplate, Leggings, Boots, Shield, Ring, Amulet,
     // Consumables
@@ -38,7 +38,10 @@ public enum ItemSubType
     // Collectibles
     Peepo = 22,
     // Enchanting
-    EnchantBook = 23
+    EnchantBook = 23,
+    // Gathering tools
+    Pickaxe = 24,
+    FishingRod = 25
 }
 
 public enum EquipSlot
@@ -69,9 +72,14 @@ public enum Element
     Ice,
     Lightning,
     Earth,
+    Water,
+    Wind,
     Dark,
     Holy,
-    Void = 7
+    Light,
+    Shadow,
+    Poison,
+    Void
 }
 
 public enum CombatState

@@ -79,7 +79,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             XP = 0,
             STR = 10, DEF = 10, INT = 10, DEX = 10, VIT = 10, LUK = 5,
             CurrentHp = 100, MaxHp = 100,
-            CurrentMp = 50, MaxMp = 50
+            CurrentMp = 80, MaxMp = 80
         };
         await _uow.PlayerCharacters.AddAsync(player);
 
@@ -133,9 +133,9 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 new { cmd = "/inventory", desc = "View your inventory" },
                 new { cmd = "/equip [item]", desc = "Equip an item" },
                 new { cmd = "/unequip [slot]", desc = "Unequip from a slot" },
-                new { cmd = "/mine", desc = "Mine for ore — tier scales with Mining level (30s cooldown)" },
-                new { cmd = "/fish", desc = "Go fishing — tier scales with Fishing level (30s cooldown)" },
-                new { cmd = "/chop", desc = "Chop wood — tier scales with Woodcutting level (30s cooldown)" },
+                new { cmd = "/mine", desc = "Mine for ore — tier scales with Mining level (5s cooldown)" },
+                new { cmd = "/fish", desc = "Go fishing — tier scales with Fishing level (5s cooldown)" },
+                new { cmd = "/chop", desc = "Chop wood — tier scales with Woodcutting level (5s cooldown)" },
                 new { cmd = "/cook [raw fish]", desc = "Cook raw fish into food" },
                 new { cmd = "/craft [item]", desc = "Craft an item" },
                 new { cmd = "/recipes", desc = "View available recipes" },
@@ -302,13 +302,22 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
         if (itemDef.HealAmount > 0)
         {
-            int healed = Math.Min((int)(player.MaxHp * itemDef.HealAmount / 100.0), player.MaxHp - player.CurrentHp);
+            // Potions heal % of MaxHp; food heals a flat amount
+            bool isPotion = itemDef.SubType is ItemSubType.HealthPotion or ItemSubType.ManaPotion;
+            int rawHeal = isPotion
+                ? (int)(player.MaxHp * itemDef.HealAmount / 100.0)
+                : itemDef.HealAmount;
+            int healed = Math.Min(rawHeal, player.MaxHp - player.CurrentHp);
             player.CurrentHp += healed;
             log.Add(healed > 0 ? $"Restored {healed} HP." : "HP is already full.");
         }
         if (itemDef.ManaRestoreAmount > 0)
         {
-            int restored = Math.Min((int)(player.MaxMp * itemDef.ManaRestoreAmount / 100.0), player.MaxMp - player.CurrentMp);
+            bool isPotion = itemDef.SubType is ItemSubType.HealthPotion or ItemSubType.ManaPotion;
+            int rawMp = isPotion
+                ? (int)(player.MaxMp * itemDef.ManaRestoreAmount / 100.0)
+                : itemDef.ManaRestoreAmount;
+            int restored = Math.Min(rawMp, player.MaxMp - player.CurrentMp);
             player.CurrentMp += restored;
             log.Add(restored > 0 ? $"Restored {restored} MP." : "MP is already full.");
         }
@@ -545,7 +554,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                     {
                         int playerAttack = Random.Shared.Next(minDmg, maxDmg + 1) + (int)(effSTR * 0.5);
                         int damage = Math.Max(1, playerAttack - (int)(monster.DEF * 0.3));
-                        double elementBonus = ElementSystem.GetMultiplier(weaponElement, monster.Element);
+                        double elementBonus = ElementSystem.GetMultiplier(weaponElement, monster.Element, isMagic: false);
                         double critChance = Math.Min(0.25, totalLUK * 0.005 + totalDEX * 0.002);
                         bool crit = Random.Shared.NextDouble() < critChance;
                         int finalDamage = (int)(damage * elementBonus * (crit ? 1.5 : 1.0) * (1.0 - physResist));
@@ -553,7 +562,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
                         session.MonsterCurrentHp = Math.Max(0, session.MonsterCurrentHp - finalDamage);
                         string resistNote  = physResist > 0 ? $" 🪖 *({(int)(physResist*100)}% resisted)*" : "";
-                        string elementMsg  = elementBonus >= 1.5 ? $" {ElementSystem.GetElementIcon(weaponElement)} **Super effective!**"
+                        string elementMsg  = elementBonus >= 1.25 ? $" {ElementSystem.GetElementIcon(weaponElement)} **Effective!**"
                                            : elementBonus <= 0.75 ? " 🛡️ *Not very effective...*"
                                            : "";
                         logEntries.Add($"You attack for **{finalDamage}** damage!{resistNote}{(crit ? " **CRITICAL HIT!**" : "")}{elementMsg}");
@@ -588,25 +597,80 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                     if (silenced)
                     {
                         logEntries.Add("🔇 **Silenced!** Cannot cast magic this turn!");
-                        // Monster still gets a free attack
                         var silDmg = CalculateMonsterDamage(monster, effDEF, false, monsterBerserk);
                         player.CurrentHp = Math.Max(0, player.CurrentHp - silDmg);
                         logEntries.Add($"{monster.Name} attacks for **{silDmg}** damage!");
                         ApplyMonsterAbility(monster, playerFx, logEntries, player);
                         break;
                     }
-                    int spellDamage = (int)(totalINT * 1.5) + Random.Shared.Next(5, 15);
-                    int mpCost = 10 + player.Level;
-                    if (player.CurrentMp < mpCost)
+
+                    var spellName = args.Trim().ToLower().Split(' ')[0];
+                    if (string.IsNullOrWhiteSpace(spellName))
                     {
-                        logEntries.Add($"Not enough MP! Need {mpCost} MP.");
+                        logEntries.Add("Specify a spell: /magic fire  (or fira, firaga, firaja, blizzard, thunder, water, aero, cure, etc.)");
                         break;
                     }
-                    player.CurrentMp -= mpCost;
-                    int magicDmg = Math.Max(1, (int)((spellDamage - (int)(monster.DEF * 0.15)) * (1.0 - magicResist)));
+
+                    var spellDef = ElementSystem.FindSpell(spellName);
+                    if (spellDef == null)
+                    {
+                        logEntries.Add($"Unknown spell '{spellName}'. Try: fire, fira, firaga, firaja, blizzard, thunder, water, aero, dark, holy, cure, cura, etc.");
+                        break;
+                    }
+                    if (player.Level < spellDef.LevelReq)
+                    {
+                        logEntries.Add($"Requires level {spellDef.LevelReq} to cast {spellDef.Name}.");
+                        break;
+                    }
+                    if (player.CurrentMp < spellDef.MpCost)
+                    {
+                        logEntries.Add($"Not enough MP! **{spellDef.Name}** costs {spellDef.MpCost} MP, you have {player.CurrentMp}.");
+                        break;
+                    }
+                    player.CurrentMp -= spellDef.MpCost;
+
+                    // ── Healing spells ──────────────────────────────────────
+                    if (spellDef.IsHeal)
+                    {
+                        int rawHeal = (int)(totalINT * spellDef.IntScale) + 5;
+                        // Curse halves healing
+                        if (StatusEffects.IsCursed(playerFx)) rawHeal /= 2;
+                        int healed = Math.Min(rawHeal, player.MaxHp - player.CurrentHp);
+                        player.CurrentHp += healed;
+                        string curseNote = StatusEffects.IsCursed(playerFx) ? " *(Curse halved healing!)*" : "";
+                        logEntries.Add($"✨ **{spellDef.Name}** restores **{healed}** HP! (-{spellDef.MpCost} MP){curseNote}");
+
+                        // Monster still attacks
+                        var healRetDmg = CalculateMonsterDamage(monster, effDEF, false, monsterBerserk);
+                        player.CurrentHp = Math.Max(0, player.CurrentHp - healRetDmg);
+                        logEntries.Add($"{monster.Name} attacks for **{healRetDmg}** damage!");
+                        ApplyMonsterAbility(monster, playerFx, logEntries, player);
+                        break;
+                    }
+
+                    // ── Offensive spells ─────────────────────────────────────
+                    int spellBase = spellDef.BaseDamage + (int)(totalINT * spellDef.IntScale) + Random.Shared.Next(1, 8);
+                    double elemMult = ElementSystem.GetMultiplier(spellDef.Element, monster.Element, isMagic: true);
+                    int magicDmg = Math.Max(1, (int)((spellBase - (int)(monster.DEF * 0.15)) * elemMult * (1.0 - magicResist)));
+
                     session.MonsterCurrentHp = Math.Max(0, session.MonsterCurrentHp - magicDmg);
+
+                    string magElemIcon  = ElementSystem.GetElementIcon(spellDef.Element);
                     string magResistNote = magicResist > 0 ? $" ✨ *({(int)(magicResist*100)}% resisted)*" : "";
-                    logEntries.Add($"You cast a spell for **{magicDmg}** damage! (-{mpCost} MP){magResistNote}");
+                    string magElemMsg   = elemMult >= 1.5  ? $" {magElemIcon} **Super effective!**"
+                                        : elemMult >= 1.25 ? $" {magElemIcon} *Effective!*"
+                                        : elemMult <= 0.75 ? " 🛡️ *Not very effective...*"
+                                        : "";
+                    logEntries.Add($"{magElemIcon} **{spellDef.Name}** hits for **{magicDmg}** damage! (-{spellDef.MpCost} MP){magResistNote}{magElemMsg}");
+
+                    // Apply elemental status to monster (35% chance)
+                    var magEffect = ElementSystem.GetElementalStatusEffect(spellDef.Element);
+                    if (magEffect != null && session.MonsterCurrentHp > 0 && Random.Shared.NextDouble() < 0.35)
+                    {
+                        var (mStr, mTurns) = ElementSystem.GetStatusParams(spellDef.Element);
+                        StatusEffects.Apply(monsterFx, magEffect, mStr, mTurns);
+                        logEntries.Add($"{StatusEffects.Icons.GetValueOrDefault(magEffect, "")} {monster.Name} is afflicted with **{magEffect}**!");
+                    }
 
                     if (session.MonsterCurrentHp <= 0)
                     {
@@ -638,15 +702,22 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
                     if (itemDef.HealAmount > 0)
                     {
-                        int healAmt = (int)(player.MaxHp * itemDef.HealAmount / 100.0);
-                        if (StatusEffects.IsCursed(playerFx)) healAmt /= 2;  // Curse halves healing
+                        bool isPotion = itemDef.SubType is ItemSubType.HealthPotion or ItemSubType.ManaPotion;
+                        int healAmt = isPotion
+                            ? (int)(player.MaxHp * itemDef.HealAmount / 100.0)
+                            : itemDef.HealAmount;
+                        if (StatusEffects.IsCursed(playerFx)) healAmt /= 2;
                         int healed = Math.Min(healAmt, player.MaxHp - player.CurrentHp);
                         player.CurrentHp += healed;
                         logEntries.Add($"Used {itemDef.Name}! Restored **{healed}** HP.{(StatusEffects.IsCursed(playerFx) ? " *(Curse halved healing!)*" : "")}");
                     }
                     if (itemDef.ManaRestoreAmount > 0)
                     {
-                        int restored = Math.Min((int)(player.MaxMp * itemDef.ManaRestoreAmount / 100.0), player.MaxMp - player.CurrentMp);
+                        bool isManaPotion = itemDef.SubType is ItemSubType.HealthPotion or ItemSubType.ManaPotion;
+                        int mpAmt = isManaPotion
+                            ? (int)(player.MaxMp * itemDef.ManaRestoreAmount / 100.0)
+                            : itemDef.ManaRestoreAmount;
+                        int restored = Math.Min(mpAmt, player.MaxMp - player.CurrentMp);
                         player.CurrentMp += restored;
                         logEntries.Add($"Used {itemDef.Name}! Restored **{restored}** MP.");
                     }
@@ -837,9 +908,21 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
         if (abilities.Count == 0) return;
 
+        // Cap how many abilities trigger per turn — scales with monster level
+        int maxTriggers = monster.Level switch
+        {
+            <= 10 => 1,
+            <= 25 => 2,
+            <= 45 => 3,
+            _     => 99
+        };
+        int triggered = 0;
+
         foreach (var ability in abilities)
         {
+            if (triggered >= maxTriggers) break;
             if (Random.Shared.NextDouble() >= ability.Chance) continue;
+            triggered++;
 
             // Scale strength by monster INT for relevant effects
             int strength = ability.Type.ToLower() switch
@@ -931,11 +1014,16 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 rarity    = i.Rarity.ToString(),
                 levelReq  = i.LevelReq,
                 buyPrice  = i.BuyPrice,
-                effect    = i.HealAmount > 0 && i.ManaRestoreAmount > 0
-                    ? $"+{i.HealAmount}% HP / +{i.ManaRestoreAmount}% MP"
-                    : i.HealAmount > 0 ? $"+{i.HealAmount}% HP"
-                    : i.ManaRestoreAmount > 0 ? $"+{i.ManaRestoreAmount}% MP"
-                    : "",
+                effect    = (i.SubType is ItemSubType.HealthPotion or ItemSubType.ManaPotion)
+                    ? (i.HealAmount > 0 && i.ManaRestoreAmount > 0
+                        ? $"+{i.HealAmount}% HP / +{i.ManaRestoreAmount}% MP"
+                        : i.HealAmount > 0 ? $"+{i.HealAmount}% HP"
+                        : $"+{i.ManaRestoreAmount}% MP")
+                    : (i.HealAmount > 0 && i.ManaRestoreAmount > 0
+                        ? $"+{i.HealAmount} HP / +{i.ManaRestoreAmount} MP"
+                        : i.HealAmount > 0 ? $"+{i.HealAmount} HP"
+                        : i.ManaRestoreAmount > 0 ? $"+{i.ManaRestoreAmount} MP"
+                        : ""),
                 bonuses   = string.Join(" ", new[]
                 {
                     i.BonusSTR > 0 ? $"STR+{i.BonusSTR}" : "",
@@ -1050,15 +1138,30 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         var itemList = items.Select(i =>
         {
             var enchants = i.GetEnchants();
+            long sellValue = i.ItemDefinition.SellPrice > 0
+                ? i.ItemDefinition.SellPrice
+                : (long)(i.ItemDefinition.BuyPrice * 0.45);
             return new
             {
-                name     = i.ItemDefinition.Name,
-                type     = i.ItemDefinition.Type.ToString(),
-                rarity   = i.ItemDefinition.Rarity.ToString(),
-                quantity = i.Quantity,
-                equipped = i.IsEquipped,
-                slot     = i.EquippedSlot?.ToString(),
-                enchants = enchants.Select(e => new
+                name      = i.ItemDefinition.Name,
+                icon      = i.ItemDefinition.Icon,
+                type      = i.ItemDefinition.Type.ToString(),
+                subType   = i.ItemDefinition.SubType.ToString(),
+                rarity    = i.ItemDefinition.Rarity.ToString(),
+                quantity  = i.Quantity,
+                equipped  = i.IsEquipped,
+                slot      = i.EquippedSlot?.ToString(),
+                sellValue,
+                bonusStr  = i.ItemDefinition.BonusSTR,
+                bonusDef  = i.ItemDefinition.BonusDEF,
+                bonusInt  = i.ItemDefinition.BonusINT,
+                bonusDex  = i.ItemDefinition.BonusDEX,
+                bonusVit  = i.ItemDefinition.BonusVIT,
+                bonusLuk  = i.ItemDefinition.BonusLUK,
+                minDmg    = i.ItemDefinition.MinDamage,
+                maxDmg    = i.ItemDefinition.MaxDamage,
+                healAmount= i.ItemDefinition.HealAmount,
+                enchants  = enchants.Select(e => new
                 {
                     element = e.Element.ToString(),
                     icon    = ElementSystem.GetElementIcon(e.Element),
@@ -1066,7 +1169,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                     tier    = e.Tier,
                     bonus   = e.Bonus
                 }),
-                maxSlots = PlayerInventoryItem.MaxSlotsForRarity(i.ItemDefinition.Rarity),
+                maxSlots  = PlayerInventoryItem.MaxSlotsForRarity(i.ItemDefinition.Rarity),
                 usedSlots = enchants.Count
             };
         }).ToList();
@@ -1142,9 +1245,9 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
     private async Task<GameCommandResult> HandleGather(PlayerCharacter player, string command)
     {
-        if (player.LastGatherAt.HasValue && player.LastGatherAt.Value.AddSeconds(30) > DateTime.UtcNow)
+        if (player.LastGatherAt.HasValue && player.LastGatherAt.Value.AddSeconds(5) > DateTime.UtcNow)
         {
-            var remaining = (int)(player.LastGatherAt.Value.AddSeconds(30) - DateTime.UtcNow).TotalSeconds;
+            var remaining = (int)(player.LastGatherAt.Value.AddSeconds(5) - DateTime.UtcNow).TotalSeconds + 1;
             return GameCommandResult.Single("error", new { message = $"Gathering on cooldown! {remaining}s remaining." });
         }
 
@@ -1178,12 +1281,33 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
         var level = skill.Level;
 
+        // Check for an equipped gathering tool in MainHand (BonusLUK = extra qty)
+        var equippedItems = await _uow.PlayerInventoryItems.GetEquippedItemsAsync(player.Id);
+        var mainHand = equippedItems.FirstOrDefault(e => e.EquippedSlot == EquipSlot.MainHand);
+        int toolBonus = 0;
+        string? toolName = null;
+        if (mainHand != null)
+        {
+            bool isMatchingTool = command switch
+            {
+                "/mine" => mainHand.ItemDefinition.SubType == ItemSubType.Pickaxe,
+                "/fish" => mainHand.ItemDefinition.SubType == ItemSubType.FishingRod,
+                "/chop" => mainHand.ItemDefinition.SubType == ItemSubType.Axe,
+                _ => false
+            };
+            if (isMatchingTool)
+            {
+                toolBonus = mainHand.ItemDefinition.BonusLUK;
+                toolName  = mainHand.ItemDefinition.Name;
+            }
+        }
+
         // Determine primary item name based on skill level (highest tier unlocked)
         // 80% chance of highest tier, 20% chance of a random lower tier
         string primaryItemName = command switch
         {
             "/mine" => level >= 85 ? "Voidstone"
-                     : level >= 70 ? "Runite Ore"
+                     : level >= 70 ? "Adamantium Ore"
                      : level >= 55 ? "Adamantite Ore"
                      : level >= 40 ? "Mithril Ore"
                      : level >= 30 ? "Gold Ore"
@@ -1191,13 +1315,13 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                      : level >= 10 ? "Iron Ore"
                      : "Copper Ore",
 
-            "/fish" => level >= 90 ? "Raw Abyssal Eel"
-                     : level >= 80 ? "Raw Shark"
-                     : level >= 65 ? "Raw Swordfish"
-                     : level >= 50 ? "Raw Lobster"
-                     : level >= 35 ? "Raw Tuna"
-                     : level >= 20 ? "Raw Salmon"
-                     : level >= 10 ? "Raw Trout"
+            "/fish" => level >= 75 ? "Raw Abyssal Eel"
+                     : level >= 60 ? "Raw Shark"
+                     : level >= 45 ? "Raw Swordfish"
+                     : level >= 30 ? "Raw Lobster"
+                     : level >= 20 ? "Raw Tuna"
+                     : level >= 12 ? "Raw Salmon"
+                     : level >=  5 ? "Raw Trout"
                      : "Raw Shrimp",
 
             "/chop" => level >= 90 ? "Void Wood"
@@ -1212,8 +1336,8 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         };
 
         // Build all tiers the player can access (for the 20% lower-tier roll)
-        string[] allUnlockedMine = level >= 85 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore", "Adamantite Ore", "Runite Ore", "Voidstone" }
-                                 : level >= 70 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore", "Adamantite Ore", "Runite Ore" }
+        string[] allUnlockedMine = level >= 85 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore", "Adamantite Ore", "Adamantium Ore", "Voidstone" }
+                                 : level >= 70 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore", "Adamantite Ore", "Adamantium Ore" }
                                  : level >= 55 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore", "Adamantite Ore" }
                                  : level >= 40 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore", "Mithril Ore" }
                                  : level >= 30 ? new[] { "Copper Ore", "Iron Ore", "Silver Ore", "Gold Ore" }
@@ -1221,13 +1345,13 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                                  : level >= 10 ? new[] { "Copper Ore", "Iron Ore" }
                                  : new[] { "Copper Ore" };
 
-        string[] allUnlockedFish = level >= 90 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster", "Raw Swordfish", "Raw Shark", "Raw Abyssal Eel" }
-                                 : level >= 80 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster", "Raw Swordfish", "Raw Shark" }
-                                 : level >= 65 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster", "Raw Swordfish" }
-                                 : level >= 50 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster" }
-                                 : level >= 35 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna" }
-                                 : level >= 20 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon" }
-                                 : level >= 10 ? new[] { "Raw Shrimp", "Raw Trout" }
+        string[] allUnlockedFish = level >= 75 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster", "Raw Swordfish", "Raw Shark", "Raw Abyssal Eel" }
+                                 : level >= 60 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster", "Raw Swordfish", "Raw Shark" }
+                                 : level >= 45 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster", "Raw Swordfish" }
+                                 : level >= 30 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna", "Raw Lobster" }
+                                 : level >= 20 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon", "Raw Tuna" }
+                                 : level >= 12 ? new[] { "Raw Shrimp", "Raw Trout", "Raw Salmon" }
+                                 : level >=  5 ? new[] { "Raw Shrimp", "Raw Trout" }
                                  : new[] { "Raw Shrimp" };
 
         string[] allUnlockedChop = level >= 90 ? new[] { "Wood", "Oak Logs", "Willow Logs", "Maple Logs", "Yew Logs", "Magic Logs", "Void Wood" }
@@ -1255,8 +1379,8 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
         var itemDef = await _uow.ItemDefinitions.GetByNameAsync(itemName);
 
-        int qty = 1 + skill.Level / 10;
-        long xpGained = 15 + skill.Level * 2;
+        int qty = 1 + skill.Level / 10 + toolBonus;
+        long xpGained = 15 + skill.Level * 2 + toolBonus * 3;
 
         if (itemDef != null)
             await AddItemToInventory(player.Id, itemDef.Id, qty);
@@ -1293,7 +1417,9 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             xpGained,
             skillLevel = skill.Level,
             skillXp = skill.XP,
-            skillXpToNext = skill.XpToNextLevel
+            skillXpToNext = skill.XpToNextLevel,
+            toolName,
+            toolBonus
         });
     }
 

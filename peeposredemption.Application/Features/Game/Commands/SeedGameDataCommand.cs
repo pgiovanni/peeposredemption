@@ -16,6 +16,7 @@ public class SeedGameDataCommandHandler : IRequestHandler<SeedGameDataCommand>
         await PatchMonsterAbilitiesAsync();
         await PatchConsumablesAsync();
         await PatchEnchantMaterialsAsync();
+        await PatchGatherEconomyAsync();
 
         if (await _uow.ItemDefinitions.AnyAsync()) return; // Already seeded
 
@@ -283,28 +284,29 @@ public class SeedGameDataCommandHandler : IRequestHandler<SeedGameDataCommand>
         var all = await _uow.ItemDefinitions.GetAllAsync();
         if (all.Count == 0) return;
 
-        // HealAmount = % of player MaxHp; ManaRestoreAmount = % of player MaxMp
+        // Potions: HealAmount = % of player MaxHp (scales with level).
+        // Food: HealAmount = flat HP (consistent regardless of level).
         var map = new Dictionary<string, (int heal, int mana, string desc)>(StringComparer.OrdinalIgnoreCase)
         {
-            // Potions
+            // Potions (percentage-based)
             ["Small Health Potion"]  = (15,  0, "Restores 15% of your max HP."),
             ["Health Potion"]        = (30,  0, "Restores 30% of your max HP."),
             ["Large Health Potion"]  = (50,  0, "Restores 50% of your max HP."),
-            ["Small Mana Potion"]    = ( 0, 15, "Restores 15% of your max MP."),
-            ["Mana Potion"]          = ( 0, 30, "Restores 30% of your max MP."),
-            ["Large Mana Potion"]    = ( 0, 55, "Restores 55% of your max MP."),
-            ["Elixir of Life"]       = (75, 60, "Restores 75% HP and 60% MP."),
-            // Food
-            ["Burnt Fish"]           = ( 1,  0, "Restores 1% HP. Tastes terrible."),
-            ["Cooked Shrimp"]        = ( 5,  0, "Restores 5% of your max HP."),
-            ["Cooked Trout"]         = ( 8,  0, "Restores 8% of your max HP."),
-            ["Cooked Salmon"]        = (12,  0, "Restores 12% of your max HP."),
-            ["Cooked Tuna"]          = (18,  0, "Restores 18% of your max HP."),
-            ["Fish Stew"]            = (15, 10, "Restores 15% HP and 10% MP."),
-            ["Cooked Lobster"]       = (25,  0, "Restores 25% of your max HP."),
-            ["Cooked Swordfish"]     = (32,  0, "Restores 32% of your max HP."),
-            ["Cooked Shark"]         = (45,  0, "Restores 45% of your max HP."),
-            ["Cooked Abyssal Eel"]   = (60, 20, "Restores 60% HP and 20% MP."),
+            ["Small Mana Potion"]    = ( 0, 30, "Restores 30% of your max MP."),
+            ["Mana Potion"]          = ( 0, 55, "Restores 55% of your max MP."),
+            ["Large Mana Potion"]    = ( 0, 80, "Restores 80% of your max MP."),
+            ["Elixir of Life"]       = (75, 75, "Restores 75% HP and 75% MP."),
+            // Food (flat HP — consistent at any level)
+            ["Burnt Fish"]           = ( 3,   0, "Restores 3 HP. Tastes terrible."),
+            ["Cooked Shrimp"]        = (15,   0, "Restores 15 HP."),
+            ["Cooked Trout"]         = (25,   0, "Restores 25 HP."),
+            ["Cooked Salmon"]        = (40,   0, "Restores 40 HP."),
+            ["Cooked Tuna"]          = (60,   0, "Restores 60 HP."),
+            ["Fish Stew"]            = (50,  20, "Restores 50 HP and 20 MP."),
+            ["Cooked Lobster"]       = (85,   0, "Restores 85 HP."),
+            ["Cooked Swordfish"]     = (120,  0, "Restores 120 HP."),
+            ["Cooked Shark"]         = (175,  0, "Restores 175 HP."),
+            ["Cooked Abyssal Eel"]   = (250, 60, "Restores 250 HP and 60 MP."),
         };
 
         bool changed = false;
@@ -320,6 +322,70 @@ public class SeedGameDataCommandHandler : IRequestHandler<SeedGameDataCommand>
         if (changed) await _uow.SaveChangesAsync();
     }
 
+    private async Task PatchGatherEconomyAsync()
+    {
+        var all = await _uow.ItemDefinitions.GetAllAsync();
+        if (all.Count == 0) return;
+
+        // Sell prices for gathering resources — applied on every startup so rebalancing takes effect.
+        // Raw fish < Cooked fish (cooking reward). Ores scale steeply with tier.
+        var sellPrices = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase)
+        {
+            // ── Ores ──────────────────────────────────────────────────────────
+            ["Copper Ore"]      =    3,
+            ["Iron Ore"]        =    8,
+            ["Silver Ore"]      =   20,
+            ["Gold Ore"]        =   45,
+            ["Mithril Ore"]     =  100,
+            ["Adamantite Ore"]  =  220,
+            ["Adamantium Ore"]  =  480,
+            ["Voidstone"]       = 1000,
+            // ── Gems ──────────────────────────────────────────────────────────
+            ["Sapphire"]        =   35,
+            ["Emerald"]         =   80,
+            ["Ruby"]            =  175,
+            ["Diamond"]         =  400,
+            // ── Wood ──────────────────────────────────────────────────────────
+            ["Wood"]            =    3,
+            ["Oak Logs"]        =   12,
+            ["Willow Logs"]     =   28,
+            ["Maple Logs"]      =   65,
+            ["Yew Logs"]        =  150,
+            ["Magic Logs"]      =  340,
+            ["Void Wood"]       =  750,
+            // ── Raw fish ──────────────────────────────────────────────────────
+            ["Raw Shrimp"]      =    4,
+            ["Raw Trout"]       =   12,
+            ["Raw Salmon"]      =   28,
+            ["Raw Tuna"]        =   60,
+            ["Raw Lobster"]     =  130,
+            ["Raw Swordfish"]   =  280,
+            ["Raw Shark"]       =  580,
+            ["Raw Abyssal Eel"] = 1200,
+            // ── Cooked fish (≈2.5× raw — reward for cooking skill) ────────────
+            ["Cooked Shrimp"]      =   10,
+            ["Cooked Trout"]       =   30,
+            ["Cooked Salmon"]      =   70,
+            ["Cooked Tuna"]        =  150,
+            ["Cooked Lobster"]     =  325,
+            ["Cooked Swordfish"]   =  700,
+            ["Cooked Shark"]       = 1450,
+            ["Cooked Abyssal Eel"] = 3000,
+            ["Fish Stew"]          =  200,
+            ["Burnt Fish"]         =    1,
+        };
+
+        bool changed = false;
+        foreach (var item in all)
+        {
+            if (!sellPrices.TryGetValue(item.Name, out var price)) continue;
+            if (item.SellPrice == price) continue;
+            item.SellPrice = price;
+            changed = true;
+        }
+        if (changed) await _uow.SaveChangesAsync();
+    }
+
     private async Task PatchMonsterAbilitiesAsync()
     {
         var monsters = await _uow.MonsterDefinitions.GetByLevelRangeAsync(0, 999);
@@ -328,32 +394,32 @@ public class SeedGameDataCommandHandler : IRequestHandler<SeedGameDataCommand>
         // Map monster name → ability JSON. Only fills in monsters that have AbilityJson == null.
         var abilityMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            // ── Plains (Lv 1-5) ──────────────────────────────────────────────
-            ["Slime"]               = SA(("Slow",        0.20f, 0,  2)),
-            ["Blue Slime"]          = SA(("Slow",        0.25f, 0,  2), ("Poison",      0.15f, 2,  2)),
-            ["Red Slime"]           = SA(("Burn",        0.30f, 4,  2)),
-            ["Goblin"]              = SA(("Bleed",       0.30f, 4,  2)),
-            ["Cave Goblin"]         = SA(("Bleed",       0.35f, 5,  2), ("Blind",       0.20f, 0,  1)),
-            ["Wolf"]                = SA(("Bleed",       0.40f, 6,  3)),
-            ["Young Werewolf"]      = SA(("Bleed",       0.35f, 5,  2), ("AttackDown",  0.20f, 3,  2)),
+            // ── Plains (Lv 1-5) — single ability, low chance, low strength ──
+            ["Slime"]               = SA(("Slow",        0.15f, 0,  1)),
+            ["Blue Slime"]          = SA(("Slow",        0.15f, 0,  1), ("Poison",      0.10f, 1,  2)),
+            ["Red Slime"]           = SA(("Burn",        0.20f, 3,  2)),
+            ["Goblin"]              = SA(("Bleed",       0.20f, 3,  2)),
+            ["Cave Goblin"]         = SA(("Bleed",       0.25f, 4,  2), ("Blind",       0.15f, 0,  1)),
+            ["Wolf"]                = SA(("Bleed",       0.25f, 4,  2)),
+            ["Young Werewolf"]      = SA(("Bleed",       0.25f, 4,  2), ("AttackDown",  0.15f, 2,  2)),
 
-            // ── Forest (Lv 7-12) ─────────────────────────────────────────────
-            ["Giant Spider"]        = SA(("Poison",      0.50f, 3,  3)),
-            ["Clay Golem"]          = SA(("DefenseDown", 0.30f, 4,  2), ("Slow",        0.25f, 0,  2), ("PhysResist", 1.0f, 15, 0)),
-            ["Swamp Hag"]           = SA(("Curse",       0.35f, 0,  3), ("Poison",      0.30f, 2,  3)),
-            ["Orc"]                 = SA(("AttackDown",  0.30f, 4,  2)),
-            ["Skeleton"]            = SA(("DefenseDown", 0.30f, 4,  2), ("PhysResist",  1.0f, 10, 0)),
-            ["Forest Troll"]        = SA(("Bleed",       0.45f, 8,  3), ("Slow",        0.30f, 0,  2)),
-            ["Hobgoblin"]           = SA(("Bleed",       0.35f, 6,  2), ("AttackDown",  0.25f, 4,  2)),
-            ["Imp"]                 = SA(("Confusion",   0.35f, 0,  2), ("MpDrain",     0.30f, 5,  2)),
-            ["Swamp Ogre"]          = SA(("Poison",      0.40f, 3,  3), ("DefenseDown", 0.25f, 5,  2)),
+            // ── Forest (Lv 7-12) — 1-2 abilities, moderate ───────────────────
+            ["Giant Spider"]        = SA(("Poison",      0.30f, 2,  3)),
+            ["Clay Golem"]          = SA(("DefenseDown", 0.25f, 3,  2), ("Slow",        0.20f, 0,  2), ("PhysResist", 1.0f, 15, 0)),
+            ["Swamp Hag"]           = SA(("Curse",       0.25f, 0,  2), ("Poison",      0.20f, 2,  2)),
+            ["Orc"]                 = SA(("AttackDown",  0.25f, 3,  2)),
+            ["Skeleton"]            = SA(("DefenseDown", 0.25f, 3,  2), ("PhysResist",  1.0f, 10, 0)),
+            ["Forest Troll"]        = SA(("Bleed",       0.30f, 6,  2), ("Slow",        0.20f, 0,  2)),
+            ["Hobgoblin"]           = SA(("Bleed",       0.25f, 5,  2), ("AttackDown",  0.20f, 3,  2)),
+            ["Imp"]                 = SA(("Confusion",   0.25f, 0,  2), ("MpDrain",     0.20f, 4,  2)),
+            ["Swamp Ogre"]          = SA(("Poison",      0.30f, 2,  3), ("DefenseDown", 0.20f, 4,  2)),
 
-            // ── Mountains (Lv 13-19) ─────────────────────────────────────────
-            ["Purple Slime"]        = SA(("Poison",      0.40f, 3,  3), ("Slow",        0.30f, 0,  2)),
-            ["Rock Golem"]          = SA(("DefenseDown", 0.35f, 5,  3), ("Slow",        0.30f, 0,  2), ("PhysResist", 1.0f, 20, 0)),
-            ["Lost Soul"]           = SA(("Curse",       0.40f, 0,  3), ("MpDrain",     0.35f, 5,  2)),
-            ["Silverback Werewolf"] = SA(("Bleed",       0.45f, 8,  3), ("AttackDown",  0.30f, 5,  2)),
-            ["Forest Witch"]        = SA(("Curse",       0.40f, 0,  3), ("Silence",     0.30f, 0,  2), ("MpDrain",    0.25f, 6, 2)),
+            // ── Mountains (Lv 13-19) — 2 abilities, normal ───────────────────
+            ["Purple Slime"]        = SA(("Poison",      0.30f, 3,  3), ("Slow",        0.25f, 0,  2)),
+            ["Rock Golem"]          = SA(("DefenseDown", 0.30f, 4,  3), ("Slow",        0.25f, 0,  2), ("PhysResist", 1.0f, 20, 0)),
+            ["Lost Soul"]           = SA(("Curse",       0.30f, 0,  3), ("MpDrain",     0.25f, 5,  2)),
+            ["Silverback Werewolf"] = SA(("Bleed",       0.35f, 7,  3), ("AttackDown",  0.25f, 4,  2)),
+            ["Forest Witch"]        = SA(("Curse",       0.30f, 0,  3), ("Silence",     0.25f, 0,  2), ("MpDrain",    0.20f, 5, 2)),
             ["King Slime Prime"]    = SA(("Slow",        0.60f, 0,  3), ("Poison",      0.50f, 4,  3), ("DefenseDown",0.40f, 6, 2)),  // boss
             ["Skeleton Archer"]     = SA(("Blind",       0.40f, 0,  2), ("Bleed",       0.35f, 7,  2), ("PhysResist", 1.0f, 10, 0)),
             ["Cave Troll"]          = SA(("Bleed",       0.40f, 9,  3), ("DefenseDown", 0.30f, 5,  2)),

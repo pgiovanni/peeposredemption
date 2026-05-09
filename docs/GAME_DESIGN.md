@@ -563,7 +563,7 @@ Crafted via Smithing (melee/ranged) or Alchemy+Woodcutting (staves/bows).
 |--------|------------|--------|
 | Adamantite Sword | 3x Adamantite Bar | 50 |
 | Adamantite Axe | 4x Adamantite Bar | 52 |
-| Runite Dagger | 2x Runite Bar + 1x Diamond | 60 |
+| Adamantium Dagger | 2x Adamantium Bar + 1x Diamond | 60 |
 | Yew Bow | 3x Yew Log + 2x Mithril Bar | 55 |
 | Magic Staff | 3x Magic Log + 1x Enchanting Material | 60 |
 
@@ -591,7 +591,7 @@ Stat values shown are per-piece (Chest). Helm = ~60%, Legs = ~80%, Feet = ~50%, 
 | Set | Lv | DEF | VIT | Other | Craft |
 |-----|----|-----|-----|-------|-------|
 | Dragonscale (Epic) | 50 | +35 | +10 | +8 STR | 4x Dragonscale + 2x Adamantite Bar |
-| Runite Plate | 55 | +40 | +8 | — | 4x Runite Bar |
+| Adamantium Plate | 55 | +40 | +8 | — | 4x Adamantium Bar |
 | Mage Vestments | 45 | +12 | +5 | +15 INT, +10 MDEF | 3x Magic Log + 2x Silver Ore |
 
 **Tier 4 — Endgame**
@@ -816,7 +816,7 @@ Available via `/market`
 | 30 | Gold Ore | High value, jewelry |
 | 40 | Mithril Ore | Mid-tier smithing |
 | 55 | Adamantite Ore | High-tier smithing |
-| 70 | Runite Ore | Endgame smithing |
+| 70 | Adamantium Ore | Endgame smithing |
 | 85 | Voidstone | Tier 5 crafting |
 | Any | Gems (Sapphire→Diamond) | Random chance, scales with level |
 
