@@ -1756,6 +1756,33 @@ app.MapGet("/api/bot/items", async (
     return Results.Ok(items);
 });
 
+// Crafting recipe list (for autocomplete)
+app.MapGet("/api/bot/recipes", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    var recipes = await db.CraftingRecipes
+        .Include(r => r.OutputItem)
+        .Include(r => r.Ingredients).ThenInclude(i => i.ItemDefinition)
+        .OrderBy(r => r.RequiredSkillLevel)
+        .ThenBy(r => r.Name)
+        .Select(r => new
+        {
+            name        = r.Name,
+            output      = r.OutputItem.Name,
+            skill       = r.RequiredSkill.ToString(),
+            skillLevel  = r.RequiredSkillLevel,
+            ingredients = r.Ingredients.Select(i => new { name = i.ItemDefinition.Name, qty = i.Quantity }),
+            orbCost     = r.OrbCost
+        })
+        .ToListAsync();
+
+    return Results.Ok(recipes);
+});
+
 // Monster dictionary
 app.MapGet("/api/bot/monsters", async (
     HttpContext ctx,
