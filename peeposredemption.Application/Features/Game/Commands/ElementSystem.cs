@@ -210,38 +210,36 @@ public static class ElementSystem
     {
         var list = new List<SpellDef>();
 
-        // (Element, baseName, base1, base2, base3, base4)
-        var defs = new (Element el, string n, int b1, int b2, int b3, int b4)[]
+        // Explicit names per tier — must match the bot's SPELLS list exactly
+        // (Element, t1, t2, t3, t4, base1, base2, base3, base4)
+        var defs = new (Element el, string t1, string t2, string t3, string t4, int b1, int b2, int b3, int b4)[]
         {
-            (Element.Fire,      "Fire",      18, 28, 42, 60),
-            (Element.Ice,       "Blizzard",  16, 26, 40, 58),
-            (Element.Lightning, "Thunder",   20, 32, 48, 68),
-            (Element.Earth,     "Quake",     14, 24, 38, 54),
-            (Element.Water,     "Water",     15, 25, 39, 56),
-            (Element.Wind,      "Aero",      13, 22, 35, 50),
-            (Element.Dark,      "Dark",      17, 28, 44, 64),
-            (Element.Holy,      "Holy",      16, 26, 40, 58),
-            (Element.Light,     "Flash",     15, 24, 38, 54),
-            (Element.Shadow,    "Shadow",    17, 27, 42, 60),
-            (Element.Poison,    "Bio",       12, 20, 32, 48),
-            (Element.Void,      "Void",      22, 36, 55, 80),
+            (Element.Fire,      "Fire",    "Fira",     "Firaga",    "Firaja",    18, 28, 42, 60),
+            (Element.Ice,       "Blizzard","Blizzara",  "Blizzaga",  "Blizzaja",  16, 26, 40, 58),
+            (Element.Lightning, "Thunder", "Thundera",  "Thunderga", "Thunderja", 20, 32, 48, 68),
+            (Element.Earth,     "Quake",   "Quakera",   "Quakega",   "Quakeja",   14, 24, 38, 54),
+            (Element.Water,     "Water",   "Watera",    "Waterga",   "Waterja",   15, 25, 39, 56),
+            (Element.Wind,      "Aero",    "Aerora",    "Aeroga",    "Aeroja",    13, 22, 35, 50),
+            (Element.Dark,      "Dark",    "Darkra",    "Darkga",    "Darkja",    17, 28, 44, 64),
+            (Element.Holy,      "Holy",    "Holra",     "Holga",     "Holja",     16, 26, 40, 58),
+            (Element.Light,     "Flash",   "Flashra",   "Flashga",   "Flashja",   15, 24, 38, 54),
+            (Element.Shadow,    "Shadow",  "Shadowra",  "Shadowga",  "Shadowja",  17, 27, 42, 60),
+            (Element.Poison,    "Bio",     "Biora",     "Bioga",     "Bioja",     12, 20, 32, 48),
+            (Element.Void,      "Void",    "Voidra",    "Voidga",    "Voidja",    22, 36, 55, 80),
         };
 
-        // Suffix pattern: tier1=base, tier2=+a, tier3=+ga, tier4=+ja
-        string[] suffixes = { "", "ra", "ga", "ja" };
         int[] mpCosts     = { 7, 25, 55, 90 };
         float[] intScales = { 0f, 0.5f, 1.0f, 2.0f };
         int[] levelReqs   = { 1, 10, 25, 50 };
-        int[] bases       = { 0, 0, 0, 0 }; // filled per element below
 
-        foreach (var (el, baseName, b1, b2, b3, b4) in defs)
+        foreach (var (el, t1, t2, t3, t4, b1, b2, b3, b4) in defs)
         {
-            int[] elmBases = { b1, b2, b3, b4 };
+            string[] names   = { t1, t2, t3, t4 };
+            int[]    elmBases = { b1, b2, b3, b4 };
             for (int t = 0; t < 4; t++)
             {
-                string spellName = t == 0 ? baseName : baseName + suffixes[t];
                 list.Add(new SpellDef(
-                    spellName, el, t + 1,
+                    names[t], el, t + 1,
                     mpCosts[t], elmBases[t], intScales[t],
                     levelReqs[t]));
             }
