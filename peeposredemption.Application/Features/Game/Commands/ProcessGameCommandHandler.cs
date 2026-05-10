@@ -154,6 +154,8 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
     {
         var equipped = await _uow.PlayerInventoryItems.GetEquippedItemsAsync(player.Id);
         var skills = await _uow.PlayerSkills.GetByPlayerIdAsync(player.Id);
+        var activeCombat = await _uow.CombatSessions.GetActiveByPlayerIdAsync(player.Id);
+        var inCombat = activeCombat != null;
 
         int bonusSTR = 0, bonusDEF = 0, bonusINT = 0, bonusDEX = 0, bonusVIT = 0, bonusLUK = 0;
         foreach (var item in equipped)
@@ -194,7 +196,22 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             kills = player.TotalMonstersKilled,
             deaths = player.TotalDeaths,
             coinBalance = player.CoinBalance,
-            skills = skills.Select(s => new { skill = s.SkillType.ToString(), level = s.Level, xp = s.XP, xpToNext = s.XpToNextLevel })
+            inCombat,
+            skills = skills.Select(s => new { skill = s.SkillType.ToString(), level = s.Level, xp = s.XP, xpToNext = s.XpToNextLevel }),
+            gear = equipped.Select(i => new
+            {
+                slot = i.EquippedSlot.ToString(),
+                name = i.ItemDefinition.Name,
+                icon = i.ItemDefinition.Icon,
+                bonusStr = i.ItemDefinition.BonusSTR,
+                bonusDef = i.ItemDefinition.BonusDEF,
+                bonusInt = i.ItemDefinition.BonusINT,
+                bonusDex = i.ItemDefinition.BonusDEX,
+                bonusVit = i.ItemDefinition.BonusVIT,
+                bonusLuk = i.ItemDefinition.BonusLUK,
+                minDmg = i.ItemDefinition.MinDamage,
+                maxDmg = i.ItemDefinition.MaxDamage
+            })
         });
     }
 
