@@ -28,20 +28,38 @@ public enum MarketplaceCurrencyType
 public enum ItemSubType
 {
     // Weapons
-    Sword, Axe, Bow, Staff, Dagger, Gun,
+    Sword       = 0,
+    Axe         = 1,
+    Bow         = 2,
+    Staff       = 3,
+    Dagger      = 4,
+    Gun         = 5,
     // Armor
-    Helmet, Chestplate, Leggings, Boots, Shield, Ring, Amulet,
+    Helmet      = 6,
+    Chestplate  = 7,
+    Leggings    = 8,
+    Boots       = 9,
+    Shield      = 10,
+    Ring        = 11,
+    Amulet      = 12,
     // Consumables
-    HealthPotion, ManaPotion,
+    HealthPotion = 13,
+    ManaPotion   = 14,
     // Materials
-    Ore, Herb, Wood, Gem, MonsterDrop, Leather, Cloth,
+    Ore         = 15,
+    Herb        = 16,
+    Wood        = 17,
+    Gem         = 18,
+    MonsterDrop = 19,
+    Leather     = 20,
+    Cloth       = 21,
     // Collectibles
-    Peepo = 22,
+    Peepo       = 22,
     // Enchanting
     EnchantBook = 23,
     // Gathering tools
-    Pickaxe = 24,
-    FishingRod = 25
+    Pickaxe     = 24,
+    FishingRod  = 25
 }
 
 public enum EquipSlot
