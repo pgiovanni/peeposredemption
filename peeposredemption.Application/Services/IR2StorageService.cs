@@ -7,5 +7,6 @@ namespace peeposredemption.Application.Services
         Task<string> UploadArtistSampleAsync(string key, Stream imageStream, string contentType);
         Task<string> UploadProfileImageAsync(string key, Stream imageStream, string contentType);
         Task<string> UploadAttachmentAsync(string key, Stream stream, string contentType);
+        Task<string> UploadPeepoAsync(string key, Stream imageStream, string contentType);
     }
 }

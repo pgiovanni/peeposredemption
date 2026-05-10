@@ -10,12 +10,16 @@ namespace peeposredemption.Infrastructure.Services
         private readonly IAmazonS3 _s3;
         private readonly string _bucketName;
         private readonly string _publicUrl;
+        private readonly string _peepoBucketName;
+        private readonly string _peepoPublicUrl;
 
         public R2StorageService(IConfiguration config)
         {
             var accountId = config["R2:AccountId"] ?? throw new InvalidOperationException("R2:AccountId not configured.");
             _bucketName = config["R2:BucketName"] ?? throw new InvalidOperationException("R2:BucketName not configured.");
             _publicUrl = (config["R2:PublicUrl"] ?? throw new InvalidOperationException("R2:PublicUrl not configured.")).TrimEnd('/');
+            _peepoBucketName = config["R2:PeepoBucketName"] ?? "peepo-storage";
+            _peepoPublicUrl = (config["R2:PeepoPublicUrl"] ?? "https://pub-f1cde03f675f492bb93def0baa60b4a4.r2.dev").TrimEnd('/');
 
             var accessKeyId = config["R2:AccessKeyId"] ?? throw new InvalidOperationException("R2:AccessKeyId not configured.");
             var secretAccessKey = config["R2:SecretAccessKey"] ?? throw new InvalidOperationException("R2:SecretAccessKey not configured.");
@@ -91,6 +95,22 @@ namespace peeposredemption.Infrastructure.Services
 
             await _s3.PutObjectAsync(request);
             return $"{_publicUrl}/attachments/{key}";
+        }
+
+        public async Task<string> UploadPeepoAsync(string key, Stream imageStream, string contentType)
+        {
+            var request = new PutObjectRequest
+            {
+                BucketName = _peepoBucketName,
+                Key = key,
+                InputStream = imageStream,
+                ContentType = contentType,
+                CannedACL = S3CannedACL.PublicRead,
+                UseChunkEncoding = false
+            };
+
+            await _s3.PutObjectAsync(request);
+            return $"{_peepoPublicUrl}/{key}";
         }
 
         public async Task DeleteEmojiAsync(string key)
