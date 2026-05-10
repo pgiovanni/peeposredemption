@@ -39,6 +39,9 @@ namespace peeposredemption.Infrastructure
         public IArtistPayoutRepository ArtistPayouts { get; }
         public IArtistSubmissionRepository ArtistSubmissions { get; }
 
+        // Guild config
+        public IGuildConfigRepository GuildConfigs { get; }
+
         // Game system
         public IPlayerCharacterRepository PlayerCharacters { get; }
         public IItemDefinitionRepository ItemDefinitions { get; }
@@ -100,6 +103,7 @@ namespace peeposredemption.Infrastructure
             IArtistCommissionRepository artistCommissions,
             IArtistPayoutRepository artistPayouts,
             IArtistSubmissionRepository artistSubmissions,
+            IGuildConfigRepository guildConfigs,
             IPlayerCharacterRepository playerCharacters,
             IItemDefinitionRepository itemDefinitions,
             IPlayerInventoryItemRepository playerInventoryItems,
@@ -151,6 +155,7 @@ namespace peeposredemption.Infrastructure
             ArtistCommissions = artistCommissions;
             ArtistPayouts = artistPayouts;
             ArtistSubmissions = artistSubmissions;
+            GuildConfigs = guildConfigs;
             PlayerCharacters = playerCharacters;
             ItemDefinitions = itemDefinitions;
             PlayerInventoryItems = playerInventoryItems;

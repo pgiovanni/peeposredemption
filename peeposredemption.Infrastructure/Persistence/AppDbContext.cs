@@ -40,6 +40,9 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<ArtistSubmission> ArtistSubmissions { get; set; }
         public DbSet<PeepoSubmission> PeepoSubmissions { get; set; }
 
+        // Guild config
+        public DbSet<GuildConfig> GuildConfigs { get; set; }
+
         // Game system
         public DbSet<PlayerCharacter> PlayerCharacters { get; set; }
         public DbSet<ItemDefinition> ItemDefinitions { get; set; }
@@ -96,6 +99,11 @@ namespace peeposredemption.Infrastructure.Persistence
                 foreach (var fk in entity.GetForeignKeys())
                     fk.SetConstraintName(ToSnakeCase(fk.GetConstraintName()!));
             }
+
+            // GuildConfig — one row per Discord guild
+            modelBuilder.Entity<GuildConfig>()
+                .HasIndex(g => g.GuildId)
+                .IsUnique();
 
             // Unique constraints
             modelBuilder.Entity<User>()

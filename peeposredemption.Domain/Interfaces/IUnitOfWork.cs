@@ -35,6 +35,9 @@ namespace peeposredemption.Domain.Interfaces
         IArtistPayoutRepository ArtistPayouts { get; }
         IArtistSubmissionRepository ArtistSubmissions { get; }
 
+        // Guild config
+        IGuildConfigRepository GuildConfigs { get; }
+
         // Game system
         IPlayerCharacterRepository PlayerCharacters { get; }
         IItemDefinitionRepository ItemDefinitions { get; }

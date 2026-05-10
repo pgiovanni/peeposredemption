@@ -49,6 +49,9 @@ namespace peeposredemption.Infrastructure
             services.AddScoped<IArtistPayoutRepository, ArtistPayoutRepository>();
             services.AddScoped<IArtistSubmissionRepository, ArtistSubmissionRepository>();
 
+            // Guild config
+            services.AddScoped<IGuildConfigRepository, GuildConfigRepository>();
+
             // Game system
             services.AddScoped<IPlayerCharacterRepository, PlayerCharacterRepository>();
             services.AddScoped<IItemDefinitionRepository, ItemDefinitionRepository>();

@@ -1303,6 +1303,50 @@ async Task<PlayerCharacter> EnsureDiscordPlayer(
     return player;
 }
 
+// GET /api/bot/guild-config/{guildId} — fetch per-guild channel config
+app.MapGet("/api/bot/guild-config/{guildId}", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db, string guildId) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var config = await db.GuildConfigs.FirstOrDefaultAsync(g => g.GuildId == guildId);
+    if (config == null) return Results.Ok(new { guildId, statusChannelId = (string?)null, lootDropChannelId = (string?)null, rpgChannelId = (string?)null, suggestionsChannelId = (string?)null, welcomeChannelId = (string?)null, modLogChannelId = (string?)null });
+    return Results.Ok(new
+    {
+        guildId              = config.GuildId,
+        statusChannelId      = config.StatusChannelId,
+        lootDropChannelId    = config.LootDropChannelId,
+        rpgChannelId         = config.RpgChannelId,
+        suggestionsChannelId = config.SuggestionsChannelId,
+        welcomeChannelId     = config.WelcomeChannelId,
+        modLogChannelId      = config.ModLogChannelId,
+    });
+});
+
+// POST /api/bot/guild-config/{guildId} — upsert per-guild channel config
+app.MapPost("/api/bot/guild-config/{guildId}", async (
+    HttpContext ctx, IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    string guildId, GuildConfigUpdateRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var config = await db.GuildConfigs.FirstOrDefaultAsync(g => g.GuildId == guildId);
+    if (config == null)
+    {
+        config = new peeposredemption.Domain.Entities.GuildConfig { GuildId = guildId };
+        db.GuildConfigs.Add(config);
+    }
+    if (req.StatusChannelId      != null) config.StatusChannelId      = req.StatusChannelId;
+    if (req.LootDropChannelId    != null) config.LootDropChannelId    = req.LootDropChannelId;
+    if (req.RpgChannelId         != null) config.RpgChannelId         = req.RpgChannelId;
+    if (req.SuggestionsChannelId != null) config.SuggestionsChannelId = req.SuggestionsChannelId;
+    if (req.WelcomeChannelId     != null) config.WelcomeChannelId     = req.WelcomeChannelId;
+    if (req.ModLogChannelId      != null) config.ModLogChannelId      = req.ModLogChannelId;
+    config.UpdatedAt = DateTime.UtcNow;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { success = true });
+});
+
 // Auto-create a Torvex account and link it for a Discord user (no manual link needed)
 app.MapPost("/api/bot/auto-link", async (
     HttpContext ctx,
@@ -2372,9 +2416,9 @@ app.MapPost("/api/bot/peepos/add", async (
         "image/jpeg" => ".jpg",
         _            => ".png"
     };
-    var r2Key = $"peepos/{emoji.Name}{ext}";
+    var r2Key = $"{emoji.Name}{ext}";
     await using var imgStream = await imgResponse.Content.ReadAsStreamAsync();
-    var r2Url = await r2.UploadEmojiAsync(r2Key, imgStream, contentType);
+    var r2Url = await r2.UploadPeepoAsync(r2Key, imgStream, contentType);
 
     var rarity = (emoji.Rarity != null && Enum.TryParse<GameItemRarity>(emoji.Rarity, true, out var r))
         ? r : GameItemRarity.Common;
@@ -2723,6 +2767,7 @@ app.MapGet("/api/peepos/votes", async (peeposredemption.Infrastructure.Persisten
 app.Run();
 
 record BotAutoLinkRequest(string DiscordUserId, string DiscordUsername);
+record GuildConfigUpdateRequest(string? StatusChannelId, string? LootDropChannelId, string? RpgChannelId, string? SuggestionsChannelId, string? WelcomeChannelId, string? ModLogChannelId);
 record BotPvpRewardRequest(string WinnerDiscordId, string LoserDiscordId);
 record BotAddCoinsRequest(string DiscordId, long Amount, string Reason);
 record BotLinkRequest(string DiscordUserId, string TorvexUsername);
