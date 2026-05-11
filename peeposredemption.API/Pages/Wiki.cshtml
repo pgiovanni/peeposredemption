@@ -1,0 +1,641 @@
+@page
+@model peeposredemption.API.Pages.WikiModel
+@using peeposredemption.Domain.Entities
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Game Wiki";
+    ViewData["OgTitle"] = "Torvex Game Wiki — Items, Monsters & Elements";
+    ViewData["Description"] = "Complete Torvex RPG reference: every item, how to obtain it, crafting recipes, monster drop tables, and the full 12-element advantage chart.";
+}
+
+@section Head {
+<style>
+/* ── Wiki Layout ─────────────────────────────────────────────────── */
+.wiki-page { max-width: 1200px; margin: 0 auto; padding: 0 24px 80px; }
+
+.wiki-hero { text-align: center; padding: 60px 24px 40px; }
+.wiki-hero h1 { font-size: clamp(28px,5vw,44px); font-weight: 800; color: var(--text-primary); margin-bottom: 10px; }
+.wiki-hero p  { color: var(--text-secondary); font-size: 16px; }
+
+/* ── Tab Nav ─────────────────────────────────────────────────────── */
+.wiki-tabs {
+    display: flex; gap: 8px; justify-content: center;
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg-dark); padding: 16px 0; margin-bottom: 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.wiki-tab {
+    padding: 10px 24px; border-radius: 28px; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; transition: background 0.2s, color 0.2s;
+    background: var(--bg-card); color: var(--text-secondary);
+}
+.wiki-tab:hover  { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+.wiki-tab.active { background: var(--accent); color: white; }
+
+/* ── Section ─────────────────────────────────────────────────────── */
+.wiki-section { display: none; }
+.wiki-section.active { display: block; }
+
+.section-title {
+    font-size: 22px; font-weight: 700; color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+/* ── Search + Filter Bar ─────────────────────────────────────────── */
+.wiki-controls {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px;
+}
+.wiki-search {
+    flex: 1; min-width: 200px;
+    padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-card); color: var(--text-primary); font-size: 14px;
+}
+.wiki-search::placeholder { color: var(--text-muted); }
+.wiki-search:focus { outline: none; border-color: var(--accent); }
+.filter-btn {
+    padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-card); color: var(--text-secondary); transition: 0.15s;
+}
+.filter-btn:hover  { border-color: var(--accent); color: var(--text-primary); }
+.filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+/* ── Item Grid ───────────────────────────────────────────────────── */
+.item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+.item-card {
+    background: var(--bg-card); border-radius: 12px; padding: 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: border-color 0.2s;
+}
+.item-card:hover { border-color: rgba(255,255,255,0.14); }
+
+.item-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.item-icon { font-size: 28px; line-height: 1; }
+.item-title { flex: 1; }
+.item-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.item-sub  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+.rarity-badge {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.rarity-Common    { background: rgba(180,180,180,0.15); color: #b0b0b0; }
+.rarity-Uncommon  { background: rgba(59,165,92,0.2);    color: #3ba55c; }
+.rarity-Rare      { background: rgba(88,101,242,0.2);   color: #7289da; }
+.rarity-Epic      { background: rgba(163,73,164,0.2);   color: #c678dd; }
+.rarity-Legendary { background: rgba(255,165,0,0.2);    color: #ffa500; }
+
+.item-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5; }
+
+.item-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.stat-chip {
+    font-size: 12px; padding: 3px 8px; border-radius: 6px;
+    background: rgba(255,255,255,0.06); color: var(--text-secondary);
+}
+.stat-chip.dmg  { background: rgba(255,100,100,0.15); color: #ff9999; }
+.stat-chip.heal { background: rgba(59,165,92,0.15);   color: #3ba55c; }
+.stat-chip.mana { background: rgba(88,101,242,0.15);  color: #7289da; }
+.stat-chip.lvl  { background: rgba(255,165,0,0.15);   color: #ffa500; }
+
+.elem-chip {
+    font-size: 12px; padding: 3px 8px; border-radius: 6px; font-weight: 600;
+}
+
+/* ── Obtain Section ──────────────────────────────────────────────── */
+.obtain-section { margin-top: 10px; }
+.obtain-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.obtain-row { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+.obtain-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.obtain-row a { color: var(--accent); }
+
+.ingredients { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.ing-chip { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+
+/* ── Monster Grid ────────────────────────────────────────────────── */
+.monster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+.monster-card {
+    background: var(--bg-card); border-radius: 12px; padding: 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: border-color 0.2s;
+}
+.monster-card:hover { border-color: rgba(255,255,255,0.14); }
+
+.monster-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.monster-icon { font-size: 32px; }
+.monster-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.monster-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.level-badge {
+    font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 12px;
+    background: rgba(255,255,255,0.08); color: var(--text-secondary);
+}
+
+.monster-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+.loot-table { margin-top: 10px; }
+.loot-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.loot-row:last-child { border-bottom: none; }
+.loot-chance {
+    margin-left: auto; font-size: 12px; font-weight: 700; padding: 2px 6px; border-radius: 6px;
+}
+.chance-high   { background: rgba(59,165,92,0.2);   color: #3ba55c; }
+.chance-medium { background: rgba(255,165,0,0.2);   color: #ffa500; }
+.chance-low    { background: rgba(255,80,80,0.2);   color: #ff6464; }
+
+.abilities-list { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.ability-chip {
+    font-size: 11px; padding: 2px 7px; border-radius: 6px;
+    background: rgba(255,100,100,0.12); color: #ff9999; font-weight: 600;
+}
+
+/* ── Element Section ─────────────────────────────────────────────── */
+.element-section-inner { overflow-x: auto; }
+
+.elem-intro { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.7; }
+.elem-intro strong { color: var(--text-primary); }
+
+.elem-matrix-wrap { overflow-x: auto; margin-bottom: 40px; }
+.elem-matrix {
+    border-collapse: collapse; min-width: 600px; width: 100%;
+    font-size: 13px;
+}
+.elem-matrix th, .elem-matrix td {
+    text-align: center; padding: 8px 6px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.elem-matrix th { background: var(--bg-card); color: var(--text-secondary); font-weight: 600; font-size: 12px; }
+.elem-matrix td.row-label { text-align: left; padding-left: 12px; font-weight: 600; color: var(--text-primary); background: var(--bg-card); white-space: nowrap; }
+.cell-strong  { background: rgba(59,165,92,0.2);   color: #4ade80; font-weight: 700; }
+.cell-mutual  { background: rgba(88,101,242,0.2);  color: #7289da; font-weight: 700; }
+.cell-resist  { background: rgba(255,80,80,0.18);  color: #ff6464; font-weight: 700; }
+.cell-self    { background: rgba(255,255,255,0.04); color: var(--text-muted); }
+.cell-neutral { color: var(--text-muted); }
+
+.elem-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.legend-swatch { width: 16px; height: 16px; border-radius: 4px; }
+.swatch-strong  { background: rgba(59,165,92,0.4); }
+.swatch-mutual  { background: rgba(88,101,242,0.4); }
+.swatch-resist  { background: rgba(255,80,80,0.3); }
+.swatch-neutral { background: rgba(255,255,255,0.1); }
+
+.status-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;
+    margin-top: 8px;
+}
+.status-card {
+    background: var(--bg-card); border-radius: 10px; padding: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.status-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.status-elem-icon { font-size: 20px; }
+.status-elem-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.status-effect { font-size: 13px; color: var(--accent); font-weight: 600; }
+.status-params { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Element colors ──────────────────────────────────────────────── */
+.elem-Fire      { color: #ff7043; }
+.elem-Ice       { color: #81d4fa; }
+.elem-Lightning { color: #ffd54f; }
+.elem-Earth     { color: #a5d6a7; }
+.elem-Water     { color: #4fc3f7; }
+.elem-Wind      { color: #e0e0e0; }
+.elem-Holy      { color: #fff59d; }
+.elem-Dark      { color: #ce93d8; }
+.elem-Light     { color: #fff9c4; }
+.elem-Shadow    { color: #b39ddb; }
+.elem-Poison    { color: #aed581; }
+.elem-Void      { color: #90a4ae; }
+.elem-None      { color: var(--text-muted); }
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@@media (max-width: 600px) {
+    .wiki-tabs { gap: 4px; }
+    .wiki-tab  { padding: 8px 14px; font-size: 13px; }
+    .item-grid, .monster-grid { grid-template-columns: 1fr; }
+}
+</style>
+}
+
+<div class="wiki-hero">
+    <h1>⚔️ Torvex Game Wiki</h1>
+    <p>Items, monsters, crafting recipes, drop tables, and the full element guide — all in one place.</p>
+</div>
+
+<div class="wiki-page">
+
+    <div class="wiki-tabs">
+        <button class="wiki-tab active" onclick="showSection('items')">📦 Items</button>
+        <button class="wiki-tab"        onclick="showSection('monsters')">👾 Monsters</button>
+        <button class="wiki-tab"        onclick="showSection('elements')">🔥 Elements</button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ ITEMS -->
+    <div id="section-items" class="wiki-section active">
+        <div class="wiki-controls">
+            <input type="text" class="wiki-search" id="item-search" placeholder="Search items…" oninput="filterItems()" />
+            @foreach (var f in new[] { "All","Weapons","Armor","Consumables","Materials","Tools","Collectibles" })
+            {
+                <button class="filter-btn @(f == "All" ? "active" : "")"
+                        data-filter="@f"
+                        onclick="setItemFilter(this, '@f')">@f</button>
+            }
+        </div>
+
+        <div class="item-grid" id="item-grid">
+            @foreach (var item in Model.Items)
+            {
+                var filterTag = item.Type switch {
+                    GameItemType.Weapon     => item.SubType is ItemSubType.Pickaxe or ItemSubType.FishingRod ? "Tools" : "Weapons",
+                    GameItemType.Armor      => "Armor",
+                    GameItemType.Consumable => "Consumables",
+                    GameItemType.Material   => "Materials",
+                    GameItemType.Collectible => "Collectibles",
+                    _                       => "Other"
+                };
+                var elemName = item.Element == Element.None ? "" : item.Element.ToString();
+                var hasStats = item.BonusSTR > 0 || item.BonusDEF > 0 || item.BonusINT > 0 || item.BonusDEX > 0 || item.BonusVIT > 0 || item.BonusLUK > 0 || item.BonusHP > 0 || item.BonusMP > 0;
+                var isGathered = item.SubType is ItemSubType.Ore or ItemSubType.Wood or ItemSubType.Herb or ItemSubType.MonsterDrop;
+                var isToolGathered = item.SubType is ItemSubType.Pickaxe or ItemSubType.FishingRod;
+
+                <div class="item-card" data-filter="@filterTag" data-name="@item.Name.ToLower()">
+                    <div class="item-header">
+                        <span class="item-icon">@item.Icon</span>
+                        <div class="item-title">
+                            <div class="item-name">@item.Name</div>
+                            <div class="item-sub">@item.Type — @item.SubType</div>
+                        </div>
+                        <span class="rarity-badge rarity-@item.Rarity">@item.Rarity</span>
+                    </div>
+
+                    <div class="item-desc">@item.Description</div>
+
+                    <div class="item-stats">
+                        @if (item.LevelReq > 0)
+                        {
+                            <span class="stat-chip lvl">Lv.@item.LevelReq req</span>
+                        }
+                        @if (item.MinDamage > 0 && item.Type == GameItemType.Weapon && item.SubType != ItemSubType.Pickaxe && item.SubType != ItemSubType.FishingRod)
+                        {
+                            <span class="stat-chip dmg">@item.MinDamage–@item.MaxDamage dmg</span>
+                        }
+                        @if (item.HealAmount > 0)    { <span class="stat-chip heal">+@item.HealAmount HP</span> }
+                        @if (item.ManaRestoreAmount > 0) { <span class="stat-chip mana">+@item.ManaRestoreAmount MP</span> }
+                        @if (item.BonusSTR > 0) { <span class="stat-chip">+@item.BonusSTR STR</span> }
+                        @if (item.BonusDEF > 0) { <span class="stat-chip">+@item.BonusDEF DEF</span> }
+                        @if (item.BonusINT > 0) { <span class="stat-chip">+@item.BonusINT INT</span> }
+                        @if (item.BonusDEX > 0) { <span class="stat-chip">+@item.BonusDEX DEX</span> }
+                        @if (item.BonusVIT > 0) { <span class="stat-chip">+@item.BonusVIT VIT</span> }
+                        @if (item.BonusLUK > 0 && item.SubType != ItemSubType.Pickaxe && item.SubType != ItemSubType.FishingRod) { <span class="stat-chip">+@item.BonusLUK LUK</span> }
+                        @if (item.BonusLUK > 0 && (item.SubType == ItemSubType.Pickaxe || item.SubType == ItemSubType.FishingRod)) { <span class="stat-chip">+@item.BonusLUK gather</span> }
+                        @if (item.BonusHP  > 0) { <span class="stat-chip heal">+@item.BonusHP HP</span> }
+                        @if (item.BonusMP  > 0) { <span class="stat-chip mana">+@item.BonusMP MP</span> }
+                        @if (!string.IsNullOrEmpty(elemName))
+                        {
+                            <span class="elem-chip elem-@elemName">@elemName</span>
+                        }
+                        @if (item.EnchantTier > 0)
+                        {
+                            <span class="stat-chip">Enchant Book T@item.EnchantTier</span>
+                        }
+                    </div>
+
+                    <div class="obtain-section">
+                        <div class="obtain-label">How to obtain</div>
+
+                        @if (item.BuyPrice > 0)
+                        {
+                            <div class="obtain-row">
+                                <span class="obtain-icon">🛒</span>
+                                <span>Shop — 🪙 @item.BuyPrice coins</span>
+                            </div>
+                        }
+
+                        @foreach (var recipe in item.Recipes)
+                        {
+                            <div class="obtain-row">
+                                <span class="obtain-icon">⚒️</span>
+                                <div>
+                                    <span>Craft (@recipe.Skill Lv.@recipe.SkillLevel, @recipe.SuccessRate% success@(recipe.OrbCost > 0 ? $", {recipe.OrbCost} orbs" : ""))</span>
+                                    @if (recipe.OutputQty > 1) { <span> → ×@recipe.OutputQty</span> }
+                                    <div class="ingredients">
+                                        @foreach (var ing in recipe.Ingredients)
+                                        {
+                                            <span class="ing-chip">@ing.Icon @ing.Qty× @ing.Name</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @foreach (var drop in item.DroppedBy)
+                        {
+                            <div class="obtain-row">
+                                <span class="obtain-icon">👾</span>
+                                <span>@drop.MonsterIcon @drop.MonsterName (@drop.Zone) — @drop.DropChance%@(drop.MaxQty > 1 ? $" ({drop.MinQty}–{drop.MaxQty})" : "")</span>
+                            </div>
+                        }
+
+                        @if (isGathered && !item.DroppedBy.Any() && item.BuyPrice == 0 && !item.Recipes.Any())
+                        {
+                            var gatherMethod = item.SubType switch {
+                                ItemSubType.Ore  => "⛏️ Mining",
+                                ItemSubType.Wood => "🪓 Woodcutting",
+                                ItemSubType.Herb => "🌿 Gathering",
+                                _                => "🎣 Fishing"
+                            };
+                            <div class="obtain-row"><span class="obtain-icon">⛏️</span><span>@gatherMethod</span></div>
+                        }
+
+                        @if (item.SubType == ItemSubType.Peepo || (item.Type == GameItemType.Collectible && item.BuyPrice == 0 && !item.DroppedBy.Any()))
+                        {
+                            <div class="obtain-row"><span class="obtain-icon">🐸</span><span>Peepo crate drop only</span></div>
+                        }
+
+                        @if (!item.DroppedBy.Any() && item.BuyPrice == 0 && !item.Recipes.Any() && !isGathered && item.SubType != ItemSubType.Peepo && item.Type != GameItemType.Collectible)
+                        {
+                            <div class="obtain-row"><span class="obtain-icon">❓</span><span style="color:var(--text-muted)">Special / event</span></div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ MONSTERS -->
+    <div id="section-monsters" class="wiki-section">
+        <div class="wiki-controls">
+            <input type="text" class="wiki-search" id="monster-search" placeholder="Search monsters…" oninput="filterMonsters()" />
+            @{
+                var zones = Model.Monsters.Select(m => m.Zone).Distinct().OrderBy(z => z).ToList();
+            }
+            <button class="filter-btn active" data-zone="All" onclick="setZoneFilter(this, 'All')">All Zones</button>
+            @foreach (var zone in zones)
+            {
+                <button class="filter-btn" data-zone="@zone" onclick="setZoneFilter(this, '@zone')">@zone</button>
+            }
+        </div>
+
+        <div class="monster-grid" id="monster-grid">
+            @foreach (var mon in Model.Monsters)
+            {
+                var elemName = mon.Element == Element.None ? "None" : mon.Element.ToString();
+                <div class="monster-card" data-zone="@mon.Zone" data-name="@mon.Name.ToLower()">
+                    <div class="monster-header">
+                        <span class="monster-icon">@mon.Icon</span>
+                        <div style="flex:1">
+                            <div class="monster-name">@mon.Name</div>
+                            <div class="monster-meta">
+                                @mon.Zone &nbsp;·&nbsp;
+                                <span class="elem-@elemName">@(mon.Element == Element.None ? "No element" : elemName)</span>
+                            </div>
+                        </div>
+                        <span class="level-badge">Lv.@mon.Level</span>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(mon.Description))
+                    {
+                        <div class="item-desc">@mon.Description</div>
+                    }
+
+                    <div class="monster-stats">
+                        <span class="stat-chip">❤️ @mon.MaxHp HP</span>
+                        <span class="stat-chip dmg">⚔️ @mon.MinDamage–@mon.MaxDamage</span>
+                        <span class="stat-chip">🛡️ @mon.DEF DEF</span>
+                        <span class="stat-chip">💪 @mon.STR STR</span>
+                        <span class="stat-chip">🔮 @mon.INT INT</span>
+                        <span class="stat-chip">✨ @mon.XpReward XP</span>
+                        <span class="stat-chip">🔮 @mon.OrbRewardMin–@mon.OrbRewardMax orbs</span>
+                    </div>
+
+                    @if (mon.Abilities.Any())
+                    {
+                        <div class="abilities-list">
+                            @foreach (var ab in mon.Abilities)
+                            {
+                                <span class="ability-chip">@ab</span>
+                            }
+                        </div>
+                    }
+
+                    @if (mon.Loot.Any())
+                    {
+                        <div class="loot-table">
+                            <div class="obtain-label">Drop Table</div>
+                            @foreach (var loot in mon.Loot)
+                            {
+                                var chanceClass = loot.DropChance >= 50 ? "chance-high" : loot.DropChance >= 20 ? "chance-medium" : "chance-low";
+                                <div class="loot-row">
+                                    <span>@loot.ItemIcon</span>
+                                    <span>@loot.ItemName@(loot.MaxQty > 1 ? $" ×{loot.MinQty}–{loot.MaxQty}" : "")</span>
+                                    <span class="loot-chance @chanceClass">@loot.DropChance%</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="font-size:13px;color:var(--text-muted);margin-top:8px;">No item drops.</div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ ELEMENTS -->
+    <div id="section-elements" class="wiki-section">
+        <div class="element-section-inner">
+
+            <p class="elem-intro">
+                Torvex uses a <strong>12-element system</strong>. Every monster and weapon has an element.
+                Attacking with a strong element deals bonus damage — <strong>1.5× for magic spells</strong>, <strong>1.25× for weapon attacks</strong>.
+                Attacking into a resistance deals <strong>0.75×</strong> regardless.
+                Same element vs same element is always <strong>0.75×</strong>.
+            </p>
+
+            <div class="elem-legend">
+                <div class="legend-item"><div class="legend-swatch swatch-strong"></div> Strong (1.5× magic / 1.25× weapon)</div>
+                <div class="legend-item"><div class="legend-swatch swatch-mutual"></div> Mutual Strong (both directions)</div>
+                <div class="legend-item"><div class="legend-swatch swatch-resist"></div> Resisted (0.75×)</div>
+                <div class="legend-item"><div class="legend-swatch swatch-neutral"></div> Neutral (1.0×)</div>
+            </div>
+
+            @{
+                // Row = Attacker, Col = Defender
+                // S = Strong, M = Mutual, R = Resisted, . = Neutral, X = Same
+                // Based exactly on ElementSystem.cs
+                var elems = new[] { "Fire","Ice","Lightning","Earth","Water","Wind","Holy","Dark","Light","Shadow","Poison","Void" };
+                var icons = new[] { "🔥","❄️","⚡","🌍","💧","🌪️","✨","🌑","💡","👤","☠️","🌀" };
+                // [attacker][defender] = "S","M","R",".","X"
+                // Computed from IsStrong + IsMutual + same
+                string[,] matrix = new string[12,12];
+                for (int a = 0; a < 12; a++)
+                for (int d = 0; d < 12; d++)
+                {
+                    if (a == d) { matrix[a,d] = "X"; continue; }
+                    var (at, dt) = (elems[a], elems[d]);
+                    // Mutual pairs
+                    bool mutual = (at=="Fire"&&dt=="Earth")||(at=="Earth"&&dt=="Fire")||
+                                  (at=="Holy"&&dt=="Dark")||(at=="Dark"&&dt=="Holy")||
+                                  (at=="Holy"&&dt=="Shadow")||(at=="Shadow"&&dt=="Holy")||
+                                  (at=="Dark"&&dt=="Light")||(at=="Light"&&dt=="Dark")||
+                                  (at=="Light"&&dt=="Shadow")||(at=="Shadow"&&dt=="Light");
+                    // Strong pairs (attacker → defender)
+                    bool strong = (at=="Fire"&&dt=="Ice")||
+                                  (at=="Ice"&&dt=="Water")||(at=="Ice"&&dt=="Wind")||
+                                  (at=="Lightning"&&dt=="Ice")||(at=="Lightning"&&dt=="Water")||
+                                  (at=="Earth"&&dt=="Lightning")||
+                                  (at=="Water"&&dt=="Fire")||(at=="Water"&&dt=="Earth")||
+                                  (at=="Wind"&&dt=="Lightning")||(at=="Wind"&&dt=="Earth")||
+                                  (at=="Poison"&&dt=="Earth")||(at=="Poison"&&dt=="Water");
+                    // Resisted: defender is strong vs attacker
+                    bool resisted = (dt=="Fire"&&at=="Ice")||
+                                    (dt=="Ice"&&at=="Water")||(dt=="Ice"&&at=="Wind")||
+                                    (dt=="Lightning"&&at=="Ice")||(dt=="Lightning"&&at=="Water")||
+                                    (dt=="Earth"&&at=="Lightning")||
+                                    (dt=="Water"&&at=="Fire")||(dt=="Water"&&at=="Earth")||
+                                    (dt=="Wind"&&at=="Lightning")||(dt=="Wind"&&at=="Earth")||
+                                    (dt=="Poison"&&at=="Earth")||(dt=="Poison"&&at=="Water");
+
+                    if (mutual)        matrix[a,d] = "M";
+                    else if (strong)   matrix[a,d] = "S";
+                    else if (resisted) matrix[a,d] = "R";
+                    else               matrix[a,d] = ".";
+                }
+            }
+
+            <div class="elem-matrix-wrap">
+            <table class="elem-matrix">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding-left:12px;">Attacker ↓ / Defender →</th>
+                        @for (int d = 0; d < 12; d++)
+                        {
+                            <th title="@elems[d]">@icons[d]</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int a = 0; a < 12; a++)
+                    {
+                        <tr>
+                            <td class="row-label">@icons[a] @elems[a]</td>
+                            @for (int d = 0; d < 12; d++)
+                            {
+                                var cell = matrix[a, d];
+                                var css = cell switch {
+                                    "S" => "cell-strong",
+                                    "M" => "cell-mutual",
+                                    "R" => "cell-resist",
+                                    "X" => "cell-self",
+                                    _   => "cell-neutral"
+                                };
+                                var label = cell switch {
+                                    "S" => "Strong",
+                                    "M" => "Mutual",
+                                    "R" => "Resist",
+                                    "X" => "—",
+                                    _   => "·"
+                                };
+                                <td class="@css" title="@elems[a] vs @elems[d]: @label">@(cell == "X" ? "—" : cell == "." ? "·" : cell)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            </div>
+
+            <div class="section-title">Status Effects on Hit</div>
+            <div class="status-grid">
+                @{
+                    var statusData = new[]
+                    {
+                        ("Fire",      "🔥", "Burn",         "8 dmg/turn", "3 turns"),
+                        ("Ice",       "❄️", "Freeze",       "5 dmg/turn", "2 turns"),
+                        ("Lightning", "⚡", "Shock",        "6 dmg/turn", "2 turns"),
+                        ("Earth",     "🌍", "Defense Down", "-5 DEF",     "3 turns"),
+                        ("Water",     "💧", "MP Drain",     "6 MP/turn",  "3 turns"),
+                        ("Wind",      "🌪️", "Windblast",    "Skip turn",  "1 turn"),
+                        ("Holy",      "✨", "Regeneration", "+12 HP/turn","3 turns"),
+                        ("Dark",      "🌑", "Blind",        "Miss chance","3 turns"),
+                        ("Light",     "💡", "Blind",        "Miss chance","3 turns"),
+                        ("Shadow",    "👤", "Confusion",    "Random target","3 turns"),
+                        ("Poison",    "☠️", "Poison",       "4 dmg/turn", "4 turns"),
+                        ("Void",      "🌀", "Corrupt",      "5 dmg/turn", "4 turns"),
+                    };
+                }
+                @foreach (var (name, icon, effect, strength, duration) in statusData)
+                {
+                    <div class="status-card">
+                        <div class="status-card-header">
+                            <span class="status-elem-icon">@icon</span>
+                            <span class="status-elem-name elem-@name">@name</span>
+                        </div>
+                        <div class="status-effect">@effect</div>
+                        <div class="status-params">@strength · @duration</div>
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script>
+function showSection(name) {
+    document.querySelectorAll('.wiki-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.wiki-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('section-' + name).classList.add('active');
+    event.currentTarget.classList.add('active');
+}
+
+// ── Item filtering ────────────────────────────────────────────────
+let currentItemFilter = 'All';
+
+function setItemFilter(btn, filter) {
+    currentItemFilter = filter;
+    document.querySelectorAll('[data-filter]').forEach(b => {
+        if (b.tagName === 'BUTTON') b.classList.toggle('active', b.dataset.filter === filter);
+    });
+    filterItems();
+}
+
+function filterItems() {
+    const q = document.getElementById('item-search').value.toLowerCase();
+    document.querySelectorAll('#item-grid .item-card').forEach(card => {
+        const matchFilter = currentItemFilter === 'All' || card.dataset.filter === currentItemFilter;
+        const matchSearch = !q || card.dataset.name.includes(q);
+        card.style.display = matchFilter && matchSearch ? '' : 'none';
+    });
+}
+
+// ── Monster filtering ─────────────────────────────────────────────
+let currentZone = 'All';
+
+function setZoneFilter(btn, zone) {
+    currentZone = zone;
+    document.querySelectorAll('[data-zone]').forEach(b => {
+        if (b.tagName === 'BUTTON') b.classList.toggle('active', b.dataset.zone === zone);
+    });
+    filterMonsters();
+}
+
+function filterMonsters() {
+    const q = document.getElementById('monster-search').value.toLowerCase();
+    document.querySelectorAll('#monster-grid .monster-card').forEach(card => {
+        const matchZone   = currentZone === 'All' || card.dataset.zone === currentZone;
+        const matchSearch = !q || card.dataset.name.includes(q);
+        card.style.display = matchZone && matchSearch ? '' : 'none';
+    });
+}
+</script>
+}
