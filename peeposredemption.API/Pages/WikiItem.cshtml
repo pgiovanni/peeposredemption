@@ -1,0 +1,231 @@
+@page "/wiki/item/{slug}"
+@model peeposredemption.API.Pages.WikiItemModel
+@using peeposredemption.Domain.Entities
+@{
+    Layout = "_LandingLayout";
+    var item = Model.Item!;
+    var elemName = item.Element == Element.None ? "" : item.Element.ToString();
+    var hasStats = item.BonusSTR > 0 || item.BonusDEF > 0 || item.BonusINT > 0 || item.BonusDEX > 0 || item.BonusVIT > 0 || item.BonusLUK > 0 || item.BonusHP > 0 || item.BonusMP > 0;
+    var isTool = item.SubType is ItemSubType.Pickaxe or ItemSubType.FishingRod;
+    ViewData["Title"] = item.Name;
+    ViewData["OgTitle"] = $"{item.Name} — Torvex Wiki";
+    ViewData["Description"] = item.Description;
+}
+
+@section Head {
+<style>
+.item-page { max-width: 800px; margin: 0 auto; padding: 40px 24px 80px; }
+
+.item-page-back { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 14px; margin-bottom: 32px; transition: color 0.15s; }
+.item-page-back:hover { color: var(--accent); }
+
+.item-page-header { display: flex; align-items: flex-start; gap: 20px; margin-bottom: 32px; }
+.item-page-icon { font-size: 64px; line-height: 1; }
+.item-page-title h1 { font-size: clamp(22px,4vw,36px); font-weight: 800; color: var(--text-primary); }
+.item-page-title .sub { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+.item-page-title .badges { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+.rarity-badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.rarity-Common    { background: rgba(180,180,180,0.15); color: #b0b0b0; }
+.rarity-Uncommon  { background: rgba(59,165,92,0.2);    color: #3ba55c; }
+.rarity-Rare      { background: rgba(88,101,242,0.2);   color: #7289da; }
+.rarity-Epic      { background: rgba(163,73,164,0.2);   color: #c678dd; }
+.rarity-Legendary { background: rgba(255,165,0,0.2);    color: #ffa500; }
+
+.item-section { background: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.06); }
+.item-section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; }
+
+.stat-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.stat-pill { font-size: 13px; padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+.stat-pill.dmg  { background: rgba(255,100,100,0.15); color: #ff9999; }
+.stat-pill.heal { background: rgba(59,165,92,0.15);   color: #3ba55c; }
+.stat-pill.mana { background: rgba(88,101,242,0.15);  color: #7289da; }
+.stat-pill.lvl  { background: rgba(255,165,0,0.15);   color: #ffa500; }
+.stat-pill.elem { font-weight: 600; }
+
+.obtain-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; color: var(--text-secondary); }
+.obtain-row:last-child { border-bottom: none; padding-bottom: 0; }
+.obtain-icon { font-size: 18px; flex-shrink: 0; }
+.obtain-detail strong { color: var(--text-primary); }
+.obtain-detail .sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+.ingredients { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ing-chip { font-size: 13px; padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.06); color: var(--text-secondary); }
+
+.drop-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.drop-table td { padding: 8px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary); }
+.drop-table tr:last-child td { border-bottom: none; }
+.drop-chance { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+.chance-high   { background: rgba(59,165,92,0.2);  color: #3ba55c; }
+.chance-medium { background: rgba(255,165,0,0.2);  color: #ffa500; }
+.chance-low    { background: rgba(255,80,80,0.2);  color: #ff6464; }
+
+.elem-Fire      { color: #ff7043; } .elem-Ice       { color: #81d4fa; }
+.elem-Lightning { color: #ffd54f; } .elem-Earth     { color: #a5d6a7; }
+.elem-Water     { color: #4fc3f7; } .elem-Wind      { color: #e0e0e0; }
+.elem-Holy      { color: #fff59d; } .elem-Dark      { color: #ce93d8; }
+.elem-Light     { color: #fff9c4; } .elem-Shadow    { color: #b39ddb; }
+.elem-Poison    { color: #aed581; } .elem-Void      { color: #90a4ae; }
+</style>
+}
+
+<div class="item-page">
+    <a href="/wiki" class="item-page-back">← Back to Wiki</a>
+
+    <div class="item-page-header">
+        <div class="item-page-icon">@item.Icon</div>
+        <div class="item-page-title">
+            <h1>@item.Name</h1>
+            <div class="sub">@item.Type · @item.SubType</div>
+            <div class="badges">
+                <span class="rarity-badge rarity-@item.Rarity">@item.Rarity</span>
+                @if (!string.IsNullOrEmpty(elemName))
+                {
+                    <span class="rarity-badge elem-@elemName" style="background:rgba(255,255,255,0.08)">@elemName</span>
+                }
+                @if (item.LevelReq > 0)
+                {
+                    <span class="rarity-badge" style="background:rgba(255,165,0,0.15);color:#ffa500">Lv.@item.LevelReq Required</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(item.Description))
+    {
+        <div class="item-section">
+            <div class="item-section-title">Description</div>
+            <p style="color:var(--text-secondary);font-size:15px;line-height:1.7">@item.Description</p>
+        </div>
+    }
+
+    @{
+        bool hasAnyStats = item.MinDamage > 0 || item.HealAmount > 0 || item.ManaRestoreAmount > 0 || hasStats || item.EnchantTier > 0;
+    }
+    @if (hasAnyStats)
+    {
+        <div class="item-section">
+            <div class="item-section-title">Stats</div>
+            <div class="stat-row">
+                @if (item.MinDamage > 0 && !isTool)
+                {
+                    <span class="stat-pill dmg">⚔️ @item.MinDamage–@item.MaxDamage Damage</span>
+                }
+                @if (isTool && item.BonusLUK > 0)
+                {
+                    <span class="stat-pill">+@item.BonusLUK gather/action</span>
+                }
+                @if (item.HealAmount > 0)           { <span class="stat-pill heal">❤️ +@item.HealAmount HP</span> }
+                @if (item.ManaRestoreAmount > 0)    { <span class="stat-pill mana">💧 +@item.ManaRestoreAmount MP</span> }
+                @if (item.BonusSTR > 0)             { <span class="stat-pill">💪 +@item.BonusSTR STR</span> }
+                @if (item.BonusDEF > 0)             { <span class="stat-pill">🛡️ +@item.BonusDEF DEF</span> }
+                @if (item.BonusINT > 0)             { <span class="stat-pill">🔮 +@item.BonusINT INT</span> }
+                @if (item.BonusDEX > 0)             { <span class="stat-pill">🎯 +@item.BonusDEX DEX</span> }
+                @if (item.BonusVIT > 0)             { <span class="stat-pill">💖 +@item.BonusVIT VIT</span> }
+                @if (item.BonusLUK > 0 && !isTool) { <span class="stat-pill">🍀 +@item.BonusLUK LUK</span> }
+                @if (item.BonusHP > 0)              { <span class="stat-pill heal">❤️ +@item.BonusHP Max HP</span> }
+                @if (item.BonusMP > 0)              { <span class="stat-pill mana">💧 +@item.BonusMP Max MP</span> }
+                @if (item.EnchantTier > 0)          { <span class="stat-pill">📖 Enchant Book — Tier @item.EnchantTier</span> }
+                @if (item.SellPrice > 0)            { <span class="stat-pill">🪙 Sells for @item.SellPrice</span> }
+            </div>
+        </div>
+    }
+
+    <div class="item-section">
+        <div class="item-section-title">How to Obtain</div>
+
+        @if (item.BuyPrice > 0)
+        {
+            <div class="obtain-row">
+                <span class="obtain-icon">🛒</span>
+                <div class="obtain-detail">
+                    <strong>Shop</strong>
+                    <div class="sub">🪙 @item.BuyPrice coins — available via <code>/rpg shop</code></div>
+                </div>
+            </div>
+        }
+
+        @foreach (var recipe in item.Recipes)
+        {
+            <div class="obtain-row">
+                <span class="obtain-icon">⚒️</span>
+                <div class="obtain-detail">
+                    <strong>Craft — @recipe.Name</strong>
+                    <div class="sub">
+                        @recipe.Skill Lv.@recipe.SkillLevel required · @recipe.SuccessRate% success rate
+                        @if (recipe.OrbCost > 0) { <span>· @recipe.OrbCost orbs</span> }
+                        @if (recipe.OutputQty > 1) { <span>· Yields ×@recipe.OutputQty</span> }
+                    </div>
+                    <div class="ingredients">
+                        @foreach (var ing in recipe.Ingredients)
+                        {
+                            <span class="ing-chip">@ing.Icon @ing.Qty× @ing.Name</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (item.DroppedBy.Any())
+        {
+            <div class="obtain-row">
+                <span class="obtain-icon">👾</span>
+                <div class="obtain-detail" style="width:100%">
+                    <strong>Monster Drops</strong>
+                    <div class="sub" style="margin-bottom:10px">Luck increases drop chance by 0.2% per LUK point.</div>
+                    <table class="drop-table">
+                        @foreach (var drop in item.DroppedBy)
+                        {
+                            var chanceClass = drop.DropChance >= 50 ? "chance-high" : drop.DropChance >= 20 ? "chance-medium" : "chance-low";
+                            <tr>
+                                <td>@drop.MonsterIcon @drop.MonsterName</td>
+                                <td style="color:var(--text-muted)">@drop.Zone</td>
+                                <td style="text-align:right">
+                                    <span class="drop-chance @chanceClass">@drop.DropChance%@(drop.MaxQty > 1 ? $" (×{drop.MinQty}–{drop.MaxQty})" : "")</span>
+                                </td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+        }
+
+        @{
+            var isGathered = item.SubType is ItemSubType.Ore or ItemSubType.Wood or ItemSubType.Herb;
+            var isFish = item.Name.StartsWith("Raw ");
+        }
+        @if (isGathered)
+        {
+            var method = item.SubType switch {
+                ItemSubType.Ore  => ("⛏️", "Mining", "/rpg mine"),
+                ItemSubType.Wood => ("🪓", "Woodcutting", "/rpg chop"),
+                _                => ("🌿", "Gathering", "/rpg gather")
+            };
+            <div class="obtain-row">
+                <span class="obtain-icon">@method.Item1</span>
+                <div class="obtain-detail">
+                    <strong>@method.Item2</strong>
+                    <div class="sub">Obtained via <code>@method.Item3</code>. Higher skill level = better material tiers.</div>
+                </div>
+            </div>
+        }
+        @if (isFish)
+        {
+            <div class="obtain-row">
+                <span class="obtain-icon">🎣</span>
+                <div class="obtain-detail">
+                    <strong>Fishing</strong>
+                    <div class="sub">Caught via <code>/rpg fish</code>. Higher Fishing level unlocks rarer fish.</div>
+                </div>
+            </div>
+        }
+
+        @if (!item.DroppedBy.Any() && item.BuyPrice == 0 && !item.Recipes.Any() && !isGathered && !isFish)
+        {
+            <div class="obtain-row">
+                <span class="obtain-icon">❓</span>
+                <div class="obtain-detail"><strong>Special / Event</strong><div class="sub">May be obtained through events or future content.</div></div>
+            </div>
+        }
+    </div>
+</div>

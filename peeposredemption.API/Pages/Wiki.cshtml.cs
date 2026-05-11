@@ -17,81 +17,38 @@ public class WikiModel : PageModel
 
     public async Task OnGetAsync()
     {
-        // ── Items ──────────────────────────────────────────────────────────────
+        // ── Items (index only — no peepos, no inline detail) ───────────────────
         var allItems = await _db.ItemDefinitions
+            .Where(i => i.Type != GameItemType.Collectible)
             .OrderBy(i => i.Type).ThenBy(i => i.LevelReq).ThenBy(i => i.Name)
             .ToListAsync();
 
-        var recipes = await _db.CraftingRecipes
-            .Include(r => r.Ingredients).ThenInclude(ing => ing.ItemDefinition)
-            .ToListAsync();
-
-        var lootEntries = await _db.MonsterLootEntries
-            .Include(l => l.MonsterDefinition)
-            .ToListAsync();
-
-        var recipesByOutput = recipes
-            .GroupBy(r => r.OutputItemId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var dropsByItem = lootEntries
-            .GroupBy(l => l.ItemDefinitionId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
         Items = allItems.Select(item => new WikiItem
         {
-            Id                 = item.Id,
-            Name               = item.Name,
-            Description        = item.Description,
-            Icon               = item.Icon,
-            Type               = item.Type,
-            SubType            = item.SubType,
-            Rarity             = item.Rarity,
-            LevelReq           = item.LevelReq,
-            BuyPrice           = item.BuyPrice,
-            SellPrice          = item.SellPrice,
-            Element            = item.Element,
-            MinDamage          = item.MinDamage,
-            MaxDamage          = item.MaxDamage,
-            BonusSTR           = item.BonusSTR,
-            BonusDEF           = item.BonusDEF,
-            BonusINT           = item.BonusINT,
-            BonusDEX           = item.BonusDEX,
-            BonusVIT           = item.BonusVIT,
-            BonusLUK           = item.BonusLUK,
-            BonusHP            = item.BonusHP,
-            BonusMP            = item.BonusMP,
-            HealAmount         = item.HealAmount,
-            ManaRestoreAmount  = item.ManaRestoreAmount,
-            EnchantTier        = item.EnchantTier,
-            Recipes = recipesByOutput.TryGetValue(item.Id, out var recs)
-                ? recs.Select(r => new WikiRecipe
-                {
-                    Name        = r.Name,
-                    Skill       = r.RequiredSkill.ToString(),
-                    SkillLevel  = r.RequiredSkillLevel,
-                    OrbCost     = r.OrbCost,
-                    SuccessRate = (int)Math.Round((double)r.BaseSuccessRate * 100),
-                    OutputQty   = r.OutputQuantity,
-                    Ingredients = r.Ingredients.Select(ing => new WikiIngredient
-                    {
-                        Name = ing.ItemDefinition.Name,
-                        Icon = ing.ItemDefinition.Icon,
-                        Qty  = ing.Quantity
-                    }).ToList()
-                }).ToList()
-                : new(),
-            DroppedBy = dropsByItem.TryGetValue(item.Id, out var drops)
-                ? drops.Select(d => new WikiDrop
-                {
-                    MonsterName = d.MonsterDefinition.Name,
-                    MonsterIcon = d.MonsterDefinition.Icon,
-                    Zone        = d.MonsterDefinition.Zone,
-                    DropChance  = (int)Math.Round((double)d.DropChance * 100),
-                    MinQty      = d.MinQuantity,
-                    MaxQty      = d.MaxQuantity
-                }).OrderByDescending(d => d.DropChance).ToList()
-                : new()
+            Id      = item.Id,
+            Name    = item.Name,
+            Description = item.Description,
+            Icon    = item.Icon,
+            Type    = item.Type,
+            SubType = item.SubType,
+            Rarity  = item.Rarity,
+            LevelReq = item.LevelReq,
+            BuyPrice = item.BuyPrice,
+            SellPrice = item.SellPrice,
+            Element = item.Element,
+            MinDamage = item.MinDamage,
+            MaxDamage = item.MaxDamage,
+            BonusSTR = item.BonusSTR,
+            BonusDEF = item.BonusDEF,
+            BonusINT = item.BonusINT,
+            BonusDEX = item.BonusDEX,
+            BonusVIT = item.BonusVIT,
+            BonusLUK = item.BonusLUK,
+            BonusHP  = item.BonusHP,
+            BonusMP  = item.BonusMP,
+            HealAmount = item.HealAmount,
+            ManaRestoreAmount = item.ManaRestoreAmount,
+            EnchantTier = item.EnchantTier,
         }).ToList();
 
         // ── Monsters ───────────────────────────────────────────────────────────
@@ -146,9 +103,14 @@ public class WikiModel : PageModel
 
     // ── DTOs ──────────────────────────────────────────────────────────────────
 
+    public static string Slugify(string name) =>
+        System.Text.RegularExpressions.Regex
+            .Replace(name.ToLower().Replace(" ", "-"), "[^a-z0-9-]", "");
+
     public record WikiItem
     {
         public Guid           Id                { get; init; }
+        public string         Slug              => Slugify(Name);
         public string         Name              { get; init; } = "";
         public string         Description       { get; init; } = "";
         public string         Icon              { get; init; } = "";
