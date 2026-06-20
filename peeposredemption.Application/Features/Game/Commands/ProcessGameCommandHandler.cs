@@ -238,6 +238,9 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 return GameCommandResult.Single("error", new { message = $"No monster named '{args.Trim()}' found." });
             if (bossOnly && !IsBoss(monster))
                 return GameCommandResult.Single("error", new { message = $"**{monster.Name}** is not a boss. Use `/rpg fight` for regular monsters." });
+            // Level gate: can't challenge enemies more than 15 levels above you
+            if (monster.Level > player.Level + 15)
+                return GameCommandResult.Single("error", new { message = $"**{monster.Name}** is Lv{monster.Level} — too powerful for your current level ({player.Level}). Reach level {monster.Level - 15} first." });
         }
         else if (bossOnly)
         {
@@ -316,6 +319,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             return GameCommandResult.Single("error", new { message = $"{itemDef.Name} is not a consumable." });
 
         var log = new List<string>();
+        var playerFxOoc = StatusEffects.Load(player.StatusJson);
 
         if (itemDef.HealAmount > 0)
         {
@@ -324,9 +328,18 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             int rawHeal = isPotion
                 ? (int)(player.MaxHp * itemDef.HealAmount / 100.0)
                 : itemDef.HealAmount;
-            int healed = Math.Min(rawHeal, player.MaxHp - player.CurrentHp);
-            player.CurrentHp += healed;
-            log.Add(healed > 0 ? $"Restored {healed} HP." : "HP is already full.");
+            if (StatusEffects.IsBlighted(playerFxOoc))
+            {
+                int dmg = Math.Max(1, rawHeal);
+                player.CurrentHp = Math.Max(1, player.CurrentHp - dmg);
+                log.Add($"💔 **Blight** inverts the healing! Takes **{dmg}** damage instead!");
+            }
+            else
+            {
+                int healed = Math.Min(rawHeal, player.MaxHp - player.CurrentHp);
+                player.CurrentHp += healed;
+                log.Add(healed > 0 ? $"Restored {healed} HP." : "HP is already full.");
+            }
         }
         if (itemDef.ManaRestoreAmount > 0)
         {
@@ -359,7 +372,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
     // Utility spells usable out of combat: (mpCost, hpHeal% of INT, mpRestore% of INT)
     private static readonly Dictionary<string, (int MpCost, float HpScale, float MpScale, string Desc)> _utilitySpells = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["heal"]         = (15,  3.0f, 0f,   "Restored {hp} HP."),
+        ["cure"]         = (8,   2.0f, 0f,   "Restored {hp} HP."),
         ["barrier"]      = (20,  0f,   2.5f, "Fortified your mind. Restored {mp} MP."),
         ["revitalize"]   = (30,  5.0f, 0f,   "Revitalized! Restored {hp} HP."),
         ["regen"]        = (35,  4.0f, 0f,   "Regenerated {hp} HP."),
@@ -400,13 +413,24 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
         int hpRestored = 0, mpRestored = 0;
 
+        string? blightMsg = null;
         if (spell.HpScale > 0)
         {
             int rawHeal = spellName == "resurrection"
                 ? target.MaxHp
                 : (int)(player.INT * spell.HpScale) + 5;   // caster's INT determines potency
-            hpRestored = Math.Min(rawHeal, target.MaxHp - target.CurrentHp);
-            target.CurrentHp += hpRestored;
+            var casterFx = StatusEffects.Load(player.StatusJson);
+            if (StatusEffects.IsBlighted(casterFx) && spellName != "resurrection")
+            {
+                int blightDmg = Math.Max(1, rawHeal);
+                target.CurrentHp = Math.Max(1, target.CurrentHp - blightDmg);
+                blightMsg = $"💔 **Blight** inverts the spell! Dealt **{blightDmg}** damage instead! (-{spell.MpCost} MP)";
+            }
+            else
+            {
+                hpRestored = Math.Min(rawHeal, target.MaxHp - target.CurrentHp);
+                target.CurrentHp += hpRestored;
+            }
         }
         if (spell.MpScale > 0)
         {
@@ -423,7 +447,7 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
         var spellTitle = $"{char.ToUpper(args.Trim()[0])}{args.Trim()[1..]}";
         var targetName = isSelf ? "yourself" : target.CharacterName;
-        var message    = $"✨ {spellTitle} → **{targetName}** — {effectMsg} (-{spell.MpCost} MP)";
+        var message    = blightMsg ?? $"✨ {spellTitle} → **{targetName}** — {effectMsg} (-{spell.MpCost} MP)";
 
         return GameCommandResult.Single("cast_spell", new
         {
@@ -624,14 +648,14 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                     var spellName = args.Trim().ToLower().Split(' ')[0];
                     if (string.IsNullOrWhiteSpace(spellName))
                     {
-                        logEntries.Add("Specify a spell: /magic fire  (or fira, firaga, firaja, blizzard, thunder, water, aero, cure, etc.)");
+                        logEntries.Add("Specify a spell: /magic fire  (or fira, firaga, firaja, blizzard, thunder, water, aero, cure, cura, etc.)");
                         break;
                     }
 
                     var spellDef = ElementSystem.FindSpell(spellName);
                     if (spellDef == null)
                     {
-                        logEntries.Add($"Unknown spell '{spellName}'. Try: fire, fira, firaga, firaja, blizzard, thunder, water, aero, dark, holy, cure, cura, etc.");
+                        logEntries.Add($"Unknown spell '{spellName}'. Try: fire, fira, blizzard, thunder, aero, cure, cura, curaga, etc.");
                         break;
                     }
                     if (player.Level < spellDef.LevelReq)
@@ -650,12 +674,21 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                     if (spellDef.IsHeal)
                     {
                         int rawHeal = (int)(totalINT * spellDef.IntScale) + 5;
-                        // Curse halves healing
-                        if (StatusEffects.IsCursed(playerFx)) rawHeal /= 2;
-                        int healed = Math.Min(rawHeal, player.MaxHp - player.CurrentHp);
-                        player.CurrentHp += healed;
-                        string curseNote = StatusEffects.IsCursed(playerFx) ? " *(Curse halved healing!)*" : "";
-                        logEntries.Add($"✨ **{spellDef.Name}** restores **{healed}** HP! (-{spellDef.MpCost} MP){curseNote}");
+                        if (StatusEffects.IsBlighted(playerFx))
+                        {
+                            int blightDmg = Math.Max(1, rawHeal);
+                            player.CurrentHp = Math.Max(0, player.CurrentHp - blightDmg);
+                            logEntries.Add($"💔 **Blight** inverts **{spellDef.Name}**! Deals **{blightDmg}** damage instead! (-{spellDef.MpCost} MP)");
+                        }
+                        else
+                        {
+                            // Curse halves healing
+                            if (StatusEffects.IsCursed(playerFx)) rawHeal /= 2;
+                            int healed = Math.Min(rawHeal, player.MaxHp - player.CurrentHp);
+                            player.CurrentHp += healed;
+                            string curseNote = StatusEffects.IsCursed(playerFx) ? " *(Curse halved healing!)*" : "";
+                            logEntries.Add($"✨ **{spellDef.Name}** restores **{healed}** HP! (-{spellDef.MpCost} MP){curseNote}");
+                        }
 
                         // Monster still attacks
                         var healRetDmg = CalculateMonsterDamage(monster, effDEF, false, monsterBerserk);
@@ -781,6 +814,13 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             player.CoinBalance += coinsGained;
             player.TotalMonstersKilled++;
 
+            _uow.LogCoin(new CoinTransaction {
+                PlayerId = player.Id,
+                Amount = coinsGained,
+                Source = CoinTransactionSource.Combat,
+                Description = $"Defeated {monster.Name}"
+            });
+
             // Combat skill XP
             var combatSkill = await _uow.PlayerSkills.GetByPlayerAndSkillAsync(player.Id, SkillType.Combat);
             if (combatSkill != null)
@@ -798,6 +838,13 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 {
                     int qty = Random.Shared.Next(loot.MinQuantity, loot.MaxQuantity + 1);
                     await AddItemToInventory(player.Id, loot.ItemDefinitionId, qty);
+                    _uow.LogItem(new ItemTransaction {
+                        PlayerId = player.Id,
+                        ItemDefinitionId = loot.ItemDefinitionId,
+                        Quantity = qty,
+                        Source = CoinTransactionSource.Combat,
+                        Description = $"Loot from {monster.Name}"
+                    });
                     lootDrops.Add(new
                     {
                         name = loot.ItemDefinition.Name,
@@ -823,6 +870,13 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                         if (matDef != null)
                         {
                             await AddItemToInventory(player.Id, matDef.Id, 1);
+                            _uow.LogItem(new ItemTransaction {
+                                PlayerId = player.Id,
+                                ItemDefinitionId = matDef.Id,
+                                Quantity = 1,
+                                Source = CoinTransactionSource.Combat,
+                                Description = $"Elemental drop from {monster.Name}"
+                            });
                             lootDrops.Add(new
                             {
                                 name     = matDef.Name,
@@ -1089,6 +1143,13 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             await _uow.PlayerInventoryItems.AddAsync(new PlayerInventoryItem
                 { PlayerId = player.Id, ItemDefinitionId = itemDef.Id, Quantity = qty });
 
+        _uow.LogCoin(new CoinTransaction {
+            PlayerId = player.Id,
+            Amount = -total,
+            Source = CoinTransactionSource.Shop,
+            Description = $"Bought {qty}x {itemDef.Name}"
+        });
+
         await _uow.SaveChangesAsync();
 
         return GameCommandResult.Single("buy", new
@@ -1135,6 +1196,21 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         inv.Quantity -= qty;
         if (inv.Quantity <= 0) _uow.PlayerInventoryItems.Remove(inv);
         player.CoinBalance += total;
+
+        _uow.LogCoin(new CoinTransaction {
+            PlayerId = player.Id,
+            Amount = total,
+            Source = CoinTransactionSource.Shop,
+            Description = $"Sold {qty}x {itemDef.Name}"
+        });
+        _uow.LogItem(new ItemTransaction {
+            PlayerId = player.Id,
+            ItemDefinitionId = itemDef.Id,
+            Quantity = -qty,
+            Source = CoinTransactionSource.Shop,
+            Description = $"Sold {qty}x {itemDef.Name}"
+        });
+
         await _uow.SaveChangesAsync();
 
         return GameCommandResult.Single("sell", new
@@ -1495,39 +1571,55 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
             await _uow.PlayerSkills.AddAsync(cookingSkill);
         }
 
+        // Batch size scales with cooking level
+        int batchSize = cookingSkill.Level switch
+        {
+            >= 15 => 20,
+            >= 10 => 5,
+            >= 5  => 2,
+            _     => 1
+        };
+        int toCook = Math.Min(batchSize, rawInv.Quantity);
+
         // Roll burn chance: max(0%, 40% - cookingLevel * 0.5%)
         double burnChance = Math.Max(0.0, 0.40 - cookingSkill.Level * 0.005);
-        bool burnt = Random.Shared.NextDouble() < burnChance;
 
-        // Consume one raw fish
-        rawInv.Quantity--;
+        int cookedCount = 0;
+        int burntCount  = 0;
+        long xpGained   = 0;
+        long coinBonus  = 0;
+
+        var cookedDef = await _uow.ItemDefinitions.GetByNameAsync(cookEntry.CookedName);
+        var burntDef  = await _uow.ItemDefinitions.GetByNameAsync("Burnt Fish");
+
+        for (int i = 0; i < toCook; i++)
+        {
+            bool burnt = Random.Shared.NextDouble() < burnChance;
+            if (burnt)
+            {
+                burntCount++;
+                xpGained  += 5;
+                coinBonus += 1;
+                if (burntDef != null)
+                    await AddItemToInventory(player.Id, burntDef.Id, 1);
+            }
+            else
+            {
+                cookedCount++;
+                xpGained  += cookEntry.XpReward;
+                coinBonus += 1 + (cookingSkill.Level / 10);
+                if (cookedDef != null)
+                    await AddItemToInventory(player.Id, cookedDef.Id, 1);
+            }
+        }
+
+        // Consume raw fish
+        rawInv.Quantity -= toCook;
         if (rawInv.Quantity <= 0)
             _uow.PlayerInventoryItems.Remove(rawInv);
 
-        long xpGained;
-        string resultItemName;
-        long coinBonus;
-
-        if (burnt)
-        {
-            xpGained = 5;
-            resultItemName = "Burnt Fish";
-            coinBonus = 1;
-        }
-        else
-        {
-            xpGained = cookEntry.XpReward;
-            resultItemName = cookEntry.CookedName;
-            coinBonus = 1 + (cookingSkill.Level / 10);
-        }
-
         player.CoinBalance += coinBonus;
-
-        var resultDef = await _uow.ItemDefinitions.GetByNameAsync(resultItemName);
-        if (resultDef != null)
-            await AddItemToInventory(player.Id, resultDef.Id, 1);
-
-        cookingSkill.XP += xpGained;
+        cookingSkill.XP    += xpGained;
         CheckSkillLevelUp(cookingSkill);
 
         await _uow.SaveChangesAsync();
@@ -1535,8 +1627,10 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
         return GameCommandResult.Single("cook", new
         {
             rawFish       = rawName,
-            result        = resultItemName,
-            burnt,
+            cooked        = cookEntry.CookedName,
+            cookedCount,
+            burntCount,
+            batchSize     = toCook,
             xpGained,
             coinBonus,
             skillLevel    = cookingSkill.Level,
@@ -1800,6 +1894,30 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
                 await AddItemToInventory(player.Id, cheapest.ItemDefinitionId, cheapest.Quantity);
                 cheapest.Status = MarketListingStatus.Sold;
                 cheapest.BuyerId = player.Id;
+
+                _uow.LogCoin(new CoinTransaction {
+                    PlayerId = player.Id,
+                    Amount = -totalWithTax,
+                    Source = CoinTransactionSource.Marketplace,
+                    Description = $"Bought {cheapest.Quantity}x {cheapest.ItemDefinition.Name} from market"
+                });
+                _uow.LogItem(new ItemTransaction {
+                    PlayerId = player.Id,
+                    ItemDefinitionId = cheapest.ItemDefinitionId,
+                    Quantity = cheapest.Quantity,
+                    Source = CoinTransactionSource.Marketplace,
+                    Description = $"Bought from market listing {cheapest.Id}"
+                });
+                if (cheapest.Seller != null)
+                {
+                    _uow.LogCoin(new CoinTransaction {
+                        PlayerId = cheapest.Seller.Id,
+                        Amount = totalCost,
+                        Source = CoinTransactionSource.Marketplace,
+                        Description = $"Sold {cheapest.Quantity}x {cheapest.ItemDefinition.Name} on market"
+                    });
+                }
+
                 await _uow.SaveChangesAsync();
 
                 return GameCommandResult.Single("market_bought", new
@@ -1867,8 +1985,8 @@ public class ProcessGameCommandHandler : IRequestHandler<ProcessGameCommandReque
 
         return GameCommandResult.Single("leaderboard", new
         {
-            byLevel = topLevel.Select((p, i) => new { rank = i + 1, name = p.CharacterName, level = p.Level, xp = p.XP }),
-            byKills = topKills.Select((p, i) => new { rank = i + 1, name = p.CharacterName, kills = p.TotalMonstersKilled })
+            byLevel = topLevel.Select((p, i) => new { rank = i + 1, name = p.CharacterName, userId = p.UserId, level = p.Level, xp = p.XP }),
+            byKills = topKills.Select((p, i) => new { rank = i + 1, name = p.CharacterName, userId = p.UserId, kills = p.TotalMonstersKilled })
         });
     }
 
