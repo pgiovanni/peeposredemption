@@ -15,77 +15,7 @@ public class WikiModel : PageModel
     public List<WikiItem>    Items    { get; set; } = new();
     public List<WikiMonster> Monsters { get; set; } = new();
 
-    public async Task OnGetAsync()
-    {
-        // ── Items (index only — no peepos, no inline detail) ───────────────────
-        var allItems = await _db.ItemDefinitions
-            .Where(i => i.Type != GameItemType.Collectible)
-            .OrderBy(i => i.Type).ThenBy(i => i.LevelReq).ThenBy(i => i.Name)
-            .ToListAsync();
-
-        Items = allItems.Select(item => new WikiItem
-        {
-            Id      = item.Id,
-            Name    = item.Name,
-            Description = item.Description,
-            Icon    = item.Icon,
-            Type    = item.Type,
-            SubType = item.SubType,
-            Rarity  = item.Rarity,
-            LevelReq = item.LevelReq,
-            BuyPrice = item.BuyPrice,
-            SellPrice = item.SellPrice,
-            Element = item.Element,
-            MinDamage = item.MinDamage,
-            MaxDamage = item.MaxDamage,
-            BonusSTR = item.BonusSTR,
-            BonusDEF = item.BonusDEF,
-            BonusINT = item.BonusINT,
-            BonusDEX = item.BonusDEX,
-            BonusVIT = item.BonusVIT,
-            BonusLUK = item.BonusLUK,
-            BonusHP  = item.BonusHP,
-            BonusMP  = item.BonusMP,
-            HealAmount = item.HealAmount,
-            ManaRestoreAmount = item.ManaRestoreAmount,
-            EnchantTier = item.EnchantTier,
-        }).ToList();
-
-        // ── Monsters ───────────────────────────────────────────────────────────
-        var allMonsters = await _db.MonsterDefinitions
-            .Include(m => m.LootTable).ThenInclude(l => l.ItemDefinition)
-            .OrderBy(m => m.Zone).ThenBy(m => m.Level)
-            .ToListAsync();
-
-        Monsters = allMonsters.Select(m => new WikiMonster
-        {
-            Name         = m.Name,
-            Description  = m.Description,
-            Icon         = m.Icon,
-            Level        = m.Level,
-            Zone         = m.Zone,
-            Element      = m.Element,
-            MaxHp        = m.MaxHp,
-            STR          = m.STR,
-            DEF          = m.DEF,
-            INT          = m.INT,
-            DEX          = m.DEX,
-            MinDamage    = m.MinDamage,
-            MaxDamage    = m.MaxDamage,
-            XpReward     = m.XpReward,
-            OrbRewardMin = m.OrbRewardMin,
-            OrbRewardMax = m.OrbRewardMax,
-            Abilities    = ParseAbilities(m.AbilityJson),
-            Loot         = m.LootTable.Select(l => new WikiLootEntry
-            {
-                ItemName   = l.ItemDefinition.Name,
-                ItemIcon   = l.ItemDefinition.Icon,
-                DropChance = (int)Math.Round((double)l.DropChance * 100),
-                MinQty     = l.MinQuantity,
-                MaxQty     = l.MaxQuantity
-            }).OrderByDescending(l => l.DropChance).ToList()
-        }).ToList();
-    }
+    public Task OnGetAsync() => Task.CompletedTask;
 
     private static List<string> ParseAbilities(string? json)
     {

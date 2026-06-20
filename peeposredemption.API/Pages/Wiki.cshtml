@@ -1,6 +1,5 @@
 @page
 @model peeposredemption.API.Pages.WikiModel
-@using peeposredemption.Domain.Entities
 @{
     Layout = "_LandingLayout";
     ViewData["Title"] = "Game Wiki";
@@ -36,7 +35,7 @@
 .filter-btn:hover  { border-color: var(--accent); color: var(--text-primary); }
 .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 
-/* Item grid — compact cards */
+/* Item grid */
 .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .item-card {
     display: flex; align-items: center; gap: 10px;
@@ -57,27 +56,36 @@
 .dot-Legendary { background: #ffa500; }
 
 /* Monster grid */
-.monster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-.monster-card { background: var(--bg-card); border-radius: 12px; padding: 16px; border: 1px solid rgba(255,255,255,0.06); transition: border-color 0.2s; }
-.monster-card:hover { border-color: rgba(255,255,255,0.14); }
-.monster-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.monster-icon { font-size: 32px; }
-.monster-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
-.monster-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.level-badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: rgba(255,255,255,0.08); color: var(--text-secondary); }
-.monster-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.stat-chip { font-size: 12px; padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,0.06); color: var(--text-secondary); }
-.stat-chip.dmg { background: rgba(255,100,100,0.15); color: #ff9999; }
-.loot-table-mini { margin-top: 10px; }
-.obtain-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-.loot-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-.loot-row:last-child { border-bottom: none; }
-.loot-chance { margin-left: auto; font-size: 12px; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
-.chance-high   { background: rgba(59,165,92,0.2);  color: #3ba55c; }
-.chance-medium { background: rgba(255,165,0,0.2);  color: #ffa500; }
-.chance-low    { background: rgba(255,80,80,0.2);  color: #ff6464; }
-.ability-chip { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: rgba(255,100,100,0.12); color: #ff9999; font-weight: 600; }
-.abilities-list { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.monster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.monster-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg-card); border-radius: 10px; padding: 12px 14px;
+    border: 1px solid rgba(255,255,255,0.06); text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+.monster-card:hover { border-color: var(--accent); background: rgba(0,191,165,0.06); }
+.monster-icon { font-size: 28px; flex-shrink: 0; }
+.monster-card-info { overflow: hidden; flex: 1; }
+.monster-name { font-size: 13px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.monster-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.level-badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: rgba(255,255,255,0.08); color: var(--text-secondary); flex-shrink: 0; }
+
+/* Peepo grid */
+.peepo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.peepo-card { background: var(--bg-card); border-radius: 10px; padding: 12px 8px; border: 1px solid rgba(255,255,255,0.06); text-align: center; }
+.peepo-img { width: 56px; height: 56px; object-fit: contain; border-radius: 6px; }
+.peepo-name { font-size: 11px; color: var(--text-muted); margin-top: 6px; word-break: break-word; line-height: 1.3; }
+.peepo-rarity { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 8px; margin-top: 4px; display: inline-block; }
+.peepo-Common    { background: rgba(180,180,180,0.12); color: #b0b0b0; }
+.peepo-Uncommon  { background: rgba(59,165,92,0.15);   color: #3ba55c; }
+.peepo-Rare      { background: rgba(88,101,242,0.15);  color: #7289da; }
+.peepo-Epic      { background: rgba(163,73,164,0.15);  color: #c678dd; }
+.peepo-Legendary { background: rgba(255,165,0,0.15);   color: #ffa500; }
+.peepo-pagination { display: flex; gap: 8px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+.page-btn { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: var(--bg-card); color: var(--text-secondary); cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.15s; }
+.page-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.page-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.peepo-info { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
 
 /* Elements */
 .elem-intro { font-size: 14px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.7; }
@@ -97,7 +105,7 @@
 .cell-strong  { background: rgba(59,165,92,0.2);  color: #4ade80; font-weight: 700; }
 .cell-mutual  { background: rgba(88,101,242,0.2); color: #7289da; font-weight: 700; }
 .cell-resist  { background: rgba(255,80,80,0.18); color: #ff6464; font-weight: 700; }
-.cell-self    { background: rgba(255,255,255,0.04); color: var(--text-muted); }
+.cell-self    { background: rgba(255,140,0,0.18); color: #ffaa44; font-weight: 700; }
 .cell-neutral { color: var(--text-muted); }
 .section-title { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 20px; }
 .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 8px; }
@@ -105,6 +113,12 @@
 .status-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .status-effect { font-size: 13px; color: var(--accent); font-weight: 600; }
 .status-params { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.status-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.status-table th { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; }
+.status-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-secondary); vertical-align: middle; }
+.status-table tr:last-child td { border-bottom: none; }
+.status-table tr:hover td { background: rgba(255,255,255,0.02); }
+.status-table td:first-child { font-size: 20px; width: 36px; }
 
 .elem-Fire      { color: #ff7043; } .elem-Ice       { color: #81d4fa; }
 .elem-Lightning { color: #ffd54f; } .elem-Earth     { color: #a5d6a7; }
@@ -113,11 +127,32 @@
 .elem-Light     { color: #fff9c4; } .elem-Shadow    { color: #b39ddb; }
 .elem-Poison    { color: #aed581; } .elem-Void      { color: #90a4ae; }
 
+/* Recipes */
+.recipe-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.recipe-card {
+    background: var(--bg-card); border-radius: 12px; padding: 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: border-color 0.15s;
+}
+.recipe-card:hover { border-color: var(--accent); }
+.recipe-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.recipe-icon { font-size: 26px; flex-shrink: 0; }
+.recipe-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.recipe-skill { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.recipe-output { font-size: 13px; color: var(--accent); font-weight: 600; margin-bottom: 8px; }
+.recipe-ingredients { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.recipe-ing { font-size: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; padding: 4px 8px; color: var(--text-secondary); white-space: nowrap; }
+.recipe-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+.recipe-stat { font-size: 11px; color: var(--text-muted); }
+.recipe-stat strong { color: var(--text-secondary); }
+
+.wiki-loading { text-align: center; padding: 60px 0; color: var(--text-muted); font-size: 15px; }
+
 @@media (max-width: 600px) {
     .wiki-tabs { gap: 4px; }
     .wiki-tab  { padding: 8px 14px; font-size: 13px; }
     .item-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
-    .monster-grid { grid-template-columns: 1fr; }
+    .monster-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 }
 </style>
 }
@@ -131,38 +166,25 @@
     <div class="wiki-tabs">
         <button class="wiki-tab active" onclick="showSection('items', this)">📦 Items</button>
         <button class="wiki-tab"        onclick="showSection('monsters', this)">👾 Monsters</button>
+        <button class="wiki-tab"        onclick="showSection('recipes', this)">⚒️ Recipes</button>
         <button class="wiki-tab"        onclick="showSection('elements', this)">🔥 Elements</button>
+        <button class="wiki-tab"        onclick="showSection('status', this)">💊 Status</button>
+        <button class="wiki-tab"        onclick="showSection('peepos', this)">🐸 Peepos</button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════ ITEMS -->
     <div id="section-items" class="wiki-section active">
         <div class="wiki-controls">
             <input type="text" class="wiki-search" id="item-search" placeholder="Search items…" oninput="filterItems()" />
-            @foreach (var f in new[] { "All","Weapons","Armor","Consumables","Materials","Tools" })
-            {
-                <button class="filter-btn @(f == "All" ? "active" : "")" data-filter="@f" onclick="setItemFilter(this,'@f')">@f</button>
-            }
+            <button class="filter-btn active" data-filter="All"          onclick="setItemFilter(this,'All')">All</button>
+            <button class="filter-btn"        data-filter="Weapons"      onclick="setItemFilter(this,'Weapons')">Weapons</button>
+            <button class="filter-btn"        data-filter="Armor"        onclick="setItemFilter(this,'Armor')">Armor</button>
+            <button class="filter-btn"        data-filter="Consumables"  onclick="setItemFilter(this,'Consumables')">Consumables</button>
+            <button class="filter-btn"        data-filter="Materials"    onclick="setItemFilter(this,'Materials')">Materials</button>
+            <button class="filter-btn"        data-filter="Tools"        onclick="setItemFilter(this,'Tools')">Tools</button>
         </div>
-        <div class="item-grid" id="item-grid">
-            @foreach (var item in Model.Items)
-            {
-                var filterTag = item.Type switch {
-                    GameItemType.Weapon     => item.SubType is ItemSubType.Pickaxe or ItemSubType.FishingRod ? "Tools" : "Weapons",
-                    GameItemType.Armor      => "Armor",
-                    GameItemType.Consumable => "Consumables",
-                    GameItemType.Material   => "Materials",
-                    _                       => "Other"
-                };
-                var sub = item.LevelReq > 0 ? $"Lv.{item.LevelReq} · {item.SubType}" : item.SubType.ToString();
-                <a href="/wiki/item/@item.Slug" class="item-card" data-filter="@filterTag" data-name="@item.Name.ToLower()">
-                    <span class="item-card-icon">@item.Icon</span>
-                    <div class="item-card-info">
-                        <div class="item-card-name">@item.Name</div>
-                        <div class="item-card-sub">@sub</div>
-                    </div>
-                    <span class="rarity-dot dot-@item.Rarity" title="@item.Rarity"></span>
-                </a>
-            }
+        <div id="item-grid" class="item-grid">
+            <div class="wiki-loading">Loading items…</div>
         </div>
     </div>
 
@@ -170,59 +192,92 @@
     <div id="section-monsters" class="wiki-section">
         <div class="wiki-controls">
             <input type="text" class="wiki-search" id="monster-search" placeholder="Search monsters…" oninput="filterMonsters()" />
-            @{
-                var zones = Model.Monsters.Select(m => m.Zone).Distinct().OrderBy(z => z).ToList();
-            }
-            <button class="filter-btn active" data-zone="All" onclick="setZoneFilter(this,'All')">All Zones</button>
-            @foreach (var zone in zones)
-            {
-                <button class="filter-btn" data-zone="@zone" onclick="setZoneFilter(this,'@zone')">@zone</button>
-            }
+            <div id="zone-filters">
+                <button class="filter-btn active" data-zone="All" onclick="setZoneFilter(this,'All')">All Zones</button>
+            </div>
         </div>
-        <div class="monster-grid" id="monster-grid">
-            @foreach (var mon in Model.Monsters)
-            {
-                var elemName = mon.Element == Element.None ? "None" : mon.Element.ToString();
-                <div class="monster-card" data-zone="@mon.Zone" data-name="@mon.Name.ToLower()">
-                    <div class="monster-header">
-                        <span class="monster-icon">@mon.Icon</span>
-                        <div style="flex:1">
-                            <div class="monster-name">@mon.Name</div>
-                            <div class="monster-meta">@mon.Zone &nbsp;·&nbsp; <span class="elem-@elemName">@(mon.Element == Element.None ? "No element" : elemName)</span></div>
-                        </div>
-                        <span class="level-badge">Lv.@mon.Level</span>
-                    </div>
-                    <div class="monster-stats">
-                        <span class="stat-chip">❤️ @mon.MaxHp HP</span>
-                        <span class="stat-chip dmg">⚔️ @mon.MinDamage–@mon.MaxDamage</span>
-                        <span class="stat-chip">🛡️ @mon.DEF DEF</span>
-                        <span class="stat-chip">✨ @mon.XpReward XP</span>
-                        <span class="stat-chip">🔮 @mon.OrbRewardMin–@mon.OrbRewardMax orbs</span>
-                    </div>
-                    @if (mon.Abilities.Any())
-                    {
-                        <div class="abilities-list">
-                            @foreach (var ab in mon.Abilities) { <span class="ability-chip">@ab</span> }
-                        </div>
-                    }
-                    @if (mon.Loot.Any())
-                    {
-                        <div class="loot-table-mini">
-                            <div class="obtain-label">Drop Table</div>
-                            @foreach (var loot in mon.Loot)
-                            {
-                                var cc = loot.DropChance >= 50 ? "chance-high" : loot.DropChance >= 20 ? "chance-medium" : "chance-low";
-                                <div class="loot-row">
-                                    <span>@loot.ItemIcon</span>
-                                    <a href="/wiki/item/@WikiModel.Slugify(loot.ItemName)" style="color:var(--accent)">@loot.ItemName@(loot.MaxQty > 1 ? $" ×{loot.MinQty}–{loot.MaxQty}" : "")</a>
-                                    <span class="loot-chance @cc">@loot.DropChance%</span>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            }
+        <div id="monster-grid" class="monster-grid">
+            <div class="wiki-loading">Loading monsters…</div>
         </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ RECIPES -->
+    <div id="section-recipes" class="wiki-section">
+        <div class="wiki-controls">
+            <input type="text" class="wiki-search" id="recipe-search" placeholder="Search recipes…" oninput="filterRecipes()" />
+            <button class="filter-btn active" data-rskill="All"         onclick="setRecipeSkill(this,'All')">All Skills</button>
+            <button class="filter-btn"        data-rskill="Smithing"    onclick="setRecipeSkill(this,'Smithing')">⚒️ Smithing</button>
+            <button class="filter-btn"        data-rskill="Woodcutting" onclick="setRecipeSkill(this,'Woodcutting')">🪵 Woodcutting</button>
+            <button class="filter-btn"        data-rskill="Cooking"     onclick="setRecipeSkill(this,'Cooking')">🍳 Cooking</button>
+        </div>
+        <div id="recipe-list" class="recipe-list">
+            <div class="wiki-loading">Loading recipes…</div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ PEEPOS -->
+    <div id="section-peepos" class="wiki-section">
+        <p class="peepo-info">Peepo collectibles drop from monsters and can be traded on the marketplace. Rarity affects drop chance and value.</p>
+        <div id="peepo-grid" class="peepo-grid">
+            <div class="wiki-loading">Loading peepos…</div>
+        </div>
+        <div id="peepo-pagination" class="peepo-pagination"></div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ STATUS EFFECTS -->
+    <div id="section-status" class="wiki-section">
+        <p class="elem-intro">
+            Status effects are applied by monster abilities, elemental hits, or spells.
+            Most wear off after a set number of turns — your <strong>LUK</strong> stat gives a chance to shake them off early.
+            <strong>Combat-only</strong> effects clear when battle ends.
+        </p>
+
+        <div class="section-title" style="margin-top:20px">Debuffs</div>
+        <table class="status-table">
+            <thead><tr><th>Icon</th><th>Name</th><th>Effect</th><th>Source</th><th>Duration</th></tr></thead>
+            <tbody>
+                <tr><td>☠️</td><td><strong>Poison</strong></td><td>Deals % of your Max HP each turn</td><td>Poison element · Bio spells</td><td>4 turns</td></tr>
+                <tr><td>🔥</td><td><strong>Burn</strong></td><td>Deals flat damage per turn. Stacks up to 3×</td><td>Fire element · Fire spells</td><td>3 turns</td></tr>
+                <tr><td>🩸</td><td><strong>Bleed</strong></td><td>Deals flat damage per turn. Stacks up to 3×</td><td>Monster abilities</td><td>Varies</td></tr>
+                <tr><td>🧊</td><td><strong>Freeze</strong></td><td>Deals cold damage and <em>skips your turn</em></td><td>Ice element · Blizzard spells</td><td>2 turns</td></tr>
+                <tr><td>⚡</td><td><strong>Shock</strong></td><td>Deals lightning damage · 25% chance to stun each tick</td><td>Lightning element · Thunder spells</td><td>2 turns</td></tr>
+                <tr><td>🌀</td><td><strong>Corrupt</strong></td><td>Deals void damage per turn</td><td>Void element · Shadow spells</td><td>4 turns</td></tr>
+                <tr><td>💧</td><td><strong>MP Drain</strong></td><td>Drains MP each turn</td><td>Water element · Aqua spells</td><td>3 turns</td></tr>
+                <tr><td>🛡️↓</td><td><strong>Defense Down</strong></td><td>Reduces your DEF stat</td><td>Earth element · Monster abilities</td><td>3 turns</td></tr>
+                <tr><td>⚔️↓</td><td><strong>Attack Down</strong></td><td>Reduces your STR stat</td><td>Monster abilities</td><td>Varies</td></tr>
+                <tr><td>👁️</td><td><strong>Blind</strong></td><td>Increases your miss chance on attacks</td><td>Light element · Monster abilities</td><td>3 turns</td></tr>
+                <tr><td>💔</td><td><strong>Blight</strong></td><td>Inverts all healing — potions and cure spells <em>deal damage</em> instead</td><td>Dark element · Dark spells</td><td>3 turns</td></tr>
+                <tr><td>🌑</td><td><strong>Curse</strong></td><td>Halves the amount healed by all healing spells</td><td>Monster abilities</td><td>Varies</td></tr>
+                <tr><td>💫</td><td><strong>Confusion</strong> <span style="font-size:11px;color:var(--text-muted)">(combat only)</span></td><td>50% chance to attack yourself instead of the enemy</td><td>Shadow element · Monster abilities</td><td>3 turns</td></tr>
+                <tr><td>🔇</td><td><strong>Silence</strong> <span style="font-size:11px;color:var(--text-muted)">(combat only)</span></td><td>Prevents casting any magic spells</td><td>Monster abilities</td><td>Varies</td></tr>
+                <tr><td>🪨</td><td><strong>Stone</strong> <span style="font-size:11px;color:var(--text-muted)">(combat only)</span></td><td>Fully skips your turn — you cannot act at all</td><td>Monster abilities</td><td>Varies</td></tr>
+                <tr><td>🌪️</td><td><strong>Windblast</strong> <span style="font-size:11px;color:var(--text-muted)">(combat only)</span></td><td>Blown away — skips your turn</td><td>Wind element · Aero spells</td><td>1 turn</td></tr>
+                <tr><td>⏳</td><td><strong>Slow</strong></td><td>Skips every other turn</td><td>Monster abilities</td><td>Varies</td></tr>
+            </tbody>
+        </table>
+
+        <div class="section-title" style="margin-top:32px">Buffs</div>
+        <table class="status-table">
+            <thead><tr><th>Icon</th><th>Name</th><th>Effect</th><th>Source</th><th>Duration</th></tr></thead>
+            <tbody>
+                <tr><td>💚</td><td><strong>Regeneration</strong></td><td>Restores HP each turn</td><td>Holy element · Holy spells</td><td>3 turns</td></tr>
+                <tr><td>🪖</td><td><strong>Phys Resist</strong></td><td>Reduces physical damage taken by a %</td><td>Monster innate · Barrier spells</td><td>Varies</td></tr>
+                <tr><td>✨</td><td><strong>Magic Resist</strong></td><td>Reduces magic damage taken by a %</td><td>Monster innate</td><td>Varies</td></tr>
+            </tbody>
+        </table>
+
+        <div class="section-title" style="margin-top:32px">Monster-only</div>
+        <table class="status-table">
+            <thead><tr><th>Icon</th><th>Name</th><th>Effect</th></tr></thead>
+            <tbody>
+                <tr><td>😡</td><td><strong>Berserk</strong></td><td>Monster deals significantly increased damage</td></tr>
+            </tbody>
+        </table>
+
+        <p style="font-size:13px;color:var(--text-muted);margin-top:24px">
+            💡 <strong>LUK</strong> gives a <em>LUK × 10%</em> chance (max 80%) to shake off a status effect early each turn.<br>
+            Effects marked <strong>combat only</strong> are automatically cleared when you leave battle.
+        </p>
     </div>
 
     <!-- ══════════════════════════════════════════════════ ELEMENTS -->
@@ -237,6 +292,7 @@
             <div class="legend-item"><div class="legend-swatch swatch-mutual"></div> Mutual Strong (both directions)</div>
             <div class="legend-item"><div class="legend-swatch swatch-resist"></div> Resisted (0.75×)</div>
             <div class="legend-item"><div class="legend-swatch swatch-neutral"></div> Neutral (1.0×)</div>
+            <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,140,0,0.4)"></div> Same Element (0.5×)</div>
         </div>
         @{
             var elems = new[] { "Fire","Ice","Lightning","Earth","Water","Wind","Holy","Dark","Light","Shadow","Poison","Void" };
@@ -270,7 +326,7 @@
                         {
                             var cell = matrix[a,d];
                             var css = cell switch { "S"=>"cell-strong","M"=>"cell-mutual","R"=>"cell-resist","X"=>"cell-self",_=>"cell-neutral" };
-                            <td class="@css" title="@elems[a] vs @elems[d]">@(cell=="X"?"—":cell=="."?"·":cell)</td>
+                            <td class="@css" title="@elems[a] vs @elems[d]">@(cell=="X"?"½":cell=="."?"·":cell)</td>
                         }
                     </tr>
                 }
@@ -284,7 +340,7 @@
                     ("Fire","🔥","Burn","8 dmg/turn","3 turns"),("Ice","❄️","Freeze","5 dmg/turn","2 turns"),
                     ("Lightning","⚡","Shock","6 dmg/turn","2 turns"),("Earth","🌍","Defense Down","-5 DEF","3 turns"),
                     ("Water","💧","MP Drain","6 MP/turn","3 turns"),("Wind","🌪️","Windblast","Skip turn","1 turn"),
-                    ("Holy","✨","Regeneration","+12 HP/turn","3 turns"),("Dark","🌑","Blind","Miss chance","3 turns"),
+                    ("Holy","✨","Regeneration","+12 HP/turn","3 turns"),("Dark","🌑","Blight","Healing inverted","3 turns"),
                     ("Light","💡","Blind","Miss chance","3 turns"),("Shadow","👤","Confusion","Random target","3 turns"),
                     ("Poison","☠️","Poison","4 dmg/turn","4 turns"),("Void","🌀","Corrupt","5 dmg/turn","4 turns"),
                 };
@@ -306,35 +362,229 @@
 
 @section Scripts {
 <script>
+let allItems    = null;
+let allMonsters = null;
+let allRecipes  = null;
+let currentItemFilter  = 'All';
+let currentZone        = 'All';
+let currentRecipeSkill = 'All';
+
 function showSection(name, btn) {
     document.querySelectorAll('.wiki-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.wiki-tab').forEach(t => t.classList.remove('active'));
     document.getElementById('section-' + name).classList.add('active');
     btn.classList.add('active');
+    if (name === 'items'    && !allItems)    loadItems();
+    if (name === 'monsters' && !allMonsters) loadMonsters();
+    if (name === 'recipes'  && !allRecipes)  loadRecipes();
+    if (name === 'peepos')                   loadPeepos(currentPeepoPage);
 }
-let currentItemFilter = 'All';
+
+// ── Items ──────────────────────────────────────────────────────────────────
+
+async function loadItems() {
+    const res  = await fetch('/api/wiki/items');
+    allItems   = await res.json();
+    renderItems();
+}
+
+function itemFilterTag(item) {
+    if (item.subType === 'Pickaxe' || item.subType === 'FishingRod' || item.subType === 'Axe') return 'Tools';
+    if (item.type === 'Weapon')     return 'Weapons';
+    if (item.type === 'Armor')      return 'Armor';
+    if (item.type === 'Consumable') return 'Consumables';
+    if (item.type === 'Material')   return 'Materials';
+    return 'Other';
+}
+
+function renderItems() {
+    const q      = (document.getElementById('item-search').value || '').toLowerCase();
+    const grid   = document.getElementById('item-grid');
+    const items  = allItems.filter(i => {
+        const tag = itemFilterTag(i);
+        return (currentItemFilter === 'All' || tag === currentItemFilter) &&
+               (!q || i.name.toLowerCase().includes(q));
+    });
+    if (!items.length) { grid.innerHTML = '<div class="wiki-loading">No items found.</div>'; return; }
+    const PAGE = 60;
+    const shown = items.slice(0, PAGE);
+    const rest  = items.length - PAGE;
+    function cardHtml(i) {
+        const sub = i.levelReq > 0 ? `Lv.${i.levelReq} · ${i.subType}` : i.subType;
+        return `<a href="/wiki/item/${i.slug}" class="item-card">
+            <span class="item-card-icon">${i.icon}</span>
+            <div class="item-card-info">
+                <div class="item-card-name">${i.name}</div>
+                <div class="item-card-sub">${sub}</div>
+            </div>
+            <span class="rarity-dot dot-${i.rarity}" title="${i.rarity}"></span>
+        </a>`;
+    }
+    grid.innerHTML = shown.map(cardHtml).join('');
+    if (rest > 0) {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.style.cssText = 'grid-column:1/-1;margin-top:8px;width:100%;padding:12px';
+        btn.textContent = `Show ${rest} more…`;
+        btn.onclick = () => { grid.innerHTML = items.map(cardHtml).join(''); };
+        grid.appendChild(btn);
+    }
+}
+
 function setItemFilter(btn, filter) {
     currentItemFilter = filter;
-    document.querySelectorAll('.wiki-controls .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
-    filterItems();
+    document.querySelectorAll('#section-items .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+    if (allItems) renderItems();
 }
-function filterItems() {
-    const q = document.getElementById('item-search').value.toLowerCase();
-    document.querySelectorAll('#item-grid .item-card').forEach(c => {
-        c.style.display = (currentItemFilter==='All'||c.dataset.filter===currentItemFilter) && (!q||c.dataset.name.includes(q)) ? '' : 'none';
-    });
+
+function filterItems() { if (allItems) renderItems(); }
+
+// ── Monsters ───────────────────────────────────────────────────────────────
+
+async function loadMonsters() {
+    const res    = await fetch('/api/wiki/monsters');
+    allMonsters  = await res.json();
+    // Build zone filter buttons
+    const zones  = [...new Set(allMonsters.map(m => m.zone))].sort();
+    const zf     = document.getElementById('zone-filters');
+    zf.innerHTML = `<button class="filter-btn active" data-zone="All" onclick="setZoneFilter(this,'All')">All Zones</button>`
+        + zones.map(z => `<button class="filter-btn" data-zone="${z}" onclick="setZoneFilter(this,'${z}')">${z}</button>`).join('');
+    renderMonsters();
 }
-let currentZone = 'All';
+
+function renderMonsters() {
+    const q    = (document.getElementById('monster-search').value || '').toLowerCase();
+    const grid = document.getElementById('monster-grid');
+    const mons = allMonsters.filter(m =>
+        (currentZone === 'All' || m.zone === currentZone) &&
+        (!q || m.name.toLowerCase().includes(q))
+    );
+    if (!mons.length) { grid.innerHTML = '<div class="wiki-loading">No monsters found.</div>'; return; }
+
+    const elemColors = {Fire:'#ff7043',Ice:'#81d4fa',Lightning:'#ffd54f',Earth:'#a5d6a7',Water:'#4fc3f7',
+        Wind:'#e0e0e0',Holy:'#fff59d',Dark:'#ce93d8',Light:'#fff9c4',Shadow:'#b39ddb',Poison:'#aed581',Void:'#90a4ae'};
+
+    grid.innerHTML = mons.map(m => {
+        const elemColor = elemColors[m.element] || 'var(--text-muted)';
+        const elemLabel = m.element === 'None' ? '' : m.element;
+        const meta = [m.zone, elemLabel ? `<span style="color:${elemColor}">${elemLabel}</span>` : ''].filter(Boolean).join(' · ');
+        return `<a href="/wiki/monster/${m.slug}" class="monster-card">
+            <span class="monster-icon">${m.icon}</span>
+            <div class="monster-card-info">
+                <div class="monster-name">${m.name}</div>
+                <div class="monster-meta">${meta}</div>
+            </div>
+            <span class="level-badge">Lv.${m.level}</span>
+        </a>`;
+    }).join('');
+}
+
 function setZoneFilter(btn, zone) {
     currentZone = zone;
-    document.querySelectorAll('#section-monsters .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.zone === zone));
-    filterMonsters();
+    document.querySelectorAll('#zone-filters .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.zone === zone));
+    if (allMonsters) renderMonsters();
 }
-function filterMonsters() {
-    const q = document.getElementById('monster-search').value.toLowerCase();
-    document.querySelectorAll('#monster-grid .monster-card').forEach(c => {
-        c.style.display = (currentZone==='All'||c.dataset.zone===currentZone) && (!q||c.dataset.name.includes(q)) ? '' : 'none';
-    });
+
+function filterMonsters() { if (allMonsters) renderMonsters(); }
+
+// ── Recipes ────────────────────────────────────────────────────────────────
+
+async function loadRecipes() {
+    const res = await fetch('/api/wiki/recipes');
+    allRecipes = await res.json();
+    renderRecipes();
 }
+
+const skillIcons = { Smithing: '⚒️', Woodcutting: '🪵', Cooking: '🍳', Alchemy: '⚗️' };
+
+function renderRecipes() {
+    const q    = (document.getElementById('recipe-search').value || '').toLowerCase();
+    const list = document.getElementById('recipe-list');
+    const recipes = allRecipes.filter(r =>
+        (currentRecipeSkill === 'All' || r.skill === currentRecipeSkill) &&
+        (!q || r.name.toLowerCase().includes(q) ||
+               r.output.name.toLowerCase().includes(q) ||
+               r.ingredients.some(i => i.name.toLowerCase().includes(q)))
+    );
+    if (!recipes.length) { list.innerHTML = '<div class="wiki-loading">No recipes found.</div>'; return; }
+
+    list.innerHTML = recipes.map(r => {
+        const icon = skillIcons[r.skill] || '⚒️';
+        const ingHtml = r.ingredients.map(i =>
+            `<span class="recipe-ing">${i.icon} ${i.name} ×${i.qty}</span>`
+        ).join('');
+        const stats = [
+            `<span class="recipe-stat">📊 <strong>${r.successRate}%</strong> success</span>`,
+            `<span class="recipe-stat">✨ <strong>${r.xpReward.toLocaleString()}</strong> XP</span>`,
+            r.orbCost > 0 ? `<span class="recipe-stat">🔮 <strong>${r.orbCost.toLocaleString()}</strong> orbs</span>` : null,
+        ].filter(Boolean).join('');
+        return `<div class="recipe-card">
+            <div class="recipe-header">
+                <span class="recipe-icon">${r.output.icon}</span>
+                <div>
+                    <div class="recipe-name">${r.name}</div>
+                    <div class="recipe-skill">${icon} ${r.skill} Lv.${r.skillLevel}</div>
+                </div>
+            </div>
+            <div class="recipe-output">→ ${r.output.qty > 1 ? r.output.qty + '× ' : ''}${r.output.name}</div>
+            <div class="recipe-ingredients">${ingHtml}</div>
+            <div class="recipe-stats">${stats}</div>
+        </div>`;
+    }).join('');
+}
+
+function setRecipeSkill(btn, skill) {
+    currentRecipeSkill = skill;
+    document.querySelectorAll('#section-recipes .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.rskill === skill));
+    if (allRecipes) renderRecipes();
+}
+
+function filterRecipes() { if (allRecipes) renderRecipes(); }
+
+// ── Peepos ─────────────────────────────────────────────────────────────────
+
+let currentPeepoPage = 1;
+let peepoTotal = 0;
+let peepoPageSize = 60;
+
+async function loadPeepos(page) {
+    currentPeepoPage = page;
+    document.getElementById('peepo-grid').innerHTML = '<div class="wiki-loading">Loading peepos…</div>';
+    const res  = await fetch(`/api/wiki/collectibles?page=${page}`);
+    const data = await res.json();
+    peepoTotal    = data.total;
+    peepoPageSize = data.pageSize;
+
+    const grid = document.getElementById('peepo-grid');
+    grid.innerHTML = data.items.map(p => {
+        const isUrl = p.icon.startsWith('http');
+        const iconHtml = isUrl
+            ? `<img class="peepo-img" src="${p.icon}" alt="${p.name}" loading="lazy">`
+            : `<div style="font-size:48px;line-height:1">${p.icon}</div>`;
+        const priceHtml = p.sellPrice > 0 ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">🪙 ${p.sellPrice.toLocaleString()}</div>` : '';
+        return `<div class="peepo-card">
+            ${iconHtml}
+            <div class="peepo-name">${p.name}</div>
+            <span class="peepo-rarity peepo-${p.rarity}">${p.rarity}</span>
+            ${priceHtml}
+        </div>`;
+    }).join('');
+
+    // Pagination
+    const totalPages = Math.ceil(peepoTotal / peepoPageSize);
+    const pag = document.getElementById('peepo-pagination');
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+    let html = '';
+    if (page > 1) html += `<button class="page-btn" onclick="loadPeepos(${page-1})">← Prev</button>`;
+    for (let p = Math.max(1, page-2); p <= Math.min(totalPages, page+2); p++) {
+        html += `<button class="page-btn${p===page?' active':''}" onclick="loadPeepos(${p})">${p}</button>`;
+    }
+    if (page < totalPages) html += `<button class="page-btn" onclick="loadPeepos(${page+1})">Next →</button>`;
+    html += `<span style="font-size:13px;color:var(--text-muted);align-self:center">${peepoTotal} total</span>`;
+    pag.innerHTML = html;
+}
+
+// Load items on initial page load (items tab is active by default)
+loadItems();
 </script>
 }

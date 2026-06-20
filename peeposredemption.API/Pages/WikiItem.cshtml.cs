@@ -17,8 +17,10 @@ public class WikiItemModel : PageModel
 
     public async Task<IActionResult> OnGetAsync(string slug)
     {
-        var allItems = await _db.ItemDefinitions.ToListAsync();
-        var match = allItems.FirstOrDefault(i => Slugify(i.Name) == slug);
+        var names = await _db.ItemDefinitions.Select(i => new { i.Id, i.Name }).ToListAsync();
+        var found = names.FirstOrDefault(i => Slugify(i.Name) == slug);
+        if (found == null) return NotFound();
+        var match = await _db.ItemDefinitions.FirstOrDefaultAsync(i => i.Id == found.Id);
         if (match == null) return NotFound();
 
         var recipes = await _db.CraftingRecipes
