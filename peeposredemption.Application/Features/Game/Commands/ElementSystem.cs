@@ -30,14 +30,14 @@ public static class ElementSystem
     // ── Damage multiplier ─────────────────────────────────────────────────────
     // isMagic = true  → strong = 1.5×
     // isMagic = false → strong = 1.25×
-    // Resist / same element = 0.75× either way
+    // Resist = 0.75× | Same element = 0.5×
 
     public static double GetMultiplier(Element attacker, Element defender, bool isMagic = false)
     {
         if (attacker == Element.None || defender == Element.None) return 1.0;
 
-        // Same element is always resisted
-        if (attacker == defender) return 0.75;
+        // Same element is nullified (stronger than a normal resist)
+        if (attacker == defender) return 0.5;
 
         double strongMult = isMagic ? 1.5 : 1.25;
 
@@ -95,7 +95,7 @@ public static class ElementSystem
         Element.Earth     => "DefenseDown",
         Element.Water     => "MpDrain",
         Element.Wind      => "Windblast",
-        Element.Dark      => "Blind",
+        Element.Dark      => "Blight",
         Element.Holy      => "Regeneration",
         Element.Light     => "Blind",
         Element.Shadow    => "Confusion",
@@ -112,7 +112,7 @@ public static class ElementSystem
         Element.Earth     => (5,  3),
         Element.Water     => (6,  3),
         Element.Wind      => (0,  1),   // Windblast: no strength, just skip turn
-        Element.Dark      => (3,  3),
+        Element.Dark      => (0,  3),   // Blight: no strength, just the flag
         Element.Holy      => (12, 3),
         Element.Light     => (3,  3),
         Element.Shadow    => (0,  3),   // Confusion: no strength

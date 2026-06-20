@@ -34,6 +34,7 @@ public static class StatusEffects
         ["Corrupt"]    = "🌀",   // Void DoT + resistance drain
         ["Regeneration"]= "💚",  // Holy buff: heals HP per turn
         ["Windblast"]  = "🌪️",  // Wind CC: skip turn (no damage)
+        ["Blight"]     = "💔",   // Dark debuff: healing inverted to damage
     };
 
     // DoT effects that stack additively when reapplied (up to 3× base strength)
@@ -181,6 +182,11 @@ public static class StatusEffects
                     log.Add($"🌪️ Windblasted! You cannot act this turn!");
                     break;
 
+                case "blight":
+                    // Passive — inverts healing (checked in heal logic). Just remind the player.
+                    log.Add($"💔 **Blight** — your healing is inverted!");
+                    break;
+
                 case "curse":
                 case "defensedown":
                 case "attackdown":
@@ -250,6 +256,9 @@ public static class StatusEffects
 
     public static bool IsCursed(List<ActiveStatus> effects) =>
         effects.Any(e => e.Type.Equals("Curse", StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsBlighted(List<ActiveStatus> effects) =>
+        effects.Any(e => e.Type.Equals("Blight", StringComparison.OrdinalIgnoreCase));
 
     // ── Filter to effects that persist between combats ────────────────────────
     // CC effects (Freeze, Stone, Silence, Confusion) are combat-only and cleared.
