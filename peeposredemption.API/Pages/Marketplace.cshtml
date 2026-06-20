@@ -1,0 +1,157 @@
+@page
+@model peeposredemption.API.Pages.MarketplaceModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Marketplace";
+    ViewData["OgTitle"] = "Torvex Marketplace — Player Listings";
+    ViewData["Description"] = "Browse player-listed items for sale on the Torvex marketplace.";
+}
+
+@section Head {
+<style>
+.mp-page  { max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+.mp-hero  { text-align: center; padding: 60px 24px 40px; }
+.mp-hero h1 { font-size: clamp(26px,5vw,42px); font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
+.mp-hero p  { color: var(--text-secondary); font-size: 16px; }
+
+.mp-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; align-items: center; }
+.mp-search { flex: 1; min-width: 200px; padding: 10px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: var(--bg-card); color: var(--text-primary); font-size: 14px; }
+.mp-search:focus { outline: none; border-color: var(--accent); }
+.mp-select { padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: var(--bg-card); color: var(--text-secondary); font-size: 13px; cursor: pointer; }
+.mp-select:focus { outline: none; }
+
+.mp-table { width: 100%; border-collapse: collapse; }
+.mp-table th { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); text-align: left; }
+.mp-table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary); font-size: 14px; vertical-align: middle; }
+.mp-table tr:last-child td { border-bottom: none; }
+.mp-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.item-cell { display: flex; align-items: center; gap: 10px; }
+.item-icon { font-size: 22px; flex-shrink: 0; }
+.item-name { font-weight: 600; color: var(--text-primary); font-size: 14px; }
+.item-name a { color: var(--text-primary); text-decoration: none; }
+.item-name a:hover { color: var(--accent); }
+.item-type { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.rarity-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-Common    { background: #b0b0b0; } .dot-Uncommon  { background: #3ba55c; }
+.dot-Rare      { background: #7289da; } .dot-Epic      { background: #c678dd; }
+.dot-Legendary { background: #ffa500; }
+
+.price-cell { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+.orb-price  { color: #7289da; }
+.coin-price { color: #ffa500; }
+.total-price { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+.expiry-chip { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: rgba(255,255,255,0.06); color: var(--text-muted); white-space: nowrap; }
+
+.mp-empty { text-align: center; padding: 80px 0; color: var(--text-muted); }
+.mp-empty h3 { font-size: 20px; margin-bottom: 8px; color: var(--text-secondary); }
+
+.pagination { display: flex; gap: 6px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
+.page-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: var(--bg-card); color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 600; transition: 0.15s; }
+.page-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.page-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.page-btn.disabled { opacity: 0.3; pointer-events: none; }
+
+.mp-stats { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+
+@@media (max-width: 700px) {
+    .mp-table th.hide-mobile, .mp-table td.hide-mobile { display: none; }
+}
+</style>
+}
+
+<div class="mp-hero">
+    <h1>🏪 Marketplace</h1>
+    <p>Browse items listed by players. Buy in-game via <code>/rpg market buy</code>.</p>
+</div>
+
+<div class="mp-page">
+    <form method="get" class="mp-controls">
+        <input type="text" name="search" class="mp-search" placeholder="Search items…" value="@Model.Search" />
+        <select name="currency" class="mp-select" onchange="this.form.submit()">
+            <option value="All"   selected="@(Model.Currency=="All"   ? "selected" : null)">All currencies</option>
+            <option value="Orbs"  selected="@(Model.Currency=="Orbs"  ? "selected" : null)">🔮 Orbs only</option>
+            <option value="Coins" selected="@(Model.Currency=="Coins" ? "selected" : null)">🪙 Coins only</option>
+        </select>
+        <select name="sort" class="mp-select" onchange="this.form.submit()">
+            <option value="newest"     selected="@(Model.Sort=="newest"     ? "selected" : null)">Newest first</option>
+            <option value="price_asc"  selected="@(Model.Sort=="price_asc"  ? "selected" : null)">Price: Low → High</option>
+            <option value="price_desc" selected="@(Model.Sort=="price_desc" ? "selected" : null)">Price: High → Low</option>
+        </select>
+        <input type="hidden" name="page" value="1" />
+        <button type="submit" class="page-btn">Search</button>
+    </form>
+
+    @if (Model.TotalCount > 0)
+    {
+        <div class="mp-stats">@Model.TotalCount active listing@(Model.TotalCount == 1 ? "" : "s")</div>
+        <table class="mp-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th class="hide-mobile">Seller</th>
+                    <th>Qty</th>
+                    <th>Price / unit</th>
+                    <th class="hide-mobile">Expires</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var l in Model.Listings)
+                {
+                    <tr>
+                        <td>
+                            <div class="item-cell">
+                                <span class="item-icon">@l.ItemIcon</span>
+                                <div>
+                                    <div class="item-name">
+                                        <a href="/wiki/item/@l.ItemSlug">@l.ItemName</a>
+                                        <span class="rarity-dot dot-@l.ItemRarity" title="@l.ItemRarity" style="display:inline-block;margin-left:5px;vertical-align:middle"></span>
+                                    </div>
+                                    <div class="item-type">@l.ItemType</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="hide-mobile" style="color:var(--text-secondary)">@l.SellerName</td>
+                        <td>@l.Quantity</td>
+                        <td>
+                            <div class="price-cell @(l.Currency == "Orbs" ? "orb-price" : "coin-price")">
+                                @l.CurrencyIcon @l.PricePerUnit.ToString("N0")
+                            </div>
+                            @if (l.Quantity > 1)
+                            {
+                                <div class="total-price">Total: @l.CurrencyIcon @l.TotalPrice.ToString("N0")</div>
+                            }
+                        </td>
+                        <td class="hide-mobile">
+                            <span class="expiry-chip">@Model.TimeLeftStr(l.ExpiresAt)</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="pagination">
+                @{
+                    var qBase = $"?search={Uri.EscapeDataString(Model.Search)}&currency={Model.Currency}&sort={Model.Sort}";
+                }
+                <a href="@qBase&page=@(Model.CurrentPage-1)" class="page-btn @(Model.CurrentPage==1?"disabled":"")">← Prev</a>
+                @for (int p = Math.Max(1, Model.CurrentPage-2); p <= Math.Min(Model.TotalPages, Model.CurrentPage+2); p++)
+                {
+                    <a href="@qBase&page=@p" class="page-btn @(p==Model.CurrentPage?"active":"")">@p</a>
+                }
+                <a href="@qBase&page=@(Model.CurrentPage+1)" class="page-btn @(Model.CurrentPage==Model.TotalPages?"disabled":"")">Next →</a>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="mp-empty">
+            <h3>No active listings</h3>
+            <p>List items for sale in-game with <code>/rpg market sell</code>.</p>
+        </div>
+    }
+</div>
