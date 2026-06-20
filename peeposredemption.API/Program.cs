@@ -1194,6 +1194,7 @@ using (var scope = app.Services.CreateScope())
     await mediator.Send(new peeposredemption.Application.Features.Game.Commands.SeedGameDataCommand());
     var expansionDb = scope.ServiceProvider.GetRequiredService<peeposredemption.Infrastructure.Persistence.AppDbContext>();
     await peeposredemption.API.Infrastructure.GameExpansionSeeder.SeedAsync(expansionDb);
+    await peeposredemption.API.Infrastructure.CraftingRecipeSeeder.SeedAsync(expansionDb);
 }
 
 // =====================================================================
@@ -1496,6 +1497,57 @@ app.MapPost("/api/bot/game/command", async (
         req.Command,
         targetUserId));
 
+    // Enrich leaderboard results with Discord IDs
+    if (result.Responses.Count == 1 && result.Responses[0].Type == "leaderboard")
+    {
+        var json = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(
+            System.Text.Json.JsonSerializer.Serialize(result.Responses[0].Payload));
+
+        var allUserIds = new List<Guid>();
+        foreach (var e in json.GetProperty("byLevel").EnumerateArray())
+            if (Guid.TryParse(e.GetProperty("userId").GetString(), out var id)) allUserIds.Add(id);
+        foreach (var e in json.GetProperty("byKills").EnumerateArray())
+            if (Guid.TryParse(e.GetProperty("userId").GetString(), out var id)) allUserIds.Add(id);
+
+        var discordIds = await db.DiscordLinks
+            .Where(l => allUserIds.Contains(l.TorvexUserId))
+            .ToDictionaryAsync(l => l.TorvexUserId, l => l.DiscordUserId);
+
+        static Dictionary<string, object?> Enrich(System.Text.Json.JsonElement e, Dictionary<Guid, string> map)
+        {
+            var d = new Dictionary<string, object?>();
+            foreach (var p in e.EnumerateObject()) d[p.Name] = p.Value.ValueKind switch {
+                System.Text.Json.JsonValueKind.Number => p.Value.TryGetInt64(out var l) ? (object)l : p.Value.GetDouble(),
+                System.Text.Json.JsonValueKind.String => p.Value.GetString(),
+                _ => null
+            };
+            if (Guid.TryParse(e.GetProperty("userId").GetString(), out var uid) && map.TryGetValue(uid, out var did))
+                d["discordId"] = did;
+            return d;
+        }
+
+        // Only include players with a linked Discord account, re-rank after filtering
+        static List<Dictionary<string, object?>> FilterAndRank(IEnumerable<System.Text.Json.JsonElement> entries, Dictionary<Guid, string> map)
+        {
+            var ranked = new List<Dictionary<string, object?>>();
+            int rank = 1;
+            foreach (var e in entries)
+            {
+                var d = Enrich(e, map);
+                if (!d.ContainsKey("discordId")) continue;
+                d["rank"] = (long)rank++;
+                ranked.Add(d);
+            }
+            return ranked;
+        }
+
+        var enriched = new {
+            byLevel = FilterAndRank(json.GetProperty("byLevel").EnumerateArray(), discordIds),
+            byKills = FilterAndRank(json.GetProperty("byKills").EnumerateArray(), discordIds),
+        };
+        return Results.Ok(new { responses = new[] { new { type = "leaderboard", payload = enriched } } });
+    }
+
     return Results.Ok(result);
 });
 
@@ -1622,6 +1674,7 @@ app.MapGet("/api/bot/game/stats/{discordUserId}", async (
             kills = player.TotalMonstersKilled,
             deaths = player.TotalDeaths,
             coinBalance = player.CoinBalance,
+            inCombat = activeCombat != null,
             skills = skills.Select(s => new { skill = s.SkillType.ToString(), level = s.Level }),
             gear = equipped.Select(i => new
             {
@@ -1724,15 +1777,40 @@ app.MapPost("/api/bot/pvp/reward", async (
     var winner = await EnsureDiscordPlayer(req.WinnerDiscordId, db);
     var loser  = await EnsureDiscordPlayer(req.LoserDiscordId,  db);
 
-    long winnerXp = Math.Max(50, loser.Level * 25);
-    long loserXp  = Math.Max(10, loser.Level * 5);
+    // XP based on damage dealt — same pool and level-up loop as PvE
+    const float XpPerDamage = 0.5f;
+    long winnerXp = Math.Max(10, (long)(req.WinnerDamageDealt * XpPerDamage));
+    long loserXp  = Math.Max(5,  (long)(req.LoserDamageDealt  * XpPerDamage));
 
     winner.XP += winnerXp;
     loser.XP  += loserXp;
 
-    // Level up check (simple: level = floor(xp / 500) + 1, capped at 100)
-    winner.Level = Math.Min(100, (int)(winner.XP / 500) + 1);
-    loser.Level  = Math.Min(100, (int)(loser.XP  / 500) + 1);
+    // Shared level-up loop — same as PvE
+    static long XpToLevel(int lvl) => (long)Math.Floor(20 * Math.Pow(lvl, 2.5));
+    while (winner.XP >= XpToLevel(winner.Level + 1) && winner.Level < 100)
+    {
+        winner.Level++;
+        // Stat gains applied via the same logic as PvE (inline here since we can't call private handler method)
+        winner.STR += 3; winner.DEF += 3; winner.INT += 1; winner.DEX += 1; winner.VIT += 2; winner.LUK += 1;
+        winner.MaxHp += 10 + winner.VIT;
+        winner.MaxMp += 5 + winner.INT / 2;
+    }
+    while (loser.XP >= XpToLevel(loser.Level + 1) && loser.Level < 100)
+    {
+        loser.Level++;
+        loser.STR += 3; loser.DEF += 3; loser.INT += 1; loser.DEX += 1; loser.VIT += 2; loser.LUK += 1;
+        loser.MaxHp += 10 + loser.VIT;
+        loser.MaxMp += 5 + loser.INT / 2;
+    }
+
+    // Log the match
+    await db.Database.ExecuteSqlRawAsync(@"
+        INSERT INTO pvp_matches (id, winner_discord_id, loser_discord_id, winner_damage_dealt, loser_damage_dealt, winner_xp_gained, loser_xp_gained, guild_id, channel_id, fought_at)
+        VALUES (gen_random_uuid(), {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, now())",
+        req.WinnerDiscordId, req.LoserDiscordId,
+        req.WinnerDamageDealt, req.LoserDamageDealt,
+        winnerXp, loserXp,
+        req.GuildId ?? "", req.ChannelId ?? "");
 
     await db.SaveChangesAsync();
     return Results.Ok(new { winnerXpGained = winnerXp, loserXpGained = loserXp });
@@ -1858,6 +1936,149 @@ app.MapGet("/api/bot/monsters", async (
         .ToListAsync();
 
     return Results.Ok(monsters);
+});
+
+// ── Public Wiki API ─────────────────────────────────────────────────────────
+
+app.MapGet("/api/wiki/items", async (peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    var items = await db.ItemDefinitions
+        .Where(i => i.Type != GameItemType.Collectible)
+        .OrderBy(i => i.Type).ThenBy(i => i.LevelReq).ThenBy(i => i.Name)
+        .Select(i => new {
+            slug        = System.Text.RegularExpressions.Regex.Replace(i.Name.ToLower().Replace(" ", "-"), "[^a-z0-9-]", ""),
+            name        = i.Name,
+            icon        = i.Icon,
+            type        = i.Type.ToString(),
+            subType     = i.SubType.ToString(),
+            rarity      = i.Rarity.ToString(),
+            levelReq    = i.LevelReq,
+            minDamage   = i.MinDamage,
+            maxDamage   = i.MaxDamage,
+            element     = i.Element.ToString(),
+            bonusSTR    = i.BonusSTR,
+            bonusDEF    = i.BonusDEF,
+            bonusINT    = i.BonusINT,
+            bonusDEX    = i.BonusDEX,
+            bonusVIT    = i.BonusVIT,
+            bonusLUK    = i.BonusLUK,
+            buyPrice    = i.BuyPrice,
+            sellPrice   = i.SellPrice
+        })
+        .ToListAsync();
+    return Results.Ok(items);
+});
+
+app.MapGet("/api/wiki/collectibles", async (peeposredemption.Infrastructure.Persistence.AppDbContext db, HttpRequest request) =>
+{
+    int page = int.TryParse(request.Query["page"], out var p) && p > 0 ? p : 1;
+    const int pageSize = 60;
+    var total = await db.ItemDefinitions.CountAsync(i => i.Type == GameItemType.Collectible);
+    var items = await db.ItemDefinitions
+        .Where(i => i.Type == GameItemType.Collectible)
+        .OrderBy(i => i.Name)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(i => new {
+            name     = i.Name,
+            icon     = i.Icon,
+            rarity   = i.Rarity.ToString(),
+            buyPrice = i.BuyPrice,
+            sellPrice= i.SellPrice,
+            slug     = System.Text.RegularExpressions.Regex.Replace(i.Name.ToLower().Replace(" ", "-"), "[^a-z0-9-]", "")
+        })
+        .ToListAsync();
+    return Results.Ok(new { total, pageSize, page, items });
+});
+
+app.MapGet("/api/wiki/monsters", async (peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    var monsters = await db.MonsterDefinitions
+        .OrderBy(m => m.Zone).ThenBy(m => m.Level)
+        .Select(m => new {
+            slug      = System.Text.RegularExpressions.Regex.Replace(m.Name.ToLower().Replace(" ", "-"), "[^a-z0-9-]", ""),
+            name      = m.Name,
+            icon      = m.Icon,
+            level     = m.Level,
+            zone      = m.Zone,
+            element   = m.Element.ToString(),
+            maxHp     = m.MaxHp,
+            minDamage = m.MinDamage,
+            maxDamage = m.MaxDamage,
+            xpReward  = m.XpReward,
+        })
+        .ToListAsync();
+    return Results.Ok(monsters);
+});
+
+app.MapGet("/api/wiki/monsters/{slug}", async (string slug, peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    var names = await db.MonsterDefinitions.Select(x => new { x.Id, x.Name }).ToListAsync();
+    var found = names.FirstOrDefault(x => System.Text.RegularExpressions.Regex.Replace(x.Name.ToLower().Replace(" ", "-"), "[^a-z0-9-]", "") == slug);
+    if (found == null) return Results.NotFound();
+    var m = await db.MonsterDefinitions
+        .Include(m => m.LootTable).ThenInclude(l => l.ItemDefinition)
+        .FirstOrDefaultAsync(m => m.Id == found.Id);
+    if (m == null) return Results.NotFound();
+    return Results.Ok(new {
+        name        = m.Name,
+        icon        = m.Icon,
+        description = m.Description,
+        level       = m.Level,
+        zone        = m.Zone,
+        element     = m.Element.ToString(),
+        maxHp       = m.MaxHp,
+        str         = m.STR,
+        def         = m.DEF,
+        @int        = m.INT,
+        dex         = m.DEX,
+        minDamage   = m.MinDamage,
+        maxDamage   = m.MaxDamage,
+        xpReward    = m.XpReward,
+        orbMin      = m.OrbRewardMin,
+        orbMax      = m.OrbRewardMax,
+        abilities   = m.AbilityJson,
+        loot        = m.LootTable
+            .Where(l => l.ItemDefinition.Type != GameItemType.Collectible)
+            .Select(l => new {
+                name   = l.ItemDefinition.Name,
+                icon   = l.ItemDefinition.Icon,
+                slug   = System.Text.RegularExpressions.Regex.Replace(l.ItemDefinition.Name.ToLower().Replace(" ", "-"), "[^a-z0-9-]", ""),
+                chance = (int)Math.Round((double)l.DropChance * 100),
+                minQty = l.MinQuantity,
+                maxQty = l.MaxQuantity
+            }).OrderByDescending(l => l.chance).ToList()
+    });
+});
+
+// ── Crafting Recipes Wiki API ────────────────────────────────────────────────
+
+app.MapGet("/api/wiki/recipes", async (peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    var recipes = await db.CraftingRecipes
+        .Include(r => r.OutputItem)
+        .Include(r => r.Ingredients).ThenInclude(i => i.ItemDefinition)
+        .OrderBy(r => r.RequiredSkill).ThenBy(r => r.RequiredSkillLevel)
+        .Select(r => new {
+            name        = r.Name,
+            skill       = r.RequiredSkill.ToString(),
+            skillLevel  = r.RequiredSkillLevel,
+            xpReward    = r.XpReward,
+            successRate = (int)Math.Round((double)r.BaseSuccessRate * 100),
+            orbCost     = r.OrbCost,
+            output      = new {
+                name = r.OutputItem.Name,
+                icon = r.OutputItem.Icon,
+                qty  = r.OutputQuantity,
+            },
+            ingredients = r.Ingredients.Select(i => new {
+                name = i.ItemDefinition.Name,
+                icon = i.ItemDefinition.Icon,
+                qty  = i.Quantity,
+            }).ToList()
+        })
+        .ToListAsync();
+    return Results.Ok(recipes);
 });
 
 // ── Peepo Collectibles API ──────────────────────────────────────────────────
@@ -2534,6 +2755,46 @@ app.MapPost("/api/bot/game/sync-level-bulk", async (
     return Results.Ok(new { synced });
 }).DisableAntiforgery();
 
+// POST /api/bot/game/leaderboard — RPG leaderboard (level, xp, kills, coins)
+// Body: { "discordIds": ["id1","id2",...] } — omit or send empty list for global
+app.MapPost("/api/bot/game/leaderboard", async (
+    HttpContext ctx,
+    IConfiguration cfg,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db,
+    BotLeaderboardRequest req) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+
+    IQueryable<peeposredemption.Domain.Entities.PlayerCharacter> query = db.PlayerCharacters;
+
+    if (req.DiscordIds is { Count: > 0 })
+    {
+        var userIds = await db.DiscordLinks
+            .Where(l => req.DiscordIds.Contains(l.DiscordUserId))
+            .Select(l => l.TorvexUserId)
+            .ToListAsync();
+        query = query.Where(p => userIds.Contains(p.UserId));
+    }
+
+    var rows = await query
+        .OrderByDescending(p => p.Level).ThenByDescending(p => p.XP)
+        .Take(10)
+        .Select(p => new {
+            name      = p.CharacterName,
+            level     = p.Level,
+            xp        = p.XP,
+            coins     = p.CoinBalance,
+            kills     = p.TotalMonstersKilled,
+            discordId = db.DiscordLinks
+                .Where(l => l.TorvexUserId == p.UserId)
+                .Select(l => l.DiscordUserId)
+                .FirstOrDefault(),
+        })
+        .ToListAsync();
+
+    return Results.Ok(rows);
+}).DisableAntiforgery();
+
 // =====================================================================
 // Game item trade endpoints (generic RPG inventory items)
 // =====================================================================
@@ -2668,6 +2929,42 @@ app.MapPost("/api/bot/game/trade/accept", async (
     if (trade.InitiatorCoins > 0) { initiator.CoinBalance -= trade.InitiatorCoins; recipient.CoinBalance += trade.InitiatorCoins; }
     if (trade.RecipientCoins > 0) { recipient.CoinBalance -= trade.RecipientCoins; initiator.CoinBalance += trade.RecipientCoins; }
 
+    // Audit log — coins
+    if (trade.InitiatorCoins > 0)
+    {
+        db.CoinTransactions.Add(new CoinTransaction { PlayerId = initiator.Id, Amount = -trade.InitiatorCoins, Source = CoinTransactionSource.Trade, Description = $"Trade {trade.Id} — sent to {recipient.CharacterName}" });
+        db.CoinTransactions.Add(new CoinTransaction { PlayerId = recipient.Id, Amount =  trade.InitiatorCoins, Source = CoinTransactionSource.Trade, Description = $"Trade {trade.Id} — received from {initiator.CharacterName}" });
+    }
+    if (trade.RecipientCoins > 0)
+    {
+        db.CoinTransactions.Add(new CoinTransaction { PlayerId = recipient.Id,  Amount = -trade.RecipientCoins, Source = CoinTransactionSource.Trade, Description = $"Trade {trade.Id} — sent to {initiator.CharacterName}" });
+        db.CoinTransactions.Add(new CoinTransaction { PlayerId = initiator.Id,  Amount =  trade.RecipientCoins, Source = CoinTransactionSource.Trade, Description = $"Trade {trade.Id} — received from {recipient.CharacterName}" });
+    }
+    // Audit log — items (initiator gave → recipient received)
+    if (!string.IsNullOrEmpty(trade.InitiatorItems) && trade.InitiatorItems != "[]")
+    {
+        var initItems = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(trade.InitiatorItems);
+        foreach (var item in initItems ?? [])
+        {
+            var defId = item.GetProperty("itemDefinitionId").GetGuid();
+            var qty   = item.GetProperty("quantity").GetInt32();
+            db.ItemTransactions.Add(new ItemTransaction { PlayerId = initiator.Id, ItemDefinitionId = defId, Quantity = -qty, Source = CoinTransactionSource.Trade, Description = $"Trade {trade.Id} — sent to {recipient.CharacterName}" });
+            db.ItemTransactions.Add(new ItemTransaction { PlayerId = recipient.Id, ItemDefinitionId = defId, Quantity =  qty, Source = CoinTransactionSource.Trade, Description = $"Trade {trade.Id} — received from {initiator.CharacterName}" });
+        }
+    }
+    // Audit log — items (recipient gave → initiator received)
+    if (!string.IsNullOrEmpty(trade.RecipientItems) && trade.RecipientItems != "[]")
+    {
+        var recipItems = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(trade.RecipientItems);
+        foreach (var item in recipItems ?? [])
+        {
+            var defId = item.GetProperty("itemDefinitionId").GetGuid();
+            var qty   = item.GetProperty("quantity").GetInt32();
+            db.ItemTransactions.Add(new ItemTransaction { PlayerId = recipient.Id,  ItemDefinitionId = defId, Quantity = -qty, Source = CoinTransactionSource.Trade, Description = $"Trade {trade.Id} — sent to {initiator.CharacterName}" });
+            db.ItemTransactions.Add(new ItemTransaction { PlayerId = initiator.Id,  ItemDefinitionId = defId, Quantity =  qty, Source = CoinTransactionSource.Trade, Description = $"Trade {trade.Id} — received from {recipient.CharacterName}" });
+        }
+    }
+
     trade.Status = TradeStatus.Accepted;
     await db.SaveChangesAsync();
     return Results.Ok(new { success = true });
@@ -2755,6 +3052,38 @@ app.MapPost("/api/peepos/vote", async (
     return Results.Ok(new { myVote = req.Rarity, counts });
 }).AllowAnonymous().DisableAntiforgery();
 
+// GET /api/admin/player/{discordUserId}/transactions
+app.MapGet("/api/admin/player/{discordUserId}/transactions", async (
+    string discordUserId,
+    HttpContext ctx,
+    peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
+{
+    if (ctx.Request.Headers["X-Client-Verified"] != "SUCCESS") return Results.Unauthorized();
+
+    var link = await db.DiscordLinks.FirstOrDefaultAsync(l => l.DiscordUserId == discordUserId);
+    if (link == null) return Results.NotFound(new { error = "Discord user not linked" });
+
+    var player = await db.PlayerCharacters.FirstOrDefaultAsync(p => p.UserId == link.TorvexUserId);
+    if (player == null) return Results.NotFound(new { error = "No player character found" });
+
+    var coins = await db.CoinTransactions
+        .Where(t => t.PlayerId == player.Id)
+        .OrderByDescending(t => t.CreatedAt)
+        .Take(100)
+        .Select(t => new { t.Amount, source = t.Source.ToString(), t.Description, t.CreatedAt })
+        .ToListAsync();
+
+    var items = await db.ItemTransactions
+        .Where(t => t.PlayerId == player.Id)
+        .Include(t => t.ItemDefinition)
+        .OrderByDescending(t => t.CreatedAt)
+        .Take(100)
+        .Select(t => new { item = t.ItemDefinition.Name, t.Quantity, source = t.Source.ToString(), t.Description, t.CreatedAt })
+        .ToListAsync();
+
+    return Results.Ok(new { player = player.CharacterName, coins, items });
+});
+
 app.MapGet("/api/peepos/votes", async (peeposredemption.Infrastructure.Persistence.AppDbContext db) =>
 {
     var votes = await db.PeepoRarityVotes
@@ -2768,7 +3097,7 @@ app.Run();
 
 record BotAutoLinkRequest(string DiscordUserId, string DiscordUsername);
 record GuildConfigUpdateRequest(string? StatusChannelId, string? LootDropChannelId, string? RpgChannelId, string? SuggestionsChannelId, string? WelcomeChannelId, string? ModLogChannelId);
-record BotPvpRewardRequest(string WinnerDiscordId, string LoserDiscordId);
+record BotPvpRewardRequest(string WinnerDiscordId, string LoserDiscordId, int WinnerDamageDealt, int LoserDamageDealt, string? GuildId, string? ChannelId);
 record BotAddCoinsRequest(string DiscordId, long Amount, string Reason);
 record BotLinkRequest(string DiscordUserId, string TorvexUsername);
 record BotGameCommandRequest(string DiscordUserId, string Command, string? TargetDiscordUserId = null);
@@ -2785,6 +3114,7 @@ record BotPeepoBuyCoinsRequest(string DiscordId, Guid ItemDefinitionId);
 record BotPeepoCrateV2Request(string DiscordId);
 record BotGiftCoinsRequest(string SenderDiscordId, string RecipientDiscordId, long Amount);
 record BotSyncLevelRequest(string DiscordId, int NewLevel);
+record BotLeaderboardRequest(List<string>? DiscordIds);
 record BotGameTradeItemEntry(Guid ItemDefinitionId, int Quantity);
 record BotGameTradeOfferRequest(string InitiatorDiscordId, string RecipientDiscordId,
     List<BotGameTradeItemEntry>? InitiatorItems, long InitiatorCoins,
