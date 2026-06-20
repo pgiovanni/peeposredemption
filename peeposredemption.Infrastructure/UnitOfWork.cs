@@ -180,6 +180,9 @@ namespace peeposredemption.Infrastructure
             MessageAttachments = messageAttachments;
         }
 
+        public void LogCoin(peeposredemption.Domain.Entities.CoinTransaction t) => _db.CoinTransactions.Add(t);
+        public void LogItem(peeposredemption.Domain.Entities.ItemTransaction t) => _db.ItemTransactions.Add(t);
+
         public Task<int> SaveChangesAsync() => _db.SaveChangesAsync();
     }
 

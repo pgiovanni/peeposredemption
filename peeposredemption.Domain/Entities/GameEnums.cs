@@ -136,6 +136,17 @@ public enum MarketListingStatus
     Expired
 }
 
+public enum CoinTransactionSource
+{
+    Combat       = 0,
+    Shop         = 1,
+    Trade        = 2,
+    Marketplace  = 3,
+    AdminGrant   = 4,
+    CrateOpen    = 5,
+    Other        = 6
+}
+
 public enum SkillType
 {
     Combat,

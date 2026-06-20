@@ -74,6 +74,9 @@ namespace peeposredemption.Domain.Interfaces
         // Message attachments
         IMessageAttachmentRepository MessageAttachments { get; }
 
+        void LogCoin(peeposredemption.Domain.Entities.CoinTransaction t);
+        void LogItem(peeposredemption.Domain.Entities.ItemTransaction t);
+
         Task<int> SaveChangesAsync();
     }
 

@@ -56,6 +56,8 @@ namespace peeposredemption.Infrastructure.Persistence
         public DbSet<CraftingRecipe> CraftingRecipes { get; set; }
         public DbSet<CraftingRecipeIngredient> CraftingRecipeIngredients { get; set; }
         public DbSet<MarketplaceListing> MarketplaceListings { get; set; }
+        public DbSet<CoinTransaction> CoinTransactions { get; set; }
+        public DbSet<ItemTransaction> ItemTransactions { get; set; }
 
         // Voice sessions
         public DbSet<VoiceSession> VoiceSessions { get; set; }
