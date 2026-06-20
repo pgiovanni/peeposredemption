@@ -51,11 +51,28 @@ public static class GameExpansionSeeder
         var shadowGreaves = GetOrCreate("Shadow Greaves", () => Ar("Shadow Greaves", "Silent, weightless steps.",         "👢", 35, EquipSlot.Legs,  GameItemRarity.Rare, def: 10, dex: 4,  luk: 2, buy: 2500, sell: 900));
         var shadowBoots   = GetOrCreate("Shadow Boots",   () => Ar("Shadow Boots",   "Leaves no footprints.",            "👟", 35, EquipSlot.Feet,  GameItemRarity.Rare, def: 7,  dex: 3,  luk: 1, buy: 1500, sell: 500));
 
-        // ── DRAGONSCALE ARMOR SET (Lv 50) ─────────────────────────────────────
-        var dsHelmet = GetOrCreate("Dragonscale Helmet",     () => Ar("Dragonscale Helmet",     "Scales of an ancient dragon.",  "🐲", 50, EquipSlot.Head,  GameItemRarity.Epic, def: 15, vit: 5, str: 3, buy: 6000,  sell: 2000));
-        var dsChest  = GetOrCreate("Dragonscale Chestplate", () => Ar("Dragonscale Chestplate", "Nigh-impenetrable plate.",      "🛡️", 50, EquipSlot.Chest, GameItemRarity.Epic, def: 25, vit: 8, str: 5, buy: 10000, sell: 3500));
-        var dsLegs   = GetOrCreate("Dragonscale Leggings",   () => Ar("Dragonscale Leggings",   "Heavy fireproof leg plates.",   "🦿", 50, EquipSlot.Legs,  GameItemRarity.Epic, def: 18, vit: 6, str: 4, buy: 7500,  sell: 2500));
-        var dsBoots  = GetOrCreate("Dragonscale Boots",      () => Ar("Dragonscale Boots",      "Clawed dragon boots.",          "🥾", 50, EquipSlot.Feet,  GameItemRarity.Epic, def: 10, vit: 4, dex: 2, buy: 4000,  sell: 1400));
+        // ── DRAGONSCALE ARMOR SET (Lv 60, Epic) ───────────────────────────────
+        var dsHelmet = GetOrCreate("Dragonscale Helmet",     () => Ar("Dragonscale Helmet",     "Scales of an ancient dragon.",  "🐲", 60, EquipSlot.Head,  GameItemRarity.Epic, def: 15, vit: 5, str: 3, buy: 6000,  sell: 2000));
+        var dsChest  = GetOrCreate("Dragonscale Chestplate", () => Ar("Dragonscale Chestplate", "Nigh-impenetrable plate.",      "🛡️", 60, EquipSlot.Chest, GameItemRarity.Epic, def: 25, vit: 8, str: 5, buy: 10000, sell: 3500));
+        var dsLegs   = GetOrCreate("Dragonscale Leggings",   () => Ar("Dragonscale Leggings",   "Heavy fireproof leg plates.",   "🦿", 60, EquipSlot.Legs,  GameItemRarity.Epic, def: 18, vit: 6, str: 4, buy: 7500,  sell: 2500));
+        var dsBoots  = GetOrCreate("Dragonscale Boots",      () => Ar("Dragonscale Boots",      "Clawed dragon boots.",          "🥾", 60, EquipSlot.Feet,  GameItemRarity.Epic, def: 10, vit: 4, dex: 2, buy: 4000,  sell: 1400));
+
+        // ── PRIMORDIAL ARMOR SET (Lv 75, Legendary) — drop only, no buy ───────
+        var primHelmet = GetOrCreate("Primordial Helmet",     () => Ar("Primordial Helmet",     "Forged in dragonfire itself.",        "🔱", 75, EquipSlot.Head,  GameItemRarity.Legendary, def: 28, vit: 10, str: 6,  @int: 4, buy: 0, sell: 8000));
+        var primChest  = GetOrCreate("Primordial Chestplate", () => Ar("Primordial Chestplate", "No blade has ever pierced this.",     "🛡️", 75, EquipSlot.Chest, GameItemRarity.Legendary, def: 45, vit: 15, str: 10, @int: 5, buy: 0, sell: 14000));
+        var primLegs   = GetOrCreate("Primordial Leggings",   () => Ar("Primordial Leggings",   "Weighs nothing, stops everything.",   "🦿", 75, EquipSlot.Legs,  GameItemRarity.Legendary, def: 32, vit: 12, str: 7,  dex: 3,  buy: 0, sell: 10000));
+        var primBoots  = GetOrCreate("Primordial Boots",      () => Ar("Primordial Boots",      "Leaves scorched footprints.",         "🥾", 75, EquipSlot.Feet,  GameItemRarity.Legendary, def: 20, vit: 8,  str: 4,  dex: 5,  buy: 0, sell: 6000));
+
+        // ── VOID ARMOR SET (Lv 85, Legendary) — drop only, no buy ─────────────
+        var voidHelmet = GetOrCreate("Void Helmet",     () => Ar("Void Helmet",     "The abyss gazes back.",               "🌑", 85, EquipSlot.Head,  GameItemRarity.Legendary, def: 35, vit: 12, @int: 10, luk: 5, buy: 0, sell: 12000));
+        var voidChest  = GetOrCreate("Void Chestplate", () => Ar("Void Chestplate", "Reality warps around it.",            "🌑", 85, EquipSlot.Chest, GameItemRarity.Legendary, def: 55, vit: 18, @int: 15, luk: 6, buy: 0, sell: 20000));
+        var voidLegs   = GetOrCreate("Void Leggings",   () => Ar("Void Leggings",   "Woven from compressed darkness.",     "🌑", 85, EquipSlot.Legs,  GameItemRarity.Legendary, def: 40, vit: 14, @int: 12, luk: 5, buy: 0, sell: 15000));
+        var voidBoots  = GetOrCreate("Void Boots",      () => Ar("Void Boots",      "Silent as the void, twice as deadly.","🌑", 85, EquipSlot.Feet,  GameItemRarity.Legendary, def: 25, vit: 10, dex: 8,   luk: 6, buy: 0, sell: 9000));
+
+        // ── LEGENDARY WEAPONS (drop only) ─────────────────────────────────────
+        var primordialBlade = GetOrCreate("Primordial Blade",  () => W("Primordial Blade",  "The first sword — older than memory.",        "🔥", 70, 80, 130, str: 18, def: 8,  buy: 0, sell: 20000, element: Element.Fire,  rarity: GameItemRarity.Legendary));
+        var voidReaper      = GetOrCreate("Void Reaper",       () => W("Void Reaper",       "Harvests souls with every swing.",            "🌑", 80, 90, 150, str: 15, @int: 20, buy: 0, sell: 28000, element: Element.Void,  rarity: GameItemRarity.Legendary, subType: ItemSubType.Staff));
+        var serpentFang     = GetOrCreate("Serpent Fang",      () => W("Serpent Fang",       "A fang the size of a greatsword.",           "🐍", 85, 95, 160, str: 20, dex: 10, buy: 0, sell: 35000, element: Element.Poison,rarity: GameItemRarity.Legendary));
 
         // ── NEW CONSUMABLES ────────────────────────────────────────────────────
         var largeHpPot = GetOrCreate("Large Health Potion", () => Co("Large Health Potion", "Restores 100 HP.", "🧪", 20, heal: 100, buy: 100, sell: 35));
@@ -97,6 +114,41 @@ public static class GameExpansionSeeder
         // TODO: Fish Stew is intended to be a 15 HP/turn HoT over 3 turns (45 HP total).
         // Currently grants 20 HP instantly. Full HoT requires RegenHpPerTurn + RegenTurnsRemaining on CombatSession.
         GetOrCreate("Fish Stew",          () => Co("Fish Stew",          "A rich stew — restores 20 HP in combat.",        "🍲",  1, heal: 20,        buy:  60, sell: 30, rarity: GameItemRarity.Uncommon));
+
+        // ── SMELTED BARS (Smithing output) ────────────────────────────────────
+        GetOrCreate("Copper Bar",    () => Ma("Copper Bar",    "Smelted copper.",              "🟫", buy:    10, sell:    4));
+        GetOrCreate("Iron Bar",      () => Ma("Iron Bar",      "Smelted iron.",                "⚙️", buy:    20, sell:    8));
+        GetOrCreate("Silver Bar",    () => Ma("Silver Bar",    "Refined silver.",              "⚪", buy:    60, sell:   22));
+        GetOrCreate("Gold Bar",      () => Ma("Gold Bar",      "Pure gold.",                   "🟡", buy:   140, sell:   52));
+        GetOrCreate("Mithril Bar",   () => Ma("Mithril Bar",   "Lightweight and strong.",      "🔵", buy:   320, sell:  115, rarity: GameItemRarity.Uncommon));
+        GetOrCreate("Adamantite Bar",() => Ma("Adamantite Bar","Dense, near-unbreakable.",     "🟢", buy:   700, sell:  255, rarity: GameItemRarity.Uncommon));
+        GetOrCreate("Adamantium Bar",() => Ma("Adamantium Bar","Legendary ore, refined.",      "🔷", buy:  1500, sell:  550, rarity: GameItemRarity.Rare));
+        GetOrCreate("Void Ingot",    () => Ma("Void Ingot",    "Crystallised void energy.",    "🌑", buy:  3500, sell: 1300, rarity: GameItemRarity.Rare));
+
+        // ── MITHRIL ARMOR SET (Lv 40, Rare — craft only) ──────────────────────
+        var mithHelmet = GetOrCreate("Mithril Helmet",     () => Ar("Mithril Helmet",     "Feather-light yet surprisingly tough.", "🪖", 40, EquipSlot.Head,  GameItemRarity.Rare, def: 12, vit: 3, str: 2, buy: 0, sell:  900));
+        var mithChest  = GetOrCreate("Mithril Chestplate", () => Ar("Mithril Chestplate", "Mithril rings woven into plate.",       "🛡️", 40, EquipSlot.Chest, GameItemRarity.Rare, def: 20, vit: 5, str: 3, buy: 0, sell: 1600));
+        var mithLegs   = GetOrCreate("Mithril Leggings",   () => Ar("Mithril Leggings",   "Offers surprising mobility.",           "🦿", 40, EquipSlot.Legs,  GameItemRarity.Rare, def: 15, vit: 4, str: 2, buy: 0, sell: 1200));
+        var mithBoots  = GetOrCreate("Mithril Boots",      () => Ar("Mithril Boots",      "Silent and sturdy.",                    "🥾", 40, EquipSlot.Feet,  GameItemRarity.Rare, def:  8, vit: 2, dex: 2, buy: 0, sell:  650));
+
+        // ── ADAMANTITE ARMOR SET (Lv 55, Epic — craft only) ───────────────────
+        var adamHelmet = GetOrCreate("Adamantite Helmet",     () => Ar("Adamantite Helmet",     "Practically indestructible.",    "🪖", 55, EquipSlot.Head,  GameItemRarity.Epic, def: 18, vit: 6, str: 4, buy: 0, sell: 2500));
+        var adamChest  = GetOrCreate("Adamantite Chestplate", () => Ar("Adamantite Chestplate", "Almost no weapon can pierce it.","🛡️", 55, EquipSlot.Chest, GameItemRarity.Epic, def: 30, vit: 9, str: 6, buy: 0, sell: 4200));
+        var adamLegs   = GetOrCreate("Adamantite Leggings",   () => Ar("Adamantite Leggings",   "Heavy but worth every pound.",   "🦿", 55, EquipSlot.Legs,  GameItemRarity.Epic, def: 22, vit: 7, str: 5, buy: 0, sell: 3000));
+        var adamBoots  = GetOrCreate("Adamantite Boots",      () => Ar("Adamantite Boots",      "Dense boots with solid grip.",   "🥾", 55, EquipSlot.Feet,  GameItemRarity.Epic, def: 14, vit: 4, dex: 3, buy: 0, sell: 1700));
+
+        // ── SMITHABLE WEAPONS (craft only) ────────────────────────────────────
+        GetOrCreate("Mithril Blade",     () => W("Mithril Blade",     "Unnervingly sharp blue-grey blade.",      "🔵", 35, 30, 48, str: 8,        buy: 0, sell:  1400, rarity: GameItemRarity.Rare));
+        GetOrCreate("Adamantite Sword",  () => W("Adamantite Sword",  "Cleaves through light armour.",           "🟢", 50, 40, 62, str: 12, def: 3, buy: 0, sell:  3000, rarity: GameItemRarity.Rare));
+        GetOrCreate("Adamantium Blade",  () => W("Adamantium Blade",  "The finest non-legendary blade.",         "🔷", 65, 60, 95, str: 18, def: 5, buy: 0, sell:  9000, rarity: GameItemRarity.Epic));
+
+        // ── WOODCRAFT WEAPONS (craft only) ────────────────────────────────────
+        GetOrCreate("Oak Staff",         () => W("Oak Staff",         "Sturdy oak wand for novice mages.",       "🪵", 15,  8, 14, @int:  5, buy: 0, sell:   120, subType: ItemSubType.Staff));
+        GetOrCreate("Willow Shortbow",   () => W("Willow Shortbow",   "Flexible willow, decent range.",          "🏹", 30, 20, 32, dex:   5, buy: 0, sell:   400, subType: ItemSubType.Bow, rarity: GameItemRarity.Uncommon));
+        GetOrCreate("Maple Longbow",     () => W("Maple Longbow",     "Draws harder, hits further.",             "🏹", 45, 28, 44, dex:   7, buy: 0, sell:  1000, subType: ItemSubType.Bow, rarity: GameItemRarity.Rare));
+        GetOrCreate("Yew Longbow",       () => W("Yew Longbow",       "Prized by seasoned archers.",             "🏹", 60, 38, 60, dex:  10, buy: 0, sell:  2500, subType: ItemSubType.Bow, rarity: GameItemRarity.Rare));
+        GetOrCreate("Magic Staff",       () => W("Magic Staff",       "Carved from magic-infused heartwood.",    "✨", 75, 50, 80, @int: 15, buy: 0, sell:  7000, subType: ItemSubType.Staff, rarity: GameItemRarity.Epic));
+        GetOrCreate("Void Wood Staff",   () => W("Void Wood Staff",   "Resonates with the void itself.",         "🌑", 90, 70,110, @int: 20, buy: 0, sell: 14000, subType: ItemSubType.Staff, element: Element.Void, rarity: GameItemRarity.Epic));
 
         // ── GATHERING RESOURCES — MINING ──────────────────────────────────────
         var silverOre      = GetOrCreate("Silver Ore",      () => Ma("Silver Ore",      "Shiny silver ore.",                     "⚪", buy:   50, sell:   20));
@@ -347,6 +399,23 @@ public static class GameExpansionSeeder
         Add(Mo("Cyclops",    "One eye, one crushing fist.",         "🔵", 44, "Dungeon", 1165, 36, 28, 8, 7, 53, 88, Element.None,       1260, 88, 430),
             (ogreTusk, 0.60m, 2, 3), (boneCrusher, 0.06m, 1, 1), (steelChest, 0.04m, 1, 1), (largeHpPot, 0.30m, 1, 2));
 
+        // ── ENDGAME MONSTERS (Lv 65-80) ───────────────────────────────────────
+        // Fill the gap between Lv62 regulars and Lv80+ bosses
+
+        // ABYSSAL HORRORS
+        Add(Mo("Abyssal Horror",    "A creature that shouldn't exist.",     "🌑", 65, "Abyss", 2400, 55, 44, 50, 32, 85, 140, Element.Dark,    4200, 140, 950),
+            (voidstone, 0.30m, 1, 2), (lichDust, 0.20m, 1, 1), (demonHorn, 0.60m, 2, 4));
+        Add(Mo("Void Stalker",      "Slips between shadows without a sound.","👁️", 68, "Abyss", 2750, 58, 46, 55, 40, 92, 154, Element.Void,  5000, 154, 1050),
+            (voidstone, 0.40m, 1, 3), (lichDust, 0.25m, 1, 2), (voidStaff, 0.03m, 1, 1));
+        Add(Mo("Chaos Rift",        "A tear in reality given teeth.",        "🌀", 72, "Abyss", 3200, 62, 50, 60, 38, 100, 170, Element.Void,  6000, 170, 1200),
+            (voidstone, 0.50m, 1, 3), (dragonClaw, 0.20m, 1, 2), (voidStaff, 0.04m, 1, 1));
+        Add(Mo("Dread Colossus",    "Its footsteps collapse caverns.",       "🗿", 75, "Abyss", 4000, 70, 60, 45, 30, 115, 190, Element.Earth, 7500, 190, 1450),
+            (voidstone, 0.55m, 2, 4), (golemCore, 0.40m, 2, 3), (primChest, 0.02m, 1, 1));
+        Add(Mo("Eternal Wyvern",    "Has outlived civilizations.",           "🐉", 70, "Abyss", 3000, 65, 52, 48, 35, 105, 175, Element.Fire,   5500, 175, 1100),
+            (dragonScale, 0.70m, 3, 5), (dragonClaw, 0.40m, 1, 3), (primordialBlade, 0.01m, 1, 1));
+        Add(Mo("Shadow Colossus",   "Born from the darkness between stars.", "🖤", 78, "Abyss", 4800, 72, 58, 68, 40, 130, 215, Element.Dark,  9000, 215, 1700),
+            (voidstone, 0.60m, 2, 5), (lichDust, 0.40m, 2, 3), (voidReaper, 0.01m, 1, 1));
+
         // ── BOSSES ─────────────────────────────────────────────────────────────
         // Boss HP is 5–10x a regular monster at the same level.
         // Players must use /rpg boss <name> to target them — they won't appear in random fights.
@@ -361,13 +430,13 @@ public static class GameExpansionSeeder
         Add(Mo("Volcanic Titan",     "A mountain given form, burning with inner fire.",     "🌋", 40, "Volcano", 15000,  65, 55, 25, 15, 160, 500, Element.Fire,  40000, 4000, 10000),
             (golemCore, 0.80m, 3, 5), (obsidianBlade, 0.25m, 1, 1), (dsChest, 0.10m, 1, 1), (elixir, 0.70m, 1, 3));
         Add(Mo("Abyssal Overlord",   "Its very presence erases light from existence.",      "🌑", 50, "Abyss",   25000,  80, 65, 60, 35, 220, 680, Element.Dark,  65000, 6500, 16000),
-            (demonHorn, 0.80m, 4, 6), (voidStaff, 0.25m, 1, 1), (dsChest, 0.15m, 1, 1), (elixir, 0.80m, 2, 3));
+            (demonHorn, 0.80m, 4, 6), (voidStaff, 0.25m, 1, 1), (dsChest, 0.05m, 1, 1), (elixir, 0.80m, 2, 3));
         Add(Mo("Lich King",          "Death incarnate — commands all undead in the abyss.", "💀", 60, "Abyss",   35000,  75, 60, 85, 30, 280, 860, Element.Dark,  90000, 9000, 22000),
-            (lichDust, 0.90m, 4, 8), (voidStaff, 0.30m, 1, 1), (holyLance, 0.15m, 1, 1), (elixir, 0.90m, 2, 4));
+            (lichDust, 0.90m, 4, 8), (voidStaff, 0.30m, 1, 1), (holyLance, 0.15m, 1, 1), (voidReaper, 0.02m, 1, 1), (elixir, 0.90m, 2, 4));
         Add(Mo("Primordial Dragon",  "The first dragon — reality warps in its wake.",       "🐉", 80, "Abyss",   60000, 100, 85, 75, 50, 400, 1200, Element.Fire, 150000, 15000, 40000),
-            (dragonScale, 0.90m, 5, 10), (dsChest, 0.20m, 1, 1), (dsHelmet, 0.20m, 1, 1), (elixir, 1.00m, 3, 5));
-        Add(Mo("World Serpent",      "The omega of all things. To fight it is madness.",   "🐍", 90, "Abyss",  100000, 120, 100, 90, 70, 550, 1650, Element.Dark, 250000, 25000, 65000),
-            (voidstone, 0.90m, 5, 10), (dragonScale, 0.50m, 3, 6), (elixir, 1.00m, 5, 8), (dsChest, 0.30m, 1, 1));
+            (dragonScale, 0.90m, 5, 10), (dsChest, 0.06m, 1, 1), (dsHelmet, 0.06m, 1, 1), (primordialBlade, 0.03m, 1, 1), (primChest, 0.04m, 1, 1), (primHelmet, 0.04m, 1, 1), (elixir, 1.00m, 3, 5));
+        Add(Mo("World Serpent",      "The omega of all things. To fight it is madness.",   "🐍", 90, "Abyss",  100000, 120, 100, 90, 70, 550, 1650, Element.Poison, 250000, 25000, 65000),
+            (voidstone, 0.90m, 5, 10), (dragonScale, 0.50m, 3, 6), (elixir, 1.00m, 5, 8), (serpentFang, 0.04m, 1, 1), (voidChest, 0.03m, 1, 1), (primChest, 0.06m, 1, 1));
 
         if (pending.Count > 0)
         {
