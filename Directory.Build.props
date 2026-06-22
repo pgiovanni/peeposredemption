@@ -1,0 +1,12 @@
+<Project>
+
+  <!-- Strip debug symbols from Release builds so .pdb files (which decompile to
+       near-source) never ship to production. Applies solution-wide so every
+       referenced assembly's .pdb is suppressed, not just the API's. Local Debug
+       builds are unaffected and keep full symbols for debugging. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+</Project>
