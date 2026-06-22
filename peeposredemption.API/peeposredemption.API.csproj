@@ -21,4 +21,14 @@
     <UserSecretsId>e4ffac32-3995-4c92-92fe-94f1cc047416</UserSecretsId>
   </PropertyGroup>
 
+  <!-- Keep environment configs OUT of the publish artifact. Production secrets
+       live only on the box (locked-down file injected out-of-band), and the dev
+       config must never reach prod. CopyToPublishDirectory=Never affects publish
+       only; both files still copy on local build/run. Content Update is a no-op
+       if the file is absent (e.g. a fresh clone / CI), so this never errors. -->
+  <ItemGroup>
+    <Content Update="appsettings.Production.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
 </Project>
