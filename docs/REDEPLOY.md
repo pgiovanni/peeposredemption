@@ -1,4 +1,44 @@
-# Redeploying torvex.app — what it actually involves
+# Redeploying torvex.app
+
+**DONE 2026-08-08 21:52.** Prod now runs `9146d28`-era code built from the
+current tree; it had been serving a 2026-05-13 publish of `ca79332`.
+
+What actually happened, in order:
+
+1. **ProxyCheck key rotated.** New key lives ONLY in
+   `appsettings.Production.json` (root:www-data 640). The deployed
+   `appsettings.json` now ships `ProxyCheck.ApiKey = ""` — the burned key is
+   gone from the box. Verified absent from the artifact before the swap.
+2. **Backup**: nightly set `20260808_214754` plus a dedicated
+   `/root/pre-migration-peeposredemption.dump` (3.1 MB).
+3. **Migrations reconciled** in one transaction. 47 -> 49 applied:
+   * `AddDiscordLink` recorded, NOT run — `discord_links` already existed with
+     824 rows and running it would have aborted the whole update.
+   * `AddGuildConfig`: three of its four operations targeted columns that no
+     longer exist, so only `guild_configs` + its unique index were created,
+     then the migration was recorded. **This was the actual "guild-config is
+     broken" bug — a missing table, never a code fault.**
+4. **Published** `dotnet publish -c Release` (net10.0, framework-dependent),
+   staged to `/var/www/peeposredemption.new`, `Production.json` carried across
+   because `396869c` correctly keeps environment configs out of the artifact.
+5. **Swapped and restarted.** Old build kept at `/var/www/peeposredemption.old`
+   (39 MB) — that is the rollback.
+
+Verified after: `/` `/Wiki` `/Marketplace` all 200 and rendering titles,
+`/wiki/monster/hobgoblin` and `/wiki/item/thunder-staff` 200, zero error lines
+in the journal, `guild_configs` present and queryable.
+
+**Remaining, NOT done:** the bot API key is still inline in a mode-644
+`peeposredemption.service` (`Environment=Bot__ApiKey=...`), readable by both
+unprivileged accounts and by `systemctl show` without root. Move it to an
+`EnvironmentFile=` at 600 and rotate it.
+
+Once `/var/www/peeposredemption.old` is no longer wanted, delete it.
+
+---
+
+## Original investigation (kept for the reasoning)
+
 
 **Investigated 2026-08-08. Nothing here has been executed.**
 
