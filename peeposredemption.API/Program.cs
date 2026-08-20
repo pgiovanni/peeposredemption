@@ -123,13 +123,22 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// community.torvex.app fronts the community/chat section — its root serves the community landing page
+// community.torvex.app fronts the community/chat section — its root serves the community landing page,
+// and torvex.app/Community permanently redirects there
 app.Use(async (context, next) =>
 {
+    var communityHost = context.Request.Host.Host;
     if (context.Request.Path == "/"
-        && context.Request.Host.Host.Equals("community.torvex.app", StringComparison.OrdinalIgnoreCase))
+        && communityHost.Equals("community.torvex.app", StringComparison.OrdinalIgnoreCase))
     {
         context.Request.Path = "/Community";
+    }
+    else if (context.Request.Path.Equals("/Community", StringComparison.OrdinalIgnoreCase)
+        && (communityHost.Equals("torvex.app", StringComparison.OrdinalIgnoreCase)
+            || communityHost.Equals("www.torvex.app", StringComparison.OrdinalIgnoreCase)))
+    {
+        context.Response.Redirect("https://community.torvex.app/", permanent: true);
+        return;
     }
     await next();
 });
