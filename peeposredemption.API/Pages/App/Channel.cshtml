@@ -160,6 +160,7 @@
             </a>
             <button id="notif-mute-toggle" class="icon-btn" title="Toggle notification sound">🔔</button>
             <partial name="_NotifDropdown" />
+            <a href="https://torvex.app/Dashboard" class="icon-btn" title="Back to Torvex" style="font-size:1rem;text-decoration:none">🏠</a>
             @{
                 var config = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
                 if (peeposredemption.API.Infrastructure.AdminAuthHelper.IsTorvexOwner(HttpContext.User, config))

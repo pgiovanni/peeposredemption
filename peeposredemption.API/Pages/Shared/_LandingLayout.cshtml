@@ -1,5 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+@{
+    var pageDescription = ViewData["Description"]?.ToString()
+        ?? "Torvex is a free community platform with real-time chat, voice channels, a built-in RPG, custom emojis, and an orbs economy. Join the adventure.";
+    var pageTitle = ViewData["OgTitle"]?.ToString()
+        ?? ViewData["Title"]?.ToString()
+        ?? "Torvex — Chat, Play, Connect";
+    var pageUrl = $"https://{Context.Request.Host}{Context.Request.Path}";
+    var ogImage = "https://torvex.app/images/og-preview.png";
+    // On community.torvex.app, main-site links must lead back to torvex.app
+    var onCommunityHost = Context.Request.Host.Host.Equals("community.torvex.app", StringComparison.OrdinalIgnoreCase);
+    var mainBase = onCommunityHost ? "https://torvex.app" : "";
+}
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,16 +19,6 @@
     <title>@(ViewData["Title"] != null ? $"{ViewData["Title"]} - Torvex" : "Torvex — IT Solutions & Custom Software")</title>
     <link rel="icon" type="image/x-icon" href="~/favicon.ico" />
     <link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
-
-    @{
-        var pageDescription = ViewData["Description"]?.ToString()
-            ?? "Torvex is a free community platform with real-time chat, voice channels, a built-in RPG, custom emojis, and an orbs economy. Join the adventure.";
-        var pageTitle = ViewData["OgTitle"]?.ToString()
-            ?? ViewData["Title"]?.ToString()
-            ?? "Torvex — Chat, Play, Connect";
-        var pageUrl = $"https://{Context.Request.Host}{Context.Request.Path}";
-        var ogImage = "https://torvex.app/images/og-preview.png";
-    }
 
     <meta name="description" content="@pageDescription" />
     <link rel="canonical" href="@pageUrl" />
@@ -40,23 +42,23 @@
 </head>
 <body>
     <nav class="landing-nav">
-        <a href="/" class="landing-logo">
+        <a href="@mainBase/" class="landing-logo">
             <img src="/images/orb.png" alt="Torvex" />
             <span>Torvex</span>
         </a>
         <div class="nav-links">
-            <a href="/Packages" class="nav-btn nav-btn-ghost">Packages</a>
+            <a href="@mainBase/Packages" class="nav-btn nav-btn-ghost">Packages</a>
             <a href="/Community" class="nav-btn nav-btn-ghost">Community</a>
             <a href="https://dashboard.torvex.app" class="nav-btn nav-btn-ghost">Bot Dashboard</a>
             @if (Context.Request.Cookies.ContainsKey("jwt"))
             {
-                <a href="/Dashboard" class="nav-btn nav-btn-ghost">Dashboard</a>
+                <a href="@mainBase/Dashboard" class="nav-btn nav-btn-ghost">Dashboard</a>
             }
             else
             {
-                <a href="/Auth/Login" class="nav-btn nav-btn-ghost">Log In</a>
+                <a href="@mainBase/Auth/Login" class="nav-btn nav-btn-ghost">Log In</a>
             }
-            <a href="/Contact" class="nav-btn nav-btn-primary">Contact</a>
+            <a href="@mainBase/Contact" class="nav-btn nav-btn-primary">Contact</a>
         </div>
     </nav>
 
@@ -64,19 +66,19 @@
 
     <footer class="landing-footer">
         <div class="footer-links">
-            <a href="/Packages">Packages</a>
-            <a href="/Contact">Contact</a>
+            <a href="@mainBase/Packages">Packages</a>
+            <a href="@mainBase/Contact">Contact</a>
             <a href="/Community">Community</a>
             <a href="https://dashboard.torvex.app">Bot Dashboard</a>
             @if (Context.Request.Cookies.ContainsKey("jwt"))
             {
-                <a href="/Dashboard">Dashboard</a>
+                <a href="@mainBase/Dashboard">Dashboard</a>
                 <a href="/App/Index">Go to Chat</a>
             }
             else
             {
-                <a href="/Auth/Login">Log In</a>
-                <a href="/Auth/Register">Sign Up</a>
+                <a href="@mainBase/Auth/Login">Log In</a>
+                <a href="@mainBase/Auth/Register">Sign Up</a>
             }
             <a href="/Artists">Artists</a>
             <a href="/Referrals">Referrals</a>

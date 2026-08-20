@@ -123,6 +123,17 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// community.torvex.app fronts the community/chat section — its root serves the community landing page
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/"
+        && context.Request.Host.Host.Equals("community.torvex.app", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Request.Path = "/Community";
+    }
+    await next();
+});
+
 // Catch antiforgery 400s and redirect to login with a helpful message instead of blank Chrome error page
 app.Use(async (context, next) =>
 {
@@ -184,6 +195,10 @@ app.Use(async (context, next) =>
 });
 
 app.UseStaticFiles();
+// Explicit UseRouting so endpoint selection happens HERE, after the host-based
+// path rewrites above — without it, WebApplication auto-inserts routing at the
+// start of the pipeline and the community-root rewrite never takes effect.
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
