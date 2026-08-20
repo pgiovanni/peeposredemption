@@ -1,0 +1,59 @@
+@page
+@model peeposredemption.API.Pages.BlogModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Blog — Torvex IT Solutions";
+    ViewData["OgTitle"] = "The Torvex Blog";
+    ViewData["Description"] = "Real problems, real fixes — technical write-ups on networking, security, sysadmin work, and custom software from the builder behind Torvex.";
+}
+
+<section class="hero" style="padding-bottom:24px">
+    <h1>The Torvex <span class="hero-accent">blog.</span></h1>
+    <p class="hero-emotional">Real problems, real fixes — written up the way I actually solved them.</p>
+    <div class="hero-micro">First posts are being written. Here's what's coming.</div>
+</section>
+
+<section class="features" style="padding-top:16px">
+    <h2>In the queue</h2>
+    <p class="section-subtitle">Symptom → wrong diagnosis everyone tries first → actual cause → fix.</p>
+    <div class="features-grid">
+        <div class="feature-card">
+            <span class="feature-icon">🔑</span>
+            <h3>Reaching a machine when the VPN is down</h3>
+            <p>Building a reverse SSH tunnel for break-glass remote access — and the mistakes that make it flaky.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">📶</span>
+            <h3>Fixing Wi-Fi dead zones properly</h3>
+            <p>Why the usual advice fails, and the diagnostic path that actually finds the problem.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🛡️</span>
+            <h3>Catching alt accounts in online communities</h3>
+            <p>Verification gates, device fingerprints, and what actually works against ban evasion.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">💾</span>
+            <h3>Your backups probably don't restore</h3>
+            <p>The difference between "we have backups" and "we tested a restore" — and how to close it.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🚀</span>
+            <h3>Running a .NET app on a bare VPS</h3>
+            <p>Production hosting without the PaaS bill: nginx, systemd, SSL, deploys, and monitoring.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">✉️</span>
+            <h3>Got a problem worth writing up?</h3>
+            <p>The best posts start as someone's real headache. Tell me yours — worst case, you get it fixed.</p>
+        </div>
+    </div>
+    <div style="text-align:center;margin-top:24px">
+        <a href="/Contact" class="section-link">Have a problem now? Don't wait for the post &rarr;</a>
+    </div>
+</section>
+
+<section class="landing-mid-cta">
+    <p>While the posts are cooking, the work is very much open for business.</p>
+    <a href="/Packages" class="btn-large btn-signup">See packages &amp; pricing</a>
+</section>
