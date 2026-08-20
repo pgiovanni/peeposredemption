@@ -6,5 +6,6 @@ public interface ILeadRepository
 {
     Task AddAsync(Lead lead);
     Task<List<Lead>> GetAllAsync();
+    Task<List<Lead>> GetByEmailAsync(string email);
     Task<Lead?> GetByIdAsync(Guid id);
 }

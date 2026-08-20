@@ -49,7 +49,7 @@
             <a href="/Community" class="nav-btn nav-btn-ghost">Community</a>
             @if (Context.Request.Cookies.ContainsKey("jwt"))
             {
-                <a href="/App/Index" class="nav-btn nav-btn-ghost">Go to Chat</a>
+                <a href="/Dashboard" class="nav-btn nav-btn-ghost">Dashboard</a>
             }
             else
             {
@@ -68,6 +68,7 @@
             <a href="/Community">Community</a>
             @if (Context.Request.Cookies.ContainsKey("jwt"))
             {
+                <a href="/Dashboard">Dashboard</a>
                 <a href="/App/Index">Go to Chat</a>
             }
             else

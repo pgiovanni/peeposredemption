@@ -1,0 +1,133 @@
+@page
+@model peeposredemption.API.Pages.DashboardModel
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["NoIndex"] = true;
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/" class="icon-btn" title="Home">&#8592;</a>
+            <span>Dashboard</span>
+        </div>
+        <div class="sidebar-section-header">YOUR ACCOUNT</div>
+        <a href="/Dashboard?tab=account" class="channel-item @(Model.Tab == "account" ? "active" : "")">👤 Account</a>
+        <a href="/Dashboard?tab=projects" class="channel-item @(Model.Tab == "projects" ? "active" : "")">📁 Projects</a>
+        <a href="/Dashboard?tab=billing" class="channel-item @(Model.Tab == "billing" ? "active" : "")">💳 Billing</a>
+        <a href="/Dashboard?tab=orders" class="channel-item @(Model.Tab == "orders" ? "active" : "")">📦 Orders</a>
+        <div class="sidebar-section-header">COMMUNITY</div>
+        <a href="/Dashboard?tab=community" class="channel-item @(Model.Tab == "community" ? "active" : "")">💬 Community</a>
+        <a href="/App/Index" class="channel-item">🚀 Open Chat</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>
+                @(Model.Tab switch {
+                    "projects" => "Projects",
+                    "billing" => "Billing",
+                    "orders" => "Orders",
+                    "community" => "Community",
+                    _ => "Account"
+                })
+            </span>
+        </div>
+
+        <div class="settings-body">
+            @if (Model.Tab == "account")
+            {
+                <section class="settings-section">
+                    <h3 class="settings-heading">YOUR ACCOUNT</h3>
+                    <p style="margin-bottom:4px"><strong style="color:#f2f3f5">@Model.CurrentUser.Username</strong></p>
+                    <p style="color:#949ba4;font-size:14px">@Model.CurrentUser.Email · member since @Model.CurrentUser.CreatedAt.ToString("MMMM yyyy")</p>
+                </section>
+                <section class="settings-section">
+                    <h3 class="settings-heading">SETTINGS</h3>
+                    <p style="display:flex;gap:16px;flex-wrap:wrap">
+                        <a href="/App/Profile" class="btn-primary btn-sm">Edit profile</a>
+                        <a href="/App/Sessions" class="btn-primary btn-sm">Active sessions</a>
+                        <a href="/App/MfaSetup" class="btn-primary btn-sm">Two-factor auth</a>
+                    </p>
+                </section>
+            }
+            else if (Model.Tab == "projects")
+            {
+                <section class="settings-section">
+                    <h3 class="settings-heading">ACTIVE PROJECTS</h3>
+                    <div class="sidebar-empty" style="padding:24px 0">
+                        No active projects yet. When an engagement starts, its progress and updates will live here.
+                    </div>
+                    <a href="/Packages" class="btn-primary btn-sm">Browse packages</a>
+                </section>
+            }
+            else if (Model.Tab == "billing")
+            {
+                <section class="settings-section">
+                    <h3 class="settings-heading">BILLING</h3>
+                    <div class="sidebar-empty" style="padding:24px 0">
+                        No invoices yet. Right now invoices are sent by email when an engagement starts — a full billing history will appear here soon.
+                    </div>
+                    <a href="/Contact" class="btn-primary btn-sm">Questions about billing? Get in touch</a>
+                </section>
+            }
+            else if (Model.Tab == "orders")
+            {
+                <section class="settings-section">
+                    <h3 class="settings-heading">YOUR ORDERS &amp; INQUIRIES</h3>
+                    @if (!Model.Orders.Any())
+                    {
+                        <div class="sidebar-empty" style="padding:24px 0">
+                            Nothing yet. Order a package or send an inquiry and you'll see its status here.
+                        </div>
+                        <a href="/Packages" class="btn-primary btn-sm">Browse packages</a>
+                    }
+                    else
+                    {
+                        <div class="admin-table-wrap">
+                        <table class="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>Package</th>
+                                    <th>Message</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var order in Model.Orders)
+                                {
+                                    <tr>
+                                        <td><strong>@(order.Package ?? "General inquiry")</strong></td>
+                                        <td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="@order.Message">@order.Message</td>
+                                        <td>@peeposredemption.API.Pages.DashboardModel.CustomerStatus(order.Status)</td>
+                                        <td class="audit-time">@order.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        </div>
+                        <p style="color:#949ba4;font-size:13px;margin-top:12px">Showing inquiries submitted with @Model.CurrentUser.Email.</p>
+                    }
+                </section>
+            }
+            else if (Model.Tab == "community")
+            {
+                <section class="settings-section">
+                    <h3 class="settings-heading">TORVEX COMMUNITY</h3>
+                    <p style="color:#b5bac1;margin-bottom:16px">
+                        The chat platform where Torvex started — servers, voice, the in-chat game, and the people. Free, and yours to use.
+                    </p>
+                    <p style="display:flex;gap:16px;flex-wrap:wrap">
+                        <a href="/App/Index" class="btn-primary btn-sm">Open Torvex Chat</a>
+                        <a href="https://discord.gg/scpwTFGVkz" class="btn-primary btn-sm" target="_blank" rel="noopener noreferrer">Join our Discord</a>
+                        <a href="/Community" class="btn-primary btn-sm">About the Community</a>
+                    </p>
+                </section>
+            }
+        </div>
+    </div>
+</div>
