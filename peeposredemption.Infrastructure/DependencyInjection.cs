@@ -74,6 +74,9 @@ namespace peeposredemption.Infrastructure
             // Support tickets
             services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
 
+            // Sales leads (contact form)
+            services.AddScoped<ILeadRepository, LeadRepository>();
+
             // Anti-alt security
             services.AddScoped<IIpBanRepository, IpBanRepository>();
             services.AddScoped<IUserDeviceRepository, UserDeviceRepository>();

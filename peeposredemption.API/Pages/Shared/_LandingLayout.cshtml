@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-site-verification" content="MvoHAl7vXmYuZPAwD7xSZMY_WK8rYii2s9pygJ7UvGg" />
-    <title>@(ViewData["Title"] != null ? $"{ViewData["Title"]} - Torvex" : "Torvex — Chat, Play, Connect")</title>
+    <title>@(ViewData["Title"] != null ? $"{ViewData["Title"]} - Torvex" : "Torvex — IT Solutions & Custom Software")</title>
     <link rel="icon" type="image/x-icon" href="~/favicon.ico" />
     <link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
 
@@ -45,15 +45,17 @@
             <span>Torvex</span>
         </a>
         <div class="nav-links">
+            <a href="/Packages" class="nav-btn nav-btn-ghost">Packages</a>
+            <a href="/Community" class="nav-btn nav-btn-ghost">Community</a>
             @if (Context.Request.Cookies.ContainsKey("jwt"))
             {
-                <a href="/App/Index" class="nav-btn nav-btn-primary">Go to Chat</a>
+                <a href="/App/Index" class="nav-btn nav-btn-ghost">Go to Chat</a>
             }
             else
             {
                 <a href="/Auth/Login" class="nav-btn nav-btn-ghost">Log In</a>
-                <a href="/Auth/Register" class="nav-btn nav-btn-primary">Sign Up</a>
             }
+            <a href="/Contact" class="nav-btn nav-btn-primary">Contact</a>
         </div>
     </nav>
 
@@ -61,6 +63,9 @@
 
     <footer class="landing-footer">
         <div class="footer-links">
+            <a href="/Packages">Packages</a>
+            <a href="/Contact">Contact</a>
+            <a href="/Community">Community</a>
             @if (Context.Request.Cookies.ContainsKey("jwt"))
             {
                 <a href="/App/Index">Go to Chat</a>

@@ -40,6 +40,30 @@ namespace peeposredemption.Application.Services
         public Task SendArtistSubmissionNotificationAsync(string displayName, string email, string portfolioUrl) => Task.CompletedTask;
         public Task SendSupportTicketNotificationAsync(string username, string category, string subject, string description) => Task.CompletedTask;
 
+        public async Task SendLeadNotificationAsync(string name, string email, string? company, string? package, string messageBody)
+        {
+            using var client = new SmtpClient(_host, _port)
+            {
+                EnableSsl = false,
+                Credentials = CredentialCache.DefaultNetworkCredentials
+            };
+
+            var message = new MailMessage
+            {
+                From = new MailAddress("noreply@peeposredemption.local", "Torvex"),
+                Subject = $"[Torvex] New inquiry from {name}",
+                Body = $"<p><strong>Name:</strong> {System.Net.WebUtility.HtmlEncode(name)}<br/>" +
+                       $"<strong>Email:</strong> {System.Net.WebUtility.HtmlEncode(email)}<br/>" +
+                       $"<strong>Company:</strong> {System.Net.WebUtility.HtmlEncode(company ?? "—")}<br/>" +
+                       $"<strong>Package:</strong> {System.Net.WebUtility.HtmlEncode(package ?? "—")}<br/>" +
+                       $"<strong>Message:</strong> {System.Net.WebUtility.HtmlEncode(messageBody)}</p>",
+                IsBodyHtml = true
+            };
+            message.To.Add("admin@torvex.app");
+
+            await client.SendMailAsync(message);
+        }
+
         public async Task SendPasswordResetEmailAsync(string toEmail, string resetLink)
         {
             using var client = new SmtpClient(_host, _port)

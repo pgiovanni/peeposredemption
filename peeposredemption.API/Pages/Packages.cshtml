@@ -1,0 +1,70 @@
+@page
+@using peeposredemption.API.Infrastructure
+@model peeposredemption.API.Pages.PackagesModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Packages & Pricing — Torvex IT Solutions";
+    ViewData["OgTitle"] = "Torvex — Packages & Pricing";
+    ViewData["Description"] = "Managed sysadmin subscriptions, cloud hosting on your own account, network installs, ERP customization, and custom software — fixed packages with clear pricing.";
+}
+
+<section class="hero" style="padding-bottom:24px">
+    <h1>Packages &amp; <span class="hero-accent">pricing.</span></h1>
+    <p class="hero-emotional">Pick a package, or describe the problem and get a recommendation.</p>
+    <div class="hero-micro">Every engagement starts with a free assessment — no charge until we agree on scope.</div>
+</section>
+
+<section class="features" style="padding-top:16px">
+    <h2>Ongoing — monthly plans</h2>
+    <p class="section-subtitle">Someone paid to care about your systems, every month.</p>
+    <div class="features-grid pkg-grid">
+        @foreach (var pkg in ServiceCatalog.Packages.Where(p => p.IsSubscription))
+        {
+            <div class="feature-card pkg-card">
+                <span class="feature-icon">@pkg.Icon</span>
+                <h3>@pkg.Name</h3>
+                <div class="pkg-price">@pkg.Price @if (pkg.PriceNote != null) {<span class="pkg-price-note">· @pkg.PriceNote</span>}</div>
+                <p>@pkg.Blurb</p>
+                <ul class="pkg-list">
+                    @foreach (var f in pkg.Features)
+                    {
+                        <li>@f</li>
+                    }
+                </ul>
+                <a href="/Contact?package=@Uri.EscapeDataString(pkg.Name)" class="btn-large btn-signup pkg-order">Start here</a>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="features" style="padding-top:0">
+    <h2>One-off projects</h2>
+    <p class="section-subtitle">Fixed scope, fixed price, documented handoff.</p>
+    <div class="features-grid pkg-grid">
+        @foreach (var pkg in ServiceCatalog.Packages.Where(p => !p.IsSubscription))
+        {
+            <div class="feature-card pkg-card">
+                <span class="feature-icon">@pkg.Icon</span>
+                <h3>@pkg.Name</h3>
+                <div class="pkg-price">@pkg.Price @if (pkg.PriceNote != null) {<span class="pkg-price-note">· @pkg.PriceNote</span>}</div>
+                <p>@pkg.Blurb</p>
+                <ul class="pkg-list">
+                    @foreach (var f in pkg.Features)
+                    {
+                        <li>@f</li>
+                    }
+                </ul>
+                <a href="/Contact?package=@Uri.EscapeDataString(pkg.Name)" class="btn-large btn-signup pkg-order">Get a quote</a>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="landing-mid-cta">
+    <p>Nothing fit exactly? Most work starts as "it's kind of like this, but…"</p>
+    <a href="/Contact" class="btn-large btn-signup">Describe your problem</a>
+</section>
+
+<section class="landing-emotional">
+    <p>One-off projects come with the option to stay covered.<br /><strong>Every build pairs with a monthly plan that keeps it healthy.</strong></p>
+</section>

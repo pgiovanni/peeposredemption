@@ -8,12 +8,14 @@ namespace peeposredemption.Application.Services
         private readonly IResend _resend;
         private readonly string _fromAddress;
         private readonly string _adminEmail;
+        private readonly string _leadsEmail;
 
         public EmailService(IResend resend, IConfiguration config)
         {
             _resend = resend;
             _fromAddress = config["Email:From"] ?? "noreply@torvex.app";
             _adminEmail = config["Email:AdminEmail"] ?? "pgiovanni1234@gmail.com";
+            _leadsEmail = config["Email:LeadsEmail"] ?? "admin@torvex.app";
         }
 
         public async Task SendConfirmationEmailAsync(string toEmail, string confirmationLink)
@@ -101,6 +103,26 @@ namespace peeposredemption.Application.Services
                            $"<strong>Subject:</strong> {System.Net.WebUtility.HtmlEncode(subject)}<br/>" +
                            $"<strong>Description:</strong> {System.Net.WebUtility.HtmlEncode(description)}</p>" +
                            $"<p>Review at <a href=\"https://torvex.app/App/Admin/SupportTicketAdmin\">Support Tickets Admin</a>.</p>"
+            };
+            await _resend.EmailSendAsync(message);
+        }
+
+        public async Task SendLeadNotificationAsync(string name, string email, string? company, string? package, string messageBody)
+        {
+            var subjectTag = string.IsNullOrWhiteSpace(package) ? "New inquiry" : $"ORDER: {package}";
+            var message = new EmailMessage
+            {
+                From = $"Torvex <{_fromAddress}>",
+                To = { _leadsEmail },
+                Subject = $"[Torvex] {subjectTag} — {System.Net.WebUtility.HtmlEncode(name)}",
+                HtmlBody = $"<p>A new inquiry came in through torvex.app/Contact.</p>" +
+                           $"<p><strong>Name:</strong> {System.Net.WebUtility.HtmlEncode(name)}<br/>" +
+                           $"<strong>Email:</strong> {System.Net.WebUtility.HtmlEncode(email)}<br/>" +
+                           (string.IsNullOrWhiteSpace(company) ? "" : $"<strong>Company:</strong> {System.Net.WebUtility.HtmlEncode(company)}<br/>") +
+                           (string.IsNullOrWhiteSpace(package) ? "" : $"<strong>Package:</strong> {System.Net.WebUtility.HtmlEncode(package)}<br/>") +
+                           $"<strong>Message:</strong></p>" +
+                           $"<p style=\"white-space:pre-wrap\">{System.Net.WebUtility.HtmlEncode(messageBody)}</p>" +
+                           $"<p>Manage leads at <a href=\"https://admin.torvex.app/App/Admin/Leads\">Leads Admin</a>. Reply directly to the sender at {System.Net.WebUtility.HtmlEncode(email)}.</p>"
             };
             await _resend.EmailSendAsync(message);
         }

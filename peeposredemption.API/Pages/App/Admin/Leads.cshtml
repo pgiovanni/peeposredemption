@@ -1,0 +1,88 @@
+@page
+@model peeposredemption.API.Pages.App.Admin.LeadsModel
+@{
+    ViewData["Title"] = "Admin — Leads";
+}
+
+<div class="app-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="/App/Index" class="icon-btn" title="Back">&#8592;</a>
+            <span>Leads</span>
+        </div>
+        <div class="sidebar-section-header">ADMIN</div>
+        <a href="/App/Admin/SecurityAdmin" class="channel-item">Security</a>
+        <a href="/App/Admin/BanAdmin" class="channel-item">Bans & Servers</a>
+        <a href="/App/Admin/Referrals" class="channel-item">Referrals</a>
+        <a href="/App/Admin/ArtistAdmin" class="channel-item">Artists</a>
+        <a href="/App/Admin/FeatureRequestAdmin" class="channel-item">Feature Requests</a>
+        <a href="/App/Admin/SupportTicketAdmin" class="channel-item">Support Tickets</a>
+        <a href="/App/Admin/Leads" class="channel-item active">Leads</a>
+    </div>
+
+    <div class="sidebar-backdrop"></div>
+
+    <div class="content-area settings-page">
+        <div class="content-header">
+            <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
+            <span>Sales Leads</span>
+        </div>
+
+        <div class="settings-body admin-body">
+        <section class="settings-section">
+            <h3 class="settings-heading">CONTACT FORM INQUIRIES</h3>
+
+            @if (!Model.Leads.Any())
+            {
+                <div class="sidebar-empty">No leads yet. They'll appear here when someone submits the contact form at torvex.app/Contact.</div>
+            }
+            else
+            {
+                <div class="admin-table-wrap">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Company</th>
+                            <th>Package</th>
+                            <th>Message</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Notes / Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var lead in Model.Leads)
+                        {
+                            <tr>
+                                <td><strong>@lead.Name</strong></td>
+                                <td><a href="mailto:@lead.Email" style="color:#00BFA5">@lead.Email</a></td>
+                                <td>@(lead.Company ?? "—")</td>
+                                <td>@(lead.Package ?? "—")</td>
+                                <td style="max-width:300px;white-space:pre-wrap">@lead.Message</td>
+                                <td><span class="feature-status-badge status-@lead.Status.ToString().ToLower()">@lead.Status</span></td>
+                                <td class="audit-time">@lead.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="Update" style="display:flex;flex-direction:column;gap:4px;min-width:180px">
+                                        <input type="hidden" name="leadId" value="@lead.Id" />
+                                        <select name="status" style="padding:4px 8px;background:#1e1f22;border:1px solid #3f4147;border-radius:4px;color:#f2f3f5;font-size:12px">
+                                            @foreach (var s in Enum.GetValues<peeposredemption.Domain.Entities.LeadStatus>())
+                                            {
+                                                <option value="@s" selected="@(s == lead.Status)">@s</option>
+                                            }
+                                        </select>
+                                        <textarea name="notes" rows="2" placeholder="Notes…" style="padding:4px 8px;background:#1e1f22;border:1px solid #3f4147;border-radius:4px;color:#f2f3f5;font-size:12px;resize:vertical">@lead.Notes</textarea>
+                                        <button type="submit" class="btn-primary btn-sm">Save</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </section>
+        </div>
+    </div>
+</div>

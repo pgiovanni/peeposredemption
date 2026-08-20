@@ -60,6 +60,9 @@ namespace peeposredemption.Domain.Interfaces
         // Support tickets
         ISupportTicketRepository SupportTickets { get; }
 
+        // Sales leads (contact form)
+        ILeadRepository Leads { get; }
+
         // Anti-alt security
         IIpBanRepository IpBans { get; }
         IUserDeviceRepository UserDevices { get; }

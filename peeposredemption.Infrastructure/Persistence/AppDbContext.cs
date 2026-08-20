@@ -68,6 +68,9 @@ namespace peeposredemption.Infrastructure.Persistence
         // Support tickets
         public DbSet<SupportTicket> SupportTickets { get; set; }
 
+        // Sales leads (contact form)
+        public DbSet<Lead> Leads { get; set; }
+
         // Anti-alt security
         public DbSet<IpBan> IpBans { get; set; }
         public DbSet<UserDevice> UserDevices { get; set; }
@@ -559,6 +562,10 @@ namespace peeposredemption.Infrastructure.Persistence
 
             modelBuilder.Entity<SupportTicket>()
                 .HasIndex(t => t.UserId);
+
+            // ── Sales Leads ────────────────────────────────────────────
+            modelBuilder.Entity<Lead>()
+                .HasIndex(l => new { l.Status, l.CreatedAt });
 
             // ── Anti-Alt Security ────────────────────────────────────────
 

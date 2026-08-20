@@ -64,6 +64,9 @@ namespace peeposredemption.Infrastructure
         // Support tickets
         public ISupportTicketRepository SupportTickets { get; }
 
+        // Sales leads (contact form)
+        public ILeadRepository Leads { get; }
+
         // Anti-alt security
         public IIpBanRepository IpBans { get; }
         public IUserDeviceRepository UserDevices { get; }
@@ -118,6 +121,7 @@ namespace peeposredemption.Infrastructure
             IVoiceSessionRepository voiceSessions,
             IFeatureRequestRepository featureRequests,
             ISupportTicketRepository supportTickets,
+            ILeadRepository leads,
             IIpBanRepository ipBans,
             IUserDeviceRepository userDevices,
             IUserIpLogRepository userIpLogs,
@@ -170,6 +174,7 @@ namespace peeposredemption.Infrastructure
             VoiceSessions = voiceSessions;
             FeatureRequests = featureRequests;
             SupportTickets = supportTickets;
+            Leads = leads;
             IpBans = ipBans;
             UserDevices = userDevices;
             UserIpLogs = userIpLogs;
