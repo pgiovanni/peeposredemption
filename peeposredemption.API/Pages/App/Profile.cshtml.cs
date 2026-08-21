@@ -50,10 +50,12 @@ public class ProfileModel : PageModel
         var currentUserId = GetUserId();
         if (currentUserId == null) return RedirectToPage("/Auth/Login");
 
+        // Own profile lives in the Dashboard now — this page only VIEWS profiles
+        if (userId == null) return RedirectToPage("/Dashboard", new { tab = "account" });
+
         await LoadServerListAsync(currentUserId.Value);
 
-        // Determine which profile to show
-        var profileId = userId ?? currentUserId.Value;
+        var profileId = userId.Value;
         IsOwnProfile = profileId == currentUserId.Value;
 
         await LoadProfileAsync(profileId);

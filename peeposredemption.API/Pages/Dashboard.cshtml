@@ -18,20 +18,7 @@
 </style>
 
 <div class="app-shell">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <a href="/" class="icon-btn" title="Home">&#8592;</a>
-            <span>Dashboard</span>
-        </div>
-        <div class="sidebar-section-header">YOUR ACCOUNT</div>
-        <a href="/Dashboard?tab=account" class="channel-item @(Model.Tab == "account" ? "active" : "")">👤 Account</a>
-        <a href="/Dashboard?tab=projects" class="channel-item @(Model.Tab == "projects" ? "active" : "")">📁 Projects</a>
-        <a href="/Dashboard?tab=billing" class="channel-item @(Model.Tab == "billing" ? "active" : "")">💳 Billing</a>
-        <a href="/Dashboard?tab=orders" class="channel-item @(Model.Tab == "orders" ? "active" : "")">📦 Orders</a>
-        <div class="sidebar-section-header">COMMUNITY</div>
-        <a href="/Dashboard?tab=community" class="channel-item @(Model.Tab == "community" ? "active" : "")">💬 Community</a>
-        <a href="/App/Index" class="channel-item">🚀 Open Chat</a>
-    </div>
+    <partial name="_DashboardNav" model="@Model.Tab" />
 
     <div class="sidebar-backdrop"></div>
 
@@ -40,6 +27,7 @@
             <button class="mobile-menu-btn" aria-label="Open menu">&#9776;</button>
             <span>
                 @(Model.Tab switch {
+                    "security" => "Security",
                     "projects" => "Projects",
                     "billing" => "Billing",
                     "orders" => "Orders",
@@ -220,6 +208,17 @@
                     </form>
                 </section>
 
+            }
+            else if (Model.Tab == "security")
+            {
+                @if (TempData["AccountMsg"] is string smsg)
+                {
+                    <div class="dash-msg">@smsg</div>
+                }
+                @if (TempData["AccountErr"] is string serr)
+                {
+                    <div class="dash-err">@serr</div>
+                }
                 <section class="settings-section">
                     <h3 class="settings-heading">EMAIL &amp; SECURITY</h3>
                     <p style="margin-bottom:4px">

@@ -8,13 +8,7 @@
 
     <partial name="_ServerList" model="Model.ServerList" />
 
-    <div class="sidebar">
-        <div class="sidebar-header">Security</div>
-        <a href="/App/Profile" class="channel-item">Back to Profile</a>
-        <div class="sidebar-section-label">SECURITY</div>
-        <a href="/App/MfaSetup" class="channel-item">Two-Factor Auth</a>
-        <a href="/App/Sessions" class="channel-item active">Active Sessions</a>
-    </div>
+    <partial name="_DashboardNav" model='"sessions"' />
 
     <div class="sidebar-backdrop"></div>
 

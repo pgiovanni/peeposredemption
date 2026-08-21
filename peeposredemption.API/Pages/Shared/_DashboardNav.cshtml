@@ -1,0 +1,25 @@
+@model string
+@* The ONE hub sidebar — used by /Dashboard and every account/community page
+   (Sessions, Wallet, Badges, VcStats, OrbShop) so all sections live in a single
+   consistent menu. Model = active key. *@
+<div class="sidebar">
+    <div class="sidebar-header">
+        <a href="/" class="icon-btn" title="Home">&#8592;</a>
+        <span>Dashboard</span>
+    </div>
+    <div class="sidebar-section-header">YOUR ACCOUNT</div>
+    <a href="/Dashboard?tab=account" class="channel-item @(Model == "account" ? "active" : "")">👤 Account</a>
+    <a href="/Dashboard?tab=security" class="channel-item @(Model == "security" ? "active" : "")">🔐 Security</a>
+    <a href="/App/Sessions" class="channel-item @(Model == "sessions" ? "active" : "")">🖥️ Active Sessions</a>
+    <div class="sidebar-section-header">BUSINESS</div>
+    <a href="/Dashboard?tab=projects" class="channel-item @(Model == "projects" ? "active" : "")">📁 Projects</a>
+    <a href="/Dashboard?tab=orders" class="channel-item @(Model == "orders" ? "active" : "")">📦 Orders</a>
+    <a href="/Dashboard?tab=billing" class="channel-item @(Model == "billing" ? "active" : "")">💳 Billing</a>
+    <div class="sidebar-section-header">COMMUNITY</div>
+    <a href="/Dashboard?tab=community" class="channel-item @(Model == "community" ? "active" : "")">💬 Community</a>
+    <a href="/App/Wallet" class="channel-item @(Model == "wallet" ? "active" : "")">💰 Wallet</a>
+    <a href="/App/Badges" class="channel-item @(Model == "badges" ? "active" : "")">🏅 Badges</a>
+    <a href="/App/VcStats" class="channel-item @(Model == "vcstats" ? "active" : "")">🎙️ VC Stats</a>
+    <a href="/App/OrbShop" class="channel-item @(Model == "orbshop" ? "active" : "")">🔮 Orb Shop</a>
+    <a href="/App/Index" class="channel-item">🚀 Open Chat</a>
+</div>

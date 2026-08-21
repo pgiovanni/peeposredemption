@@ -14,7 +14,7 @@ namespace peeposredemption.API.Pages;
 
 public class DashboardModel : PageModel
 {
-    private static readonly string[] ValidTabs = { "account", "projects", "billing", "orders", "community" };
+    private static readonly string[] ValidTabs = { "account", "security", "projects", "billing", "orders", "community" };
 
     private readonly IUnitOfWork _uow;
     private readonly IMediator _mediator;
@@ -165,7 +165,7 @@ public class DashboardModel : PageModel
             }
         }
 
-        return RedirectToPage("/Dashboard", new { tab = "account" });
+        return RedirectToPage("/Dashboard", new { tab = "security" });
     }
 
     // ── Account tab: password change via emailed link ────────────────────────
@@ -184,7 +184,7 @@ public class DashboardModel : PageModel
             TempData["AccountErr"] = ex.Message;
         }
 
-        return RedirectToPage("/Dashboard", new { tab = "account" });
+        return RedirectToPage("/Dashboard", new { tab = "security" });
     }
 
     // Customer-friendly wording for internal lead statuses
