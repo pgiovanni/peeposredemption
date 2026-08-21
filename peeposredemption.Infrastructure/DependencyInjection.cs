@@ -77,6 +77,9 @@ namespace peeposredemption.Infrastructure
             // Sales leads (contact form)
             services.AddScoped<ILeadRepository, LeadRepository>();
 
+            // Customer contact/billing profiles
+            services.AddScoped<ICustomerProfileRepository, CustomerProfileRepository>();
+
             // Anti-alt security
             services.AddScoped<IIpBanRepository, IpBanRepository>();
             services.AddScoped<IUserDeviceRepository, UserDeviceRepository>();

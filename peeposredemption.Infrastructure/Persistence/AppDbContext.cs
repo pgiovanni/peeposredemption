@@ -71,6 +71,9 @@ namespace peeposredemption.Infrastructure.Persistence
         // Sales leads (contact form)
         public DbSet<Lead> Leads { get; set; }
 
+        // Customer contact/billing profiles
+        public DbSet<CustomerProfile> CustomerProfiles { get; set; }
+
         // Anti-alt security
         public DbSet<IpBan> IpBans { get; set; }
         public DbSet<UserDevice> UserDevices { get; set; }
@@ -566,6 +569,16 @@ namespace peeposredemption.Infrastructure.Persistence
             // ── Sales Leads ────────────────────────────────────────────
             modelBuilder.Entity<Lead>()
                 .HasIndex(l => new { l.Status, l.CreatedAt });
+
+            // ── Customer Profiles (one-to-one with User) ───────────────
+            modelBuilder.Entity<CustomerProfile>()
+                .HasKey(p => p.UserId);
+
+            modelBuilder.Entity<CustomerProfile>()
+                .HasOne(p => p.User)
+                .WithOne()
+                .HasForeignKey<CustomerProfile>(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // ── Anti-Alt Security ────────────────────────────────────────
 

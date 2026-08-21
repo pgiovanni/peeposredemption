@@ -67,6 +67,9 @@ namespace peeposredemption.Infrastructure
         // Sales leads (contact form)
         public ILeadRepository Leads { get; }
 
+        // Customer contact/billing profiles
+        public ICustomerProfileRepository CustomerProfiles { get; }
+
         // Anti-alt security
         public IIpBanRepository IpBans { get; }
         public IUserDeviceRepository UserDevices { get; }
@@ -122,6 +125,7 @@ namespace peeposredemption.Infrastructure
             IFeatureRequestRepository featureRequests,
             ISupportTicketRepository supportTickets,
             ILeadRepository leads,
+            ICustomerProfileRepository customerProfiles,
             IIpBanRepository ipBans,
             IUserDeviceRepository userDevices,
             IUserIpLogRepository userIpLogs,
@@ -175,6 +179,7 @@ namespace peeposredemption.Infrastructure
             FeatureRequests = featureRequests;
             SupportTickets = supportTickets;
             Leads = leads;
+            CustomerProfiles = customerProfiles;
             IpBans = ipBans;
             UserDevices = userDevices;
             UserIpLogs = userIpLogs;

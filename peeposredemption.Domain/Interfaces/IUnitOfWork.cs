@@ -63,6 +63,9 @@ namespace peeposredemption.Domain.Interfaces
         // Sales leads (contact form)
         ILeadRepository Leads { get; }
 
+        // Customer contact/billing profiles
+        ICustomerProfileRepository CustomerProfiles { get; }
+
         // Anti-alt security
         IIpBanRepository IpBans { get; }
         IUserDeviceRepository UserDevices { get; }

@@ -18,6 +18,15 @@ namespace peeposredemption.API.Pages.Auth
             if (user is null)
                 return RedirectToPage("/Auth/Login");
 
+            // Email CHANGE confirmation: swap in the pending address, unless it
+            // was claimed by another account since the change was requested.
+            if (!string.IsNullOrEmpty(user.PendingEmail))
+            {
+                if (!await _uow.Users.EmailExistsAsync(user.PendingEmail))
+                    user.Email = user.PendingEmail;
+                user.PendingEmail = null;
+            }
+
             user.EmailConfirmed = true;
             user.EmailConfirmationtoken = null;
             await _uow.SaveChangesAsync();

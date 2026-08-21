@@ -5,6 +5,18 @@
     ViewData["NoIndex"] = true;
 }
 
+<style>
+    .dash-form { display: flex; flex-direction: column; gap: 10px; max-width: 520px; }
+    .dash-form label { font-size: 12px; font-weight: 600; color: #949ba4; text-transform: uppercase; letter-spacing: .3px; }
+    .dash-input { padding: 8px 10px; background: #1e1f22; border: 1px solid #3f4147; border-radius: 6px; color: #f2f3f5; font-size: 14px; width: 100%; }
+    .dash-input:focus { outline: none; border-color: #00BFA5; }
+    .dash-row { display: flex; gap: 10px; }
+    .dash-row > div { flex: 1; }
+    .dash-msg { background: rgba(0,191,165,.12); border: 1px solid #00BFA5; color: #f2f3f5; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 14px; }
+    .dash-err { background: rgba(220,38,38,.12); border: 1px solid #dc2626; color: #f2f3f5; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 14px; }
+    .dash-note { color: #949ba4; font-size: 13px; }
+</style>
+
 <div class="app-shell">
     <div class="sidebar">
         <div class="sidebar-header">
@@ -40,18 +52,126 @@
         <div class="settings-body">
             @if (Model.Tab == "account")
             {
+                @if (TempData["AccountMsg"] is string msg)
+                {
+                    <div class="dash-msg">@msg</div>
+                }
+                @if (TempData["AccountErr"] is string err)
+                {
+                    <div class="dash-err">@err</div>
+                }
+
                 <section class="settings-section">
-                    <h3 class="settings-heading">YOUR ACCOUNT</h3>
-                    <p style="margin-bottom:4px"><strong style="color:#f2f3f5">@Model.CurrentUser.Username</strong></p>
-                    <p style="color:#949ba4;font-size:14px">@Model.CurrentUser.Email · member since @Model.CurrentUser.CreatedAt.ToString("MMMM yyyy")</p>
-                </section>
-                <section class="settings-section">
-                    <h3 class="settings-heading">SETTINGS</h3>
-                    <p style="display:flex;gap:16px;flex-wrap:wrap">
-                        <a href="/App/Profile" class="btn-primary btn-sm">Edit profile</a>
-                        <a href="/App/Sessions" class="btn-primary btn-sm">Active sessions</a>
-                        <a href="/App/MfaSetup" class="btn-primary btn-sm">Two-factor auth</a>
+                    <h3 class="settings-heading">PROFILE</h3>
+                    <p class="dash-note" style="margin-bottom:14px">
+                        One profile for everything — what you save here is what the chat and community see too.
+                        <a href="/App/Profile" style="color:#00BFA5">View your public profile &rarr;</a>
                     </p>
+                    <form method="post" asp-page-handler="Profile" enctype="multipart/form-data" class="dash-form">
+                        <div class="dash-row">
+                            <div>
+                                <label>Display name</label>
+                                <input class="dash-input" name="displayName" value="@Model.CurrentUser.DisplayName" placeholder="@Model.CurrentUser.Username" />
+                            </div>
+                            <div>
+                                <label>Pronouns</label>
+                                <input class="dash-input" name="pronouns" value="@Model.CurrentUser.Pronouns" placeholder="they/them" />
+                            </div>
+                        </div>
+                        <div>
+                            <label>Bio</label>
+                            <textarea class="dash-input" name="bio" rows="3">@Model.CurrentUser.Bio</textarea>
+                        </div>
+                        <div class="dash-row">
+                            <div>
+                                <label>Avatar @(Model.CurrentUser.AvatarUrl != null ? "(set)" : "")</label>
+                                <input class="dash-input" type="file" name="avatarFile" accept="image/*" />
+                            </div>
+                            <div>
+                                <label>Banner @(Model.CurrentUser.BannerUrl != null ? "(set)" : "")</label>
+                                <input class="dash-input" type="file" name="bannerFile" accept="image/*" />
+                            </div>
+                        </div>
+                        <input type="hidden" name="profileBackgroundColor" value="@Model.CurrentUser.ProfileBackgroundColor" />
+                        <div><button type="submit" class="btn-primary btn-sm">Save profile</button></div>
+                    </form>
+                </section>
+
+                <section class="settings-section">
+                    <h3 class="settings-heading">CONTACT &amp; BILLING DETAILS</h3>
+                    <p class="dash-note" style="margin-bottom:14px">Used for quotes and invoices. Only you and Torvex see this.</p>
+                    <form method="post" asp-page-handler="Contact" class="dash-form">
+                        <div class="dash-row">
+                            <div>
+                                <label>Full name</label>
+                                <input class="dash-input" name="fullName" value="@Model.Contact?.FullName" />
+                            </div>
+                            <div>
+                                <label>Company</label>
+                                <input class="dash-input" name="company" value="@Model.Contact?.Company" />
+                            </div>
+                        </div>
+                        <div>
+                            <label>Phone</label>
+                            <input class="dash-input" name="phone" value="@Model.Contact?.Phone" />
+                        </div>
+                        <div>
+                            <label>Address line 1</label>
+                            <input class="dash-input" name="addressLine1" value="@Model.Contact?.AddressLine1" />
+                        </div>
+                        <div>
+                            <label>Address line 2</label>
+                            <input class="dash-input" name="addressLine2" value="@Model.Contact?.AddressLine2" />
+                        </div>
+                        <div class="dash-row">
+                            <div>
+                                <label>City</label>
+                                <input class="dash-input" name="city" value="@Model.Contact?.City" />
+                            </div>
+                            <div>
+                                <label>State</label>
+                                <input class="dash-input" name="state" value="@Model.Contact?.State" />
+                            </div>
+                        </div>
+                        <div class="dash-row">
+                            <div>
+                                <label>Postal code</label>
+                                <input class="dash-input" name="postalCode" value="@Model.Contact?.PostalCode" />
+                            </div>
+                            <div>
+                                <label>Country</label>
+                                <input class="dash-input" name="country" value="@Model.Contact?.Country" />
+                            </div>
+                        </div>
+                        <div><button type="submit" class="btn-primary btn-sm">Save details</button></div>
+                    </form>
+                </section>
+
+                <section class="settings-section">
+                    <h3 class="settings-heading">EMAIL &amp; SECURITY</h3>
+                    <p style="margin-bottom:4px">
+                        Signed in as <strong style="color:#f2f3f5">@Model.CurrentUser.Email</strong>
+                        <span class="dash-note">· member since @Model.CurrentUser.CreatedAt.ToString("MMMM yyyy")</span>
+                    </p>
+                    @if (!string.IsNullOrEmpty(Model.CurrentUser.PendingEmail))
+                    {
+                        <p class="dash-note" style="margin-bottom:10px">⏳ Change to <strong style="color:#f2f3f5">@Model.CurrentUser.PendingEmail</strong> pending — check that inbox for the verification link.</p>
+                    }
+                    <form method="post" asp-page-handler="Email" class="dash-form" style="margin-top:10px">
+                        <div>
+                            <label>Change email</label>
+                            <input class="dash-input" type="email" name="newEmail" placeholder="new@email.com" />
+                        </div>
+                        <div><button type="submit" class="btn-primary btn-sm">Send verification</button></div>
+                        <p class="dash-note">Your current email keeps working until the new one is verified.</p>
+                    </form>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:18px">
+                        <form method="post" asp-page-handler="Password" style="display:inline">
+                            <button type="submit" class="btn-primary btn-sm">Change password</button>
+                        </form>
+                        <a href="/App/MfaSetup" class="btn-primary btn-sm">Two-factor auth</a>
+                        <a href="/App/Sessions" class="btn-primary btn-sm">Active sessions</a>
+                    </div>
                 </section>
             }
             else if (Model.Tab == "projects")
@@ -71,6 +191,7 @@
                     <div class="sidebar-empty" style="padding:24px 0">
                         No invoices yet. Right now invoices are sent by email when an engagement starts — a full billing history will appear here soon.
                     </div>
+                    <p class="dash-note" style="margin:10px 0 14px">Invoices use your <a href="/Dashboard?tab=account" style="color:#00BFA5">contact &amp; billing details</a> — keep them current.</p>
                     <a href="/Contact" class="btn-primary btn-sm">Questions about billing? Get in touch</a>
                 </section>
             }
@@ -110,7 +231,7 @@
                             </tbody>
                         </table>
                         </div>
-                        <p style="color:#949ba4;font-size:13px;margin-top:12px">Showing inquiries submitted with @Model.CurrentUser.Email.</p>
+                        <p class="dash-note" style="margin-top:12px">Showing inquiries submitted with @Model.CurrentUser.Email.</p>
                     }
                 </section>
             }
@@ -124,7 +245,7 @@
                     <p style="display:flex;gap:16px;flex-wrap:wrap">
                         <a href="/App/Index" class="btn-primary btn-sm">Open Torvex Chat</a>
                         <a href="https://discord.gg/scpwTFGVkz" class="btn-primary btn-sm" target="_blank" rel="noopener noreferrer">Join our Discord</a>
-                        <a href="/Community" class="btn-primary btn-sm">About the Community</a>
+                        <a href="https://community.torvex.app" class="btn-primary btn-sm">About the Community</a>
                     </p>
                 </section>
             }

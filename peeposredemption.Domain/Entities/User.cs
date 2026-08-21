@@ -15,6 +15,9 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool EmailConfirmed {  get; set; }
     public string? EmailConfirmationtoken { get; set; }
+    // Set while an email CHANGE awaits confirmation; the old address stays the
+    // login until the new one is verified (login rejects unconfirmed emails).
+    public string? PendingEmail { get; set; }
  
     public Guid? ReferredByCodeId { get; set; }
     public long OrbBalance { get; set; }
