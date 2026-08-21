@@ -18,7 +18,31 @@
     <h2>Ongoing — monthly plans</h2>
     <p class="section-subtitle">Someone paid to care about your systems, every month.</p>
     <div class="features-grid pkg-grid">
-        @foreach (var pkg in ServiceCatalog.Packages.Where(p => p.IsSubscription))
+        @foreach (var pkg in ServiceCatalog.Packages.Where(p => p.IsSubscription && !p.IsBotAddon))
+        {
+            <div class="feature-card pkg-card">
+                <span class="feature-icon">@pkg.Icon</span>
+                <h3>@pkg.Name</h3>
+                <div class="pkg-price">@pkg.Price @if (pkg.PriceNote != null) {<span class="pkg-price-note">· @pkg.PriceNote</span>}</div>
+                <p>@pkg.Blurb</p>
+                <ul class="pkg-list">
+                    @foreach (var f in pkg.Features)
+                    {
+                        <li>@f</li>
+                    }
+                </ul>
+                <a href="/Contact?package=@Uri.EscapeDataString(pkg.Name)" class="btn-large btn-signup pkg-order">Start here</a>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="features" style="padding-top:0">
+    <h2>For your Discord server</h2>
+    <p class="section-subtitle">The <a href="https://dashboard.torvex.app">Torvex Forerunner bot</a> is free to
+        <a href="https://dashboard.torvex.app/invite">add</a> — this unlocks its AI on your server.</p>
+    <div class="features-grid pkg-grid">
+        @foreach (var pkg in ServiceCatalog.Packages.Where(p => p.IsBotAddon))
         {
             <div class="feature-card pkg-card">
                 <span class="feature-icon">@pkg.Icon</span>

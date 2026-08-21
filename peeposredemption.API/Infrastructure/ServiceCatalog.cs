@@ -7,7 +7,8 @@ public record ServicePackage(
     string? PriceNote,
     string Blurb,
     string[] Features,
-    bool IsSubscription);
+    bool IsSubscription,
+    bool IsBotAddon = false);
 
 /// <summary>
 /// The sellable service catalog. Rendered on /Packages and used for the
@@ -77,7 +78,8 @@ public static class ServiceCatalog
                 "Privacy-scoped: private and staff channels are never read",
                 "Requires the free Torvex Forerunner bot"
             },
-            IsSubscription: true),
+            IsSubscription: true,
+            IsBotAddon: true),
 
         // ── One-off projects ─────────────────────────────────────────
         new(
