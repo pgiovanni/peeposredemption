@@ -2869,6 +2869,12 @@ a.mention-text {
     display: flex;
     align-items: center;
     gap: 8px;
+    /* The sidebar itself is the scroll container, so margin-top:auto alone
+       stops pinning once the list overflows — sticky keeps it on screen. */
+    position: sticky;
+    bottom: 0;
+    background: #2b2d31;
+    z-index: 1;
 }
 .sidebar-footer a {
     display: flex;
