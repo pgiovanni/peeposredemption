@@ -64,37 +64,110 @@
                 <section class="settings-section">
                     <h3 class="settings-heading">PROFILE</h3>
                     <p class="dash-note" style="margin-bottom:14px">
-                        One profile for everything — what you save here is what the chat and community see too.
-                        <a href="/App/Profile" style="color:#00BFA5">View your public profile &rarr;</a>
+                        One profile for everything — what you save here is exactly what the chat and community see.
                     </p>
-                    <form method="post" asp-page-handler="Profile" enctype="multipart/form-data" class="dash-form">
-                        <div class="dash-row">
-                            <div>
-                                <label>Display name</label>
-                                <input class="dash-input" name="displayName" value="@Model.CurrentUser.DisplayName" placeholder="@Model.CurrentUser.Username" />
+                    <div class="profile-container" style="max-width:560px">
+                        <!-- Live preview card (same markup/classes as the chat's editor) -->
+                        <div class="profile-preview-card" style="@(Model.CurrentUser.ProfileBackgroundColor != null ? $"background-color:{Model.CurrentUser.ProfileBackgroundColor}" : "")">
+                            <div class="profile-banner" id="banner-preview">
+                                @if (Model.CurrentUser.BannerUrl != null)
+                                {
+                                    <img src="@Model.CurrentUser.BannerUrl" alt="Banner" />
+                                }
+                                <label class="profile-upload-overlay" for="avatarBannerFile" title="Change banner">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                    </svg>
+                                </label>
                             </div>
-                            <div>
+                            <div class="profile-avatar-section">
+                                <div class="profile-avatar" id="avatar-preview">
+                                    @if (Model.CurrentUser.AvatarUrl != null)
+                                    {
+                                        <img src="@Model.CurrentUser.AvatarUrl" alt="Avatar" />
+                                    }
+                                    else
+                                    {
+                                        <span class="profile-avatar-initial">@Model.CurrentUser.Username.Substring(0, 1).ToUpper()</span>
+                                    }
+                                    <label class="profile-avatar-upload" for="avatarFileInput" title="Change avatar">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                        </svg>
+                                    </label>
+                                </div>
+                                <div class="profile-preview-info">
+                                    <span class="profile-preview-displayname" id="preview-displayname">@(Model.CurrentUser.DisplayName ?? Model.CurrentUser.Username)</span>
+                                    <span class="profile-preview-username">@@@Model.CurrentUser.Username</span>
+                                    @if (Model.CurrentUser.Pronouns != null)
+                                    {
+                                        <span class="profile-preview-pronouns" id="preview-pronouns">@Model.CurrentUser.Pronouns</span>
+                                    }
+                                </div>
+                            </div>
+                            @if (Model.CurrentUser.Bio != null)
+                            {
+                                <div class="profile-preview-bio" id="preview-bio">@Model.CurrentUser.Bio</div>
+                            }
+                        </div>
+
+                        @if (Model.Badges.Any())
+                        {
+                            <div class="profile-section">
+                                <div class="profile-section-label">BADGES</div>
+                                <div class="profile-badges-grid">
+                                    @foreach (var badge in Model.Badges)
+                                    {
+                                        <div class="profile-badge" title="@badge.Name — @badge.Description">
+                                            <span class="profile-badge-icon">@badge.Icon</span>
+                                            <span class="profile-badge-name">@badge.Name</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <form method="post" asp-page-handler="Profile" enctype="multipart/form-data" class="profile-form">
+                            <input type="file" id="avatarFileInput" name="avatarFile" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                            <input type="file" id="avatarBannerFile" name="bannerFile" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+
+                            <div class="form-group">
+                                <label>Username</label>
+                                <input type="text" value="@Model.CurrentUser.Username" disabled />
+                                <span class="form-hint">Your unique handle used for friend requests.</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Display Name</label>
+                                <input type="text" name="displayName" value="@Model.CurrentUser.DisplayName" placeholder="@Model.CurrentUser.Username" maxlength="32" id="displayNameInput" />
+                                <span class="form-hint">How others see you in chat.</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Bio</label>
+                                <textarea name="bio" maxlength="200" rows="3" placeholder="Tell us about yourself..." id="bioInput">@Model.CurrentUser.Bio</textarea>
+                                <span class="form-hint"><span id="bio-count">@(Model.CurrentUser.Bio?.Length ?? 0)</span>/200</span>
+                            </div>
+
+                            <div class="form-group">
                                 <label>Pronouns</label>
-                                <input class="dash-input" name="pronouns" value="@Model.CurrentUser.Pronouns" placeholder="they/them" />
+                                <input type="text" name="pronouns" value="@Model.CurrentUser.Pronouns" placeholder="e.g. he/him, she/her, they/them" maxlength="30" id="pronounsInput" />
                             </div>
-                        </div>
-                        <div>
-                            <label>Bio</label>
-                            <textarea class="dash-input" name="bio" rows="3">@Model.CurrentUser.Bio</textarea>
-                        </div>
-                        <div class="dash-row">
-                            <div>
-                                <label>Avatar @(Model.CurrentUser.AvatarUrl != null ? "(set)" : "")</label>
-                                <input class="dash-input" type="file" name="avatarFile" accept="image/*" />
+
+                            <div class="form-group">
+                                <label>Profile Background Color</label>
+                                <div class="profile-color-picker">
+                                    <input type="color" name="profileBackgroundColor" value="@(Model.CurrentUser.ProfileBackgroundColor ?? "#2b2d31")" id="bgColorInput" />
+                                    <span class="profile-color-hex" id="bgColorHex">@(Model.CurrentUser.ProfileBackgroundColor ?? "#2b2d31")</span>
+                                    <button type="button" class="btn-cancel btn-sm" id="resetColorBtn">Reset</button>
+                                </div>
                             </div>
-                            <div>
-                                <label>Banner @(Model.CurrentUser.BannerUrl != null ? "(set)" : "")</label>
-                                <input class="dash-input" type="file" name="bannerFile" accept="image/*" />
+
+                            <div class="profile-form-actions">
+                                <button type="submit" class="btn-primary">Save Changes</button>
                             </div>
-                        </div>
-                        <input type="hidden" name="profileBackgroundColor" value="@Model.CurrentUser.ProfileBackgroundColor" />
-                        <div><button type="submit" class="btn-primary btn-sm">Save profile</button></div>
-                    </form>
+                        </form>
+                    </div>
                 </section>
 
                 <section class="settings-section">
@@ -252,3 +325,83 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+@if (Model.Tab == "account")
+{
+<script>
+    // Avatar preview
+    document.getElementById('avatarFileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 15 * 1024 * 1024) { alert('Avatar must be under 15MB.'); e.target.value = ''; return; }
+        const preview = document.getElementById('avatar-preview');
+        const img = preview.querySelector('img') || document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.alt = 'Avatar';
+        const initial = preview.querySelector('.profile-avatar-initial');
+        if (initial) initial.style.display = 'none';
+        if (!preview.querySelector('img')) preview.insertBefore(img, preview.firstChild);
+    });
+
+    // Banner preview
+    document.getElementById('avatarBannerFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 15 * 1024 * 1024) { alert('Banner must be under 15MB.'); e.target.value = ''; return; }
+        const preview = document.getElementById('banner-preview');
+        const img = preview.querySelector('img') || document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.alt = 'Banner';
+        if (!preview.querySelector('img')) preview.insertBefore(img, preview.firstChild);
+    });
+
+    // Bio counter + live preview
+    const bioInput = document.getElementById('bioInput');
+    const bioCount = document.getElementById('bio-count');
+    bioInput.addEventListener('input', function() {
+        bioCount.textContent = this.value.length;
+        let preview = document.getElementById('preview-bio');
+        if (!preview) {
+            preview = document.createElement('div');
+            preview.className = 'profile-preview-bio';
+            preview.id = 'preview-bio';
+            document.querySelector('.profile-preview-card').appendChild(preview);
+        }
+        preview.textContent = this.value;
+        preview.style.display = this.value ? '' : 'none';
+    });
+
+    // Live preview: display name
+    document.getElementById('displayNameInput').addEventListener('input', function() {
+        document.getElementById('preview-displayname').textContent = this.value || '@Model.CurrentUser.Username';
+    });
+
+    // Live preview: pronouns
+    document.getElementById('pronounsInput').addEventListener('input', function() {
+        let preview = document.getElementById('preview-pronouns');
+        if (!preview) {
+            preview = document.createElement('span');
+            preview.className = 'profile-preview-pronouns';
+            preview.id = 'preview-pronouns';
+            document.querySelector('.profile-preview-info').appendChild(preview);
+        }
+        preview.textContent = this.value;
+        preview.style.display = this.value ? '' : 'none';
+    });
+
+    // Color picker
+    const bgColorInput = document.getElementById('bgColorInput');
+    const bgColorHex = document.getElementById('bgColorHex');
+    bgColorInput.addEventListener('input', function() {
+        bgColorHex.textContent = this.value;
+        document.querySelector('.profile-preview-card').style.backgroundColor = this.value;
+    });
+    document.getElementById('resetColorBtn').addEventListener('click', function() {
+        bgColorInput.value = '#2b2d31';
+        bgColorHex.textContent = '#2b2d31';
+        document.querySelector('.profile-preview-card').style.backgroundColor = '';
+    });
+</script>
+}
+}

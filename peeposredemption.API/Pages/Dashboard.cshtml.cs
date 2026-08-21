@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using peeposredemption.Application.Features.Auth.Commands;
+using peeposredemption.Application.Features.Badges.Queries;
 using peeposredemption.Application.Features.Users.Commands;
 using peeposredemption.Application.Services;
 using peeposredemption.Domain.Entities;
@@ -35,6 +36,7 @@ public class DashboardModel : PageModel
     public User CurrentUser { get; set; } = null!;
     public CustomerProfile? Contact { get; set; }
     public List<Lead> Orders { get; set; } = new();
+    public List<UserBadgeDto> Badges { get; set; } = new();
 
     public async Task<IActionResult> OnGetAsync(string? tab = null)
     {
@@ -44,6 +46,8 @@ public class DashboardModel : PageModel
 
         Tab = ValidTabs.Contains(tab) ? tab! : "account";
 
+        if (Tab == "account")
+            Badges = await _mediator.Send(new GetUserBadgesQuery(userId.Value));
         if (Tab == "orders")
             Orders = await _uow.Leads.GetByEmailAsync(CurrentUser.Email);
 
