@@ -63,6 +63,21 @@ public static class ServiceCatalog
                 "No lock-in: it's your account, always"
             },
             IsSubscription: true),
+        new(
+            "Discord AI Add-on — Torvex Forerunner",
+            "🤖",
+            "$15/mo",
+            "per server · cancel anytime",
+            "AI chat for your Discord server: members talk to the Torvex Forerunner bot with /ask or by pinging it. Metered fairly — the bot's core features stay free.",
+            new[]
+            {
+                "/ask and ping-to-chat answers in your server",
+                "Daily free energy for every member — no per-user fees",
+                "Hard monthly budget ceiling — costs can't run away",
+                "Privacy-scoped: private and staff channels are never read",
+                "Requires the free Torvex Forerunner bot"
+            },
+            IsSubscription: true),
 
         // ── One-off projects ─────────────────────────────────────────
         new(
