@@ -28,7 +28,7 @@ namespace peeposredemption.API.Pages.Auth
         public IActionResult OnGet([FromQuery] bool addAccount = false)
         {
             if (User.Identity?.IsAuthenticated == true && !addAccount)
-                return RedirectToPage("/Dashboard");
+                return RedirectToPage(PostLoginRedirect.Page(Request));
             return Page();
         }
 
@@ -79,7 +79,7 @@ namespace peeposredemption.API.Pages.Auth
                 // Record IP + device for security tracking
                 await _mediator.Send(new RecordUserLoginInfoCommand(result.UserId, ip, deviceId ?? Guid.Empty));
 
-                return RedirectToPage("/Dashboard");
+                return RedirectToPage(PostLoginRedirect.Page(Request));
             }
             catch (UnauthorizedAccessException ex)
             {
