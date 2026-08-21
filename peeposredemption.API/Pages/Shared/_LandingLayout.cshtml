@@ -11,6 +11,9 @@
     // On community.torvex.app, main-site links must lead back to torvex.app
     var onCommunityHost = Context.Request.Host.Host.Equals("community.torvex.app", StringComparison.OrdinalIgnoreCase);
     var mainBase = onCommunityHost ? "https://torvex.app" : "";
+    // Session check must include Items["CurrentJwt"] — the refresh middleware renews an
+    // expired 15-min jwt cookie mid-request, so the cookie alone misses active sessions
+    var hasSession = (Context.Items["CurrentJwt"] as string ?? Context.Request.Cookies["jwt"]) != null;
 }
 <head>
     <meta charset="utf-8" />
@@ -51,7 +54,7 @@
             <a href="@mainBase/Blog" class="nav-btn nav-btn-ghost">Blog</a>
             <a href="https://community.torvex.app" class="nav-btn nav-btn-ghost">Community</a>
             <a href="https://dashboard.torvex.app" class="nav-btn nav-btn-ghost">Bot Dashboard</a>
-            @if (Context.Request.Cookies.ContainsKey("jwt"))
+            @if (hasSession)
             {
                 <a href="@mainBase/Dashboard" class="nav-btn nav-btn-ghost">Dashboard</a>
             }
@@ -72,7 +75,7 @@
             <a href="@mainBase/Contact">Contact</a>
             <a href="https://community.torvex.app">Community</a>
             <a href="https://dashboard.torvex.app">Bot Dashboard</a>
-            @if (Context.Request.Cookies.ContainsKey("jwt"))
+            @if (hasSession)
             {
                 <a href="@mainBase/Dashboard">Dashboard</a>
                 <a href="/App/Index">Go to Chat</a>

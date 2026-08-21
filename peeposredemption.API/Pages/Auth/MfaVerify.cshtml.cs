@@ -65,7 +65,7 @@ public class MfaVerifyModel : PageModel
             // Record IP + device for security tracking
             await _mediator.Send(new RecordUserLoginInfoCommand(result.UserId, ip, deviceId ?? Guid.Empty));
 
-            return RedirectToPage("/Dashboard");
+            return RedirectToPage(PostLoginRedirect.Page(Request));
         }
         catch (UnauthorizedAccessException ex)
         {
