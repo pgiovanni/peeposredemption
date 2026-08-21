@@ -65,7 +65,7 @@
     <h2>One-off projects</h2>
     <p class="section-subtitle">Fixed scope, fixed price, documented handoff.</p>
     <div class="features-grid pkg-grid">
-        @foreach (var pkg in ServiceCatalog.Packages.Where(p => !p.IsSubscription))
+        @foreach (var pkg in ServiceCatalog.Packages.Where(p => !p.IsSubscription && !p.IsBotAddon))
         {
             <div class="feature-card pkg-card">
                 <span class="feature-icon">@pkg.Icon</span>

@@ -67,18 +67,19 @@ public static class ServiceCatalog
         new(
             "Discord AI Add-on — Torvex Forerunner",
             "🤖",
-            "$15/mo",
-            "per server · cancel anytime",
-            "AI chat for your Discord server: members talk to the Torvex Forerunner bot with /ask or by pinging it. Metered fairly — the bot's core features stay free.",
+            "$15",
+            "prepaid credit pack · top up anytime",
+            "AI chat for your Discord server, pay-per-use: $15 buys $15 of AI usage that never expires. Members talk to the Torvex Forerunner bot with /ask or by pinging it — the bot's core features stay free.",
             new[]
             {
                 "/ask and ping-to-chat answers in your server",
                 "Daily free energy for every member — no per-user fees",
-                "Hard monthly budget ceiling — costs can't run away",
+                "Your credit only shrinks when the AI is actually used",
+                "AI pauses when credit runs out — never a surprise bill",
                 "Privacy-scoped: private and staff channels are never read",
                 "Requires the free Torvex Forerunner bot"
             },
-            IsSubscription: true,
+            IsSubscription: false,
             IsBotAddon: true),
 
         // ── One-off projects ─────────────────────────────────────────
