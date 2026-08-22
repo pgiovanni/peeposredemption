@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -20,19 +21,58 @@ public class AiPackModel : PageModel
     private readonly IUnitOfWork _uow;
     private readonly IConfiguration _config;
     private readonly ILogger<AiPackModel> _logger;
+    private readonly IHttpClientFactory _http;
 
-    public AiPackModel(IMediator mediator, IUnitOfWork uow, IConfiguration config, ILogger<AiPackModel> logger)
+    public AiPackModel(IMediator mediator, IUnitOfWork uow, IConfiguration config,
+                       ILogger<AiPackModel> logger, IHttpClientFactory http)
     {
         _mediator = mediator;
         _uow = uow;
         _config = config;
         _logger = logger;
+        _http = http;
     }
 
     public string? GuildId { get; private set; }
     public string? GuildName { get; private set; }
+    public string? GuildIconUrl { get; private set; }
+    /// <summary>true/false from the bot dashboard's verified lookup; null when the lookup was unreachable.</summary>
+    public bool? BotInGuild { get; private set; }
     public string Email { get; private set; } = "";
     public string? Error { get; private set; }
+
+    private sealed record GuildCard(bool in_guild, string? name, string? icon_url);
+
+    /// <summary>
+    /// Verify the server against the bot dashboard rather than trusting the
+    /// query string: the buyer must see the REAL name and icon of the guild id
+    /// they're paying for, and be stopped if the bot isn't in it at all.
+    /// Lookup failure degrades to the passed name — an internal hiccup should
+    /// not block a sale, only remove the verification.
+    /// </summary>
+    private async Task ResolveGuildCardAsync(string gid, string? fallbackName)
+    {
+        try
+        {
+            var client = _http.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(4);
+            var dashUrl = (_config["Forerunner:DashboardUrl"] ?? "https://forerunner.torvex.app").TrimEnd('/');
+            var card = await client.GetFromJsonAsync<GuildCard>($"{dashUrl}/api/guild-card/{gid}");
+            if (card != null)
+            {
+                BotInGuild = card.in_guild;
+                GuildName = CleanGuildName(card.name) ?? fallbackName;
+                GuildIconUrl = card.icon_url;
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Guild card lookup failed for {Guild}", gid);
+        }
+        BotInGuild = null;
+        GuildName = fallbackName;
+    }
 
     /// <summary>Bot-dashboard server picker; it returns to this page with ?guild=&name=.</summary>
     public string PickServerUrl =>
@@ -63,7 +103,8 @@ public class AiPackModel : PageModel
         Email = user.Email;
 
         GuildId = CleanGuildId(guild);
-        GuildName = GuildId != null ? CleanGuildName(name) : null;
+        if (GuildId != null)
+            await ResolveGuildCardAsync(GuildId, CleanGuildName(name));
         if (guild != null && GuildId == null) Error = "That server id doesn't look right — pick the server again.";
         if (error == "email") Error = "Add a real email address to your account (Dashboard → Security) before checking out — invoices are emailed.";
         return Page();
@@ -77,6 +118,13 @@ public class AiPackModel : PageModel
         var gid = CleanGuildId(guildId);
         if (gid == null) return RedirectToPage("/Checkout/AiPack", new { error = "guild" });
 
+        // Re-verify at payment time too, so the Stripe description and the
+        // order record carry the REAL server name — and a pack can't be bought
+        // for a server the bot verifiably isn't in.
+        await ResolveGuildCardAsync(gid, CleanGuildName(guildName));
+        if (BotInGuild == false)
+            return RedirectToPage("/Checkout/AiPack", new { guild = gid, name = guildName });
+
         var pkg = ServiceCatalog.AiPack;
         var baseUrl = _config["AppBaseUrl"]?.TrimEnd('/') ?? $"{Request.Scheme}://{Request.Host}";
         try
@@ -88,7 +136,7 @@ public class AiPackModel : PageModel
                 $"Prepaid AI credit pack: ${ServiceCatalog.AiPackCreditUsd:0.00} of AI usage for your Discord server, no expiry.",
                 ServiceCatalog.AiPackPriceCents,
                 gid,
-                CleanGuildName(guildName),
+                GuildName ?? CleanGuildName(guildName),
                 ServiceCatalog.AiPackCreditUsd,
                 baseUrl));
             return Redirect(url);
