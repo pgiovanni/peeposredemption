@@ -12,7 +12,7 @@ using peeposredemption.Infrastructure.Persistence;
 namespace peeposredemption.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260822025542_AddPackageOrdersAndStripeCustomer")]
+    [Migration("20260822030350_AddPackageOrdersAndStripeCustomer")]
     partial class AddPackageOrdersAndStripeCustomer
     {
         /// <inheritdoc />
@@ -1740,6 +1740,97 @@ namespace peeposredemption.Infrastructure.Migrations
                     b.ToTable("orb_transactions");
                 });
 
+            modelBuilder.Entity("peeposredemption.Domain.Entities.PackageOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal?>("CreditUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("credit_usd");
+
+                    b.Property<string>("DiscordGuildId")
+                        .HasColumnType("text")
+                        .HasColumnName("discord_guild_id");
+
+                    b.Property<string>("DiscordGuildName")
+                        .HasColumnType("text")
+                        .HasColumnName("discord_guild_name");
+
+                    b.Property<DateTime?>("FulfilledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fulfilled_at");
+
+                    b.Property<string>("InvoiceNumber")
+                        .HasColumnType("text")
+                        .HasColumnName("invoice_number");
+
+                    b.Property<string>("InvoicePdfUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("invoice_pdf_url");
+
+                    b.Property<string>("InvoiceUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("invoice_url");
+
+                    b.Property<string>("PackageName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("package_name");
+
+                    b.Property<string>("PackageSlug")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("package_slug");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<long>("PriceCents")
+                        .HasColumnType("bigint")
+                        .HasColumnName("price_cents");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StripeInvoiceId")
+                        .HasColumnType("text")
+                        .HasColumnName("stripe_invoice_id");
+
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasColumnType("text")
+                        .HasColumnName("stripe_payment_intent_id");
+
+                    b.Property<string>("StripeSessionId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("stripe_session_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("p_k_package_orders");
+
+                    b.HasIndex("StripeSessionId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.HasIndex("PackageSlug", "Status", "FulfilledAt");
+
+                    b.ToTable("package_orders");
+                });
+
             modelBuilder.Entity("peeposredemption.Domain.Entities.ParentalLink", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2646,6 +2737,10 @@ namespace peeposredemption.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("referred_by_code_id");
 
+                    b.Property<string>("StripeCustomerId")
+                        .HasColumnType("text")
+                        .HasColumnName("stripe_customer_id");
+
                     b.Property<string>("TotpSecret")
                         .HasColumnType("text")
                         .HasColumnName("totp_secret");
@@ -3470,6 +3565,18 @@ namespace peeposredemption.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("f_k_orb_transactions__users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("peeposredemption.Domain.Entities.PackageOrder", b =>
+                {
+                    b.HasOne("peeposredemption.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("f_k_package_orders__users_user_id");
 
                     b.Navigation("User");
                 });
