@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using peeposredemption.Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -73,6 +73,7 @@ namespace peeposredemption.Infrastructure.Persistence
 
         // Customer contact/billing profiles
         public DbSet<CustomerProfile> CustomerProfiles { get; set; }
+        public DbSet<PackageOrder> PackageOrders { get; set; }
 
         // Anti-alt security
         public DbSet<IpBan> IpBans { get; set; }
@@ -578,6 +579,20 @@ namespace peeposredemption.Infrastructure.Persistence
                 .HasOne(p => p.User)
                 .WithOne()
                 .HasForeignKey<CustomerProfile>(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ── Package orders (Stripe Checkout) ───────────────────────
+            modelBuilder.Entity<PackageOrder>()
+                .HasIndex(o => o.StripeSessionId)
+                .IsUnique();
+            modelBuilder.Entity<PackageOrder>()
+                .HasIndex(o => new { o.UserId, o.CreatedAt });
+            modelBuilder.Entity<PackageOrder>()
+                .HasIndex(o => new { o.PackageSlug, o.Status, o.FulfilledAt });
+            modelBuilder.Entity<PackageOrder>()
+                .HasOne(o => o.User)
+                .WithMany()
+                .HasForeignKey(o => o.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // ── Anti-Alt Security ────────────────────────────────────────

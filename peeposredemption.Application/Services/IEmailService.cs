@@ -10,5 +10,7 @@ namespace peeposredemption.Application.Services
         Task SendPasswordResetEmailAsync(string toEmail, string resetLink);
         Task SendSupportTicketNotificationAsync(string username, string category, string subject, string description);
         Task SendLeadNotificationAsync(string name, string email, string? company, string? package, string message);
+        Task SendOrderReceiptAsync(string toEmail, string customerName, string packageName, long amountCents,
+            string? invoiceNumber, string? invoiceUrl, string? invoicePdfUrl, string? discordServer, decimal? creditUsd);
     }
 }

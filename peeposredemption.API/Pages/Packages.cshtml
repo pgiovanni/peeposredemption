@@ -44,7 +44,7 @@
     <div class="features-grid pkg-grid">
         @foreach (var pkg in ServiceCatalog.Packages.Where(p => p.IsBotAddon))
         {
-            <div class="feature-card pkg-card">
+            <div class="feature-card pkg-card" id="@pkg.Slug">
                 <span class="feature-icon">@pkg.Icon</span>
                 <h3>@pkg.Name</h3>
                 <div class="pkg-price">@pkg.Price @if (pkg.PriceNote != null) {<span class="pkg-price-note">· @pkg.PriceNote</span>}</div>
@@ -55,7 +55,8 @@
                         <li>@f</li>
                     }
                 </ul>
-                <a href="/Contact?package=@Uri.EscapeDataString(pkg.Name)" class="btn-large btn-signup pkg-order">Start here</a>
+                <a href="/Checkout/AiPack" class="btn-large btn-signup pkg-order">Start here</a>
+                <p class="pkg-price-note" style="margin-top:8px">You'll pick the server on the bot dashboard, then pay by card. Credit applies automatically.</p>
             </div>
         }
     </div>

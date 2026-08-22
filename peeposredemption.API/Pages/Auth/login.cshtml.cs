@@ -24,16 +24,20 @@ namespace peeposredemption.API.Pages.Auth
         }
 
         [BindProperty] public LoginCommand Input { get; set; }
+        [BindProperty(SupportsGet = true)] public string? ReturnUrl { get; set; }
+        public bool DiscordEnabled { get; private set; }
 
         public IActionResult OnGet([FromQuery] bool addAccount = false)
         {
+            DiscordEnabled = DiscordOAuth.IsConfigured(HttpContext.RequestServices.GetRequiredService<IConfiguration>());
             if (User.Identity?.IsAuthenticated == true && !addAccount)
-                return RedirectToPage(PostLoginRedirect.Page(Request));
+                return Redirect(DiscordOAuth.SafeReturnUrl(ReturnUrl, PostLoginRedirect.Page(Request)));
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
+            DiscordEnabled = DiscordOAuth.IsConfigured(HttpContext.RequestServices.GetRequiredService<IConfiguration>());
             if (!ModelState.IsValid) return Page();
 
             var ip = IpBanMiddleware.GetClientIp(HttpContext) ?? "unknown";
@@ -79,7 +83,7 @@ namespace peeposredemption.API.Pages.Auth
                 // Record IP + device for security tracking
                 await _mediator.Send(new RecordUserLoginInfoCommand(result.UserId, ip, deviceId ?? Guid.Empty));
 
-                return RedirectToPage(PostLoginRedirect.Page(Request));
+                return Redirect(DiscordOAuth.SafeReturnUrl(ReturnUrl, PostLoginRedirect.Page(Request)));
             }
             catch (UnauthorizedAccessException ex)
             {

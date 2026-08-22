@@ -1,4 +1,4 @@
-﻿using peeposredemption.Domain.Interfaces.Repositories;
+using peeposredemption.Domain.Interfaces.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -65,6 +65,12 @@ namespace peeposredemption.Domain.Interfaces
 
         // Customer contact/billing profiles
         ICustomerProfileRepository CustomerProfiles { get; }
+
+        // Paid package orders (Stripe Checkout)
+        IPackageOrderRepository PackageOrders { get; }
+
+        // Discord <-> Torvex identity links
+        IDiscordLinkRepository DiscordLinks { get; }
 
         // Anti-alt security
         IIpBanRepository IpBans { get; }

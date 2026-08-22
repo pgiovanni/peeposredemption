@@ -8,14 +8,27 @@ public record ServicePackage(
     string Blurb,
     string[] Features,
     bool IsSubscription,
-    bool IsBotAddon = false);
+    bool IsBotAddon = false,
+    string? Slug = null,
+    long? PriceCents = null);
 
 /// <summary>
 /// The sellable service catalog. Rendered on /Packages and used for the
 /// package dropdown on /Contact — edit packages and prices here only.
+/// Packages with a <see cref="ServicePackage.PriceCents"/> are checkout-able
+/// (Stripe); the rest go through the /Contact quote flow.
 /// </summary>
 public static class ServiceCatalog
 {
+    // ── Discord AI add-on: prepaid credit pack ──────────────────────────
+    // Price is what the customer pays; AiPackCreditUsd is the AI usage the
+    // bot grants for it — the gap is the margin (Stripe fees + upkeep).
+    // Both are read by the bot from its own .env (AI_CREDIT_PACK_USD /
+    // AI_CREDIT_COMPUTE_USD) — keep the two in step when changing them.
+    public const string AiPackSlug = "discord-ai-addon";
+    public const long AiPackPriceCents = 2000;
+    public const decimal AiPackCreditUsd = 17m;
+
     public static readonly ServicePackage[] Packages =
     {
         // ── Monthly subscriptions ────────────────────────────────────
@@ -67,20 +80,22 @@ public static class ServiceCatalog
         new(
             "Discord AI Add-on — Torvex Forerunner",
             "🤖",
-            "$15",
+            "$20",
             "prepaid credit pack · top up anytime",
-            "AI chat for your Discord server, pay-per-use: $15 buys $15 of AI usage that never expires. Members talk to the Torvex Forerunner bot with /ask or by pinging it — the bot's core features stay free.",
+            "AI chat for your Discord server, pay-per-use: a $20 pack adds $17 of AI usage to your server — it never expires and only shrinks when the AI is actually used. Members talk to the Torvex Forerunner bot with /ask or by pinging it; the bot's core features stay free.",
             new[]
             {
                 "/ask and ping-to-chat answers in your server",
                 "Daily free energy for every member — no per-user fees",
-                "Your credit only shrinks when the AI is actually used",
+                "Credit is applied to your server automatically after checkout",
                 "AI pauses when credit runs out — never a surprise bill",
                 "Privacy-scoped: private and staff channels are never read",
                 "Requires the free Torvex Forerunner bot"
             },
             IsSubscription: false,
-            IsBotAddon: true),
+            IsBotAddon: true,
+            Slug: AiPackSlug,
+            PriceCents: AiPackPriceCents),
 
         // ── One-off projects ─────────────────────────────────────────
         new(
@@ -149,4 +164,9 @@ public static class ServiceCatalog
 
     public static bool IsValidName(string? name) =>
         !string.IsNullOrWhiteSpace(name) && Packages.Any(p => p.Name == name);
+
+    public static ServicePackage? BySlug(string? slug) =>
+        string.IsNullOrWhiteSpace(slug) ? null : Packages.FirstOrDefault(p => p.Slug == slug);
+
+    public static ServicePackage AiPack => Packages.First(p => p.Slug == AiPackSlug);
 }

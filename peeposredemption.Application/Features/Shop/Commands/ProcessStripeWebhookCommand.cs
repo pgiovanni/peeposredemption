@@ -12,12 +12,14 @@ namespace peeposredemption.Application.Features.Shop.Commands
         private readonly IUnitOfWork _uow;
         private readonly IStripeWebhookService _webhookService;
         private readonly IEmailService _emailService;
+        private readonly IStripeService _stripe;
 
-        public ProcessStripeWebhookCommandHandler(IUnitOfWork uow, IStripeWebhookService webhookService, IEmailService emailService)
+        public ProcessStripeWebhookCommandHandler(IUnitOfWork uow, IStripeWebhookService webhookService, IEmailService emailService, IStripeService stripe)
         {
             _uow = uow;
             _webhookService = webhookService;
             _emailService = emailService;
+            _stripe = stripe;
         }
 
         public async Task Handle(ProcessStripeWebhookCommand cmd, CancellationToken ct)
@@ -112,6 +114,61 @@ namespace peeposredemption.Application.Features.Shop.Commands
 
             // Idempotency: check if this session was already attributed for referral
             var alreadyAttributed = await _uow.Referrals.PurchaseExistsAsync(evt.SessionId);
+
+            // Handle catalog package orders (AI credit packs etc.)
+            var packageOrder = await _uow.PackageOrders.GetBySessionIdAsync(evt.SessionId);
+            if (packageOrder != null)
+            {
+                if (packageOrder.Status != PurchaseStatus.Pending) return;   // replayed event
+                packageOrder.Status = PurchaseStatus.Completed;
+                packageOrder.PaidAt = DateTime.UtcNow;
+                packageOrder.StripePaymentIntentId = evt.PaymentIntentId;
+                packageOrder.StripeInvoiceId = evt.InvoiceId;
+
+                var buyer = await _uow.Users.GetByIdAsync(packageOrder.UserId);
+                if (buyer != null && evt.CustomerId != null && string.IsNullOrEmpty(buyer.StripeCustomerId))
+                    buyer.StripeCustomerId = evt.CustomerId;
+
+                // The invoice is finalized with the session, so one fetch is enough;
+                // a miss just leaves the links empty ("processing") on the Billing tab.
+                if (evt.InvoiceId != null)
+                {
+                    try
+                    {
+                        var links = await _stripe.GetInvoiceLinksAsync(evt.InvoiceId);
+                        if (links != null)
+                        {
+                            packageOrder.InvoiceNumber = links.Number;
+                            packageOrder.InvoiceUrl = links.HostedUrl;
+                            packageOrder.InvoicePdfUrl = links.PdfUrl;
+                        }
+                    }
+                    catch { /* links are a convenience; the order is still paid */ }
+                }
+
+                // Persist the paid state BEFORE side effects so a failing email can't
+                // make Stripe retry into a double-fulfilment.
+                await _uow.SaveChangesAsync();
+
+                if (buyer != null)
+                {
+                    try
+                    {
+                        await _emailService.SendOrderReceiptAsync(
+                            buyer.Email, buyer.DisplayOrUsername, packageOrder.PackageName,
+                            packageOrder.PriceCents, packageOrder.InvoiceNumber,
+                            packageOrder.InvoiceUrl, packageOrder.InvoicePdfUrl,
+                            packageOrder.DiscordGuildName ?? packageOrder.DiscordGuildId, packageOrder.CreditUsd);
+                    }
+                    catch { /* Stripe's own receipt email still goes out */ }
+                    if (!alreadyAttributed)
+                    {
+                        await TryAttributeReferralAsync(buyer, evt.SessionId, packageOrder.PriceCents);
+                        await _uow.SaveChangesAsync();
+                    }
+                }
+                return;
+            }
 
             // Handle orb purchases
             var orbPurchase = await _uow.OrbPurchases.GetBySessionIdAsync(evt.SessionId);

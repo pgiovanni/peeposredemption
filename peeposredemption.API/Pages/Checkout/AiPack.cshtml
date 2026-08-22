@@ -1,0 +1,54 @@
+@page
+@using peeposredemption.API.Infrastructure
+@model peeposredemption.API.Pages.Checkout.AiPackModel
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Checkout — Discord AI Add-on — Torvex";
+    ViewData["NoIndex"] = true;
+    var pkg = ServiceCatalog.AiPack;
+}
+
+<section class="hero" style="padding-bottom:16px">
+    <h1>Checkout — <span class="hero-accent">AI credit pack.</span></h1>
+    <p class="hero-emotional">One pack, one server. Credit lands on the server automatically after payment.</p>
+</section>
+
+<section class="features" style="padding-top:8px">
+    <div class="features-grid pkg-grid" style="grid-template-columns:minmax(0,560px);justify-content:center">
+        <div class="feature-card pkg-card">
+            <span class="feature-icon">@pkg.Icon</span>
+            <h3>@pkg.Name</h3>
+            <div class="pkg-price">@pkg.Price <span class="pkg-price-note">· adds $@ServiceCatalog.AiPackCreditUsd.ToString("0") of AI usage · never expires</span></div>
+
+            @if (Model.Error != null)
+            {
+                <div style="margin:12px 0;padding:10px 12px;background:#3d2a2a;border:1px solid #a02a2a;border-radius:6px;font-size:13px;color:#f08080">@Model.Error</div>
+            }
+
+            @if (Model.GuildId == null)
+            {
+                <p>First, pick the Discord server this credit is for. You'll choose it on the bot dashboard (it only lists servers you manage), then come straight back here.</p>
+                <a href="@Model.PickServerUrl" class="btn-large btn-signup pkg-order">Choose a server</a>
+                <p class="pkg-price-note" style="margin-top:10px">Don't have the bot yet? <a href="https://forerunner.torvex.app/invite">Add Torvex Forerunner</a> first — it's free.</p>
+            }
+            else
+            {
+                <form method="post">
+                    <input type="hidden" name="guildId" value="@Model.GuildId" />
+                    <input type="hidden" name="guildName" value="@Model.GuildName" />
+                    <ul class="pkg-list">
+                        <li><strong>Server:</strong> @(Model.GuildName ?? "Discord server") <span class="pkg-price-note">(@Model.GuildId)</span></li>
+                        <li><strong>You pay:</strong> @pkg.Price</li>
+                        <li><strong>Server receives:</strong> $@ServiceCatalog.AiPackCreditUsd.ToString("0.00") of AI usage — applied automatically within a minute</li>
+                        <li><strong>Invoice:</strong> emailed to @Model.Email and saved under <a href="/Dashboard?tab=billing">Billing</a></li>
+                    </ul>
+                    <button type="submit" class="btn-large btn-signup pkg-order" style="width:100%">Pay @pkg.Price with card</button>
+                    <p class="pkg-price-note" style="margin-top:10px">
+                        Wrong server? <a href="@Model.PickServerUrl">pick a different one</a>.
+                        Unused credit can be refunded on request — <a href="/Contact">contact us</a>; credit that has been used is non-refundable.
+                    </p>
+                </form>
+            }
+        </div>
+    </div>
+</section>

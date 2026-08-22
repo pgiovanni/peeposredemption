@@ -40,6 +40,21 @@ namespace peeposredemption.Application.Services
         public Task SendArtistSubmissionNotificationAsync(string displayName, string email, string portfolioUrl) => Task.CompletedTask;
         public Task SendSupportTicketNotificationAsync(string username, string category, string subject, string description) => Task.CompletedTask;
 
+        public async Task SendOrderReceiptAsync(string toEmail, string customerName, string packageName, long amountCents,
+            string? invoiceNumber, string? invoiceUrl, string? invoicePdfUrl, string? discordServer, decimal? creditUsd)
+        {
+            using var client = new SmtpClient(_host, _port) { EnableSsl = false, Credentials = CredentialCache.DefaultNetworkCredentials };
+            var message = new MailMessage
+            {
+                From = new MailAddress("noreply@peeposredemption.local", "Torvex"),
+                Subject = $"Your Torvex order — {packageName}",
+                Body = EmailService.OrderReceiptHtml(customerName, packageName, amountCents, invoiceNumber, invoiceUrl, invoicePdfUrl, discordServer, creditUsd),
+                IsBodyHtml = true
+            };
+            message.To.Add(toEmail);
+            await client.SendMailAsync(message);
+        }
+
         public async Task SendLeadNotificationAsync(string name, string email, string? company, string? package, string messageBody)
         {
             using var client = new SmtpClient(_host, _port)

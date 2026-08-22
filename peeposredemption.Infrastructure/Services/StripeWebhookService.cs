@@ -33,6 +33,9 @@ namespace peeposredemption.Infrastructure.Services
             string? subscriptionId = null;
             string? subscriptionStatus = null;
             DateTime? periodStart = null;
+            string? paymentIntentId = null;
+            string? invoiceId = null;
+            string? customerId = null;
 
             if (stripeEvent.Data.Object is Session session)
             {
@@ -41,6 +44,9 @@ namespace peeposredemption.Infrastructure.Services
                 session.Metadata?.TryGetValue("userId", out userId);
                 amountTotal = session.AmountTotal ?? 0;
                 subscriptionId = session.SubscriptionId;
+                paymentIntentId = session.PaymentIntentId;
+                invoiceId = session.InvoiceId;
+                customerId = session.CustomerId;
             }
             else if (stripeEvent.Data.Object is Subscription sub)
             {
@@ -56,7 +62,7 @@ namespace peeposredemption.Infrastructure.Services
                 subscriptionId = invoice.Parent?.SubscriptionDetails?.SubscriptionId;
             }
 
-            return new StripeWebhookEvent(stripeEvent.Type, sessionId, serverId, userId, amountTotal, subscriptionId, subscriptionStatus, periodStart);
+            return new StripeWebhookEvent(stripeEvent.Type, sessionId, serverId, userId, amountTotal, subscriptionId, subscriptionStatus, periodStart, paymentIntentId, invoiceId, customerId);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using peeposredemption.Application.Services;
@@ -79,6 +79,8 @@ namespace peeposredemption.Infrastructure
 
             // Customer contact/billing profiles
             services.AddScoped<ICustomerProfileRepository, CustomerProfileRepository>();
+            services.AddScoped<IPackageOrderRepository, PackageOrderRepository>();
+            services.AddScoped<IDiscordLinkRepository, DiscordLinkRepository>();
 
             // Anti-alt security
             services.AddScoped<IIpBanRepository, IpBanRepository>();

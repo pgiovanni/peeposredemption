@@ -36,10 +36,13 @@ public class DashboardModel : PageModel
     public User CurrentUser { get; set; } = null!;
     public CustomerProfile? Contact { get; set; }
     public List<Lead> Orders { get; set; } = new();
+    public List<PackageOrder> Purchases { get; set; } = new();
+    public bool JustOrdered { get; set; }
     public List<UserBadgeDto> Badges { get; set; } = new();
 
-    public async Task<IActionResult> OnGetAsync(string? tab = null)
+    public async Task<IActionResult> OnGetAsync(string? tab = null, string? ordered = null)
     {
+        JustOrdered = ordered == "1";
         var userId = GetUserId();
         if (userId == null) return RedirectToPage("/Auth/Login");
         if (!await LoadAsync(userId.Value)) return RedirectToPage("/Auth/Login");
@@ -50,6 +53,8 @@ public class DashboardModel : PageModel
             Badges = await _mediator.Send(new GetUserBadgesQuery(userId.Value));
         if (Tab == "orders")
             Orders = await _uow.Leads.GetByEmailAsync(CurrentUser.Email);
+        if (Tab == "billing")
+            Purchases = await _uow.PackageOrders.GetByUserAsync(userId.Value);
 
         return Page();
     }

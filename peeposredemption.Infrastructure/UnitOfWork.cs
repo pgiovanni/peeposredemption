@@ -1,4 +1,4 @@
-﻿using peeposredemption.Domain.Interfaces;
+using peeposredemption.Domain.Interfaces;
 using peeposredemption.Domain.Interfaces.Repositories;
 using peeposredemption.Infrastructure.Persistence;
 using System;
@@ -69,6 +69,8 @@ namespace peeposredemption.Infrastructure
 
         // Customer contact/billing profiles
         public ICustomerProfileRepository CustomerProfiles { get; }
+        public IPackageOrderRepository PackageOrders { get; }
+        public IDiscordLinkRepository DiscordLinks { get; }
 
         // Anti-alt security
         public IIpBanRepository IpBans { get; }
@@ -126,6 +128,8 @@ namespace peeposredemption.Infrastructure
             ISupportTicketRepository supportTickets,
             ILeadRepository leads,
             ICustomerProfileRepository customerProfiles,
+            IPackageOrderRepository packageOrders,
+            IDiscordLinkRepository discordLinks,
             IIpBanRepository ipBans,
             IUserDeviceRepository userDevices,
             IUserIpLogRepository userIpLogs,
@@ -180,6 +184,8 @@ namespace peeposredemption.Infrastructure
             SupportTickets = supportTickets;
             Leads = leads;
             CustomerProfiles = customerProfiles;
+            PackageOrders = packageOrders;
+            DiscordLinks = discordLinks;
             IpBans = ipBans;
             UserDevices = userDevices;
             UserIpLogs = userIpLogs;

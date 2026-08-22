@@ -1,4 +1,4 @@
-﻿namespace peeposredemption.Domain.Entities;
+namespace peeposredemption.Domain.Entities;
 
 public class User
 {
@@ -20,6 +20,10 @@ public class User
     public string? PendingEmail { get; set; }
  
     public Guid? ReferredByCodeId { get; set; }
+
+    // Stripe Customer this account bills through (created on first checkout) —
+    // lets the Billing tab list invoices and lets Stripe email them.
+    public string? StripeCustomerId { get; set; }
     public long OrbBalance { get; set; }
 
     public DateTime? DateOfBirth { get; set; }

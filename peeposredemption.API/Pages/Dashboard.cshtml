@@ -1,4 +1,5 @@
 @page
+@using peeposredemption.Domain.Entities
 @model peeposredemption.API.Pages.DashboardModel
 @{
     ViewData["Title"] = "Dashboard";
@@ -259,12 +260,67 @@
             else if (Model.Tab == "billing")
             {
                 <section class="settings-section">
-                    <h3 class="settings-heading">BILLING</h3>
-                    <div class="sidebar-empty" style="padding:24px 0">
-                        No invoices yet. Right now invoices are sent by email when an engagement starts — a full billing history will appear here soon.
+                    <h3 class="settings-heading">INVOICES &amp; PAYMENTS</h3>
+                    @if (Model.JustOrdered)
+                    {
+                        <div class="dash-msg">Thanks — your payment is being confirmed. The invoice appears below within a minute and is also emailed to @Model.CurrentUser.Email. Refresh if it isn't here yet.</div>
+                    }
+                    @if (!Model.Purchases.Any())
+                    {
+                        <div class="sidebar-empty" style="padding:24px 0">
+                            No invoices yet. Invoices for card payments appear here automatically; invoices for quoted projects are sent by email when an engagement starts.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="admin-table-wrap">
+                        <table class="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Item</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Invoice</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in Model.Purchases)
+                                {
+                                    <tr>
+                                        <td class="audit-time">@((p.PaidAt ?? p.CreatedAt).ToString("MMM dd, yyyy"))</td>
+                                        <td>
+                                            <strong>@p.PackageName</strong>
+                                            @if (p.DiscordGuildId != null)
+                                            {
+                                                <div class="dash-note">Server: @(p.DiscordGuildName ?? p.DiscordGuildId) · $@(p.CreditUsd?.ToString("0.00")) AI usage
+                                                    @(p.FulfilledAt != null ? "· applied" : p.Status == PurchaseStatus.Completed ? "· applying…" : "")</div>
+                                            }
+                                        </td>
+                                        <td>$@((p.PriceCents / 100m).ToString("0.00"))</td>
+                                        <td>@(p.Status switch { PurchaseStatus.Completed => "Paid", PurchaseStatus.Failed => "Failed", _ => "Awaiting payment" })</td>
+                                        <td>
+                                            @if (p.InvoicePdfUrl != null || p.InvoiceUrl != null)
+                                            {
+                                                if (p.InvoicePdfUrl != null) { <a href="@p.InvoicePdfUrl" style="color:#00BFA5" target="_blank" rel="noopener">PDF</a> }
+                                                if (p.InvoicePdfUrl != null && p.InvoiceUrl != null) { <text> · </text> }
+                                                if (p.InvoiceUrl != null) { <a href="@p.InvoiceUrl" style="color:#00BFA5" target="_blank" rel="noopener">View</a> }
+                                                if (p.InvoiceNumber != null) { <div class="dash-note">@p.InvoiceNumber</div> }
+                                            }
+                                            else if (p.Status == PurchaseStatus.Completed) { <span class="dash-note">processing</span> }
+                                            else { <span class="dash-note">—</span> }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        </div>
+                    }
+                    <p class="dash-note" style="margin:14px 0">Invoices use your <a href="/Dashboard?tab=account" style="color:#00BFA5">contact &amp; billing details</a> — keep them current. Unused AI credit can be refunded on request; used credit is non-refundable.</p>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        <a href="/Checkout/AiPack" class="btn-primary btn-sm">Buy AI credit for a Discord server</a>
+                        <a href="/Contact" class="btn-primary btn-sm">Questions about billing? Get in touch</a>
                     </div>
-                    <p class="dash-note" style="margin:10px 0 14px">Invoices use your <a href="/Dashboard?tab=account" style="color:#00BFA5">contact &amp; billing details</a> — keep them current.</p>
-                    <a href="/Contact" class="btn-primary btn-sm">Questions about billing? Get in touch</a>
                 </section>
             }
             else if (Model.Tab == "orders")

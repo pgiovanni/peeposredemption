@@ -264,6 +264,19 @@ app.MapPost("/api/auth/switch", async (HttpRequest req, IConfiguration config, p
     var user = await uow.Users.GetByIdAsync(userId);
     if (user == null) return Results.Unauthorized();
 
+    // A stored JWT alone is NOT a credential: it must (1) have expired less
+    // than 30 days ago and (2) belong to an account that still holds a live,
+    // unrevoked session on THIS device. A leaked token from elsewhere fails both.
+    var expClaim = principal.FindFirst("exp")?.Value;
+    if (!long.TryParse(expClaim, out var expUnix)
+        || DateTimeOffset.FromUnixTimeSeconds(expUnix) < DateTimeOffset.UtcNow.AddDays(-30))
+        return Results.Unauthorized();
+    var switchDeviceId = req.HttpContext.Items["DeviceId"] is Guid sd ? sd : (Guid?)null;
+    if (switchDeviceId == null) return Results.Unauthorized();
+    var liveSessions = await uow.RefreshTokens.GetActiveSessionsAsync(userId);
+    if (!liveSessions.Any(s => s.DeviceId == switchDeviceId && !s.IsRevoked && s.ExpiresAt > DateTime.UtcNow))
+        return Results.Unauthorized();
+
     var newJwt = tokenService.GenerateToken(user);
     var newRefresh = tokenService.GenerateRefreshToken();
     var ip = IpBanMiddleware.GetClientIp(req.HttpContext) ?? "unknown";
@@ -275,6 +288,7 @@ app.MapPost("/api/auth/switch", async (HttpRequest req, IConfiguration config, p
         ExpiresAt = DateTime.UtcNow.AddDays(30),
         IpAddress = ip,
         UserAgent = ua,
+        DeviceId = switchDeviceId,
     });
     await uow.SaveChangesAsync();
 
@@ -805,6 +819,109 @@ app.MapPost("/api/moderation/mute", async (HttpContext ctx, IMediator mediator, 
     catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
 }).RequireAuthorization();
 
+// ── Sign in with Discord (identify + email only) ─────────────────────────
+app.MapGet("/Auth/Discord", (HttpContext ctx, IConfiguration cfg, string? returnUrl) =>
+{
+    if (!DiscordOAuth.IsConfigured(cfg)) return Results.Redirect("/Auth/Login?error=discord");
+    var state = DiscordOAuth.NewState();
+    var target = DiscordOAuth.SafeReturnUrl(returnUrl, "");
+    ctx.Response.Cookies.Append(DiscordOAuth.StateCookie, state + "|" + target, new CookieOptions
+    {
+        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax, MaxAge = TimeSpan.FromMinutes(10), Path = "/Auth"
+    });
+    return Results.Redirect(DiscordOAuth.AuthorizeUrl(cfg, state));
+}).AllowAnonymous();
+
+app.MapGet("/Auth/Discord/Callback", async (HttpContext ctx, IConfiguration cfg, IHttpClientFactory http, IMediator mediator,
+    string? code, string? state, string? error) =>
+{
+    var cookie = ctx.Request.Cookies[DiscordOAuth.StateCookie];
+    ctx.Response.Cookies.Delete(DiscordOAuth.StateCookie, new CookieOptions { Path = "/Auth" });
+    if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state) || string.IsNullOrEmpty(cookie) || error != null)
+        return Results.Redirect("/Auth/Login?error=discord");
+    var sep = cookie.IndexOf('|');
+    var expectedState = sep < 0 ? cookie : cookie[..sep];
+    var returnUrl = sep < 0 ? "" : cookie[(sep + 1)..];
+    if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(expectedState), Encoding.UTF8.GetBytes(state)))
+        return Results.Redirect("/Auth/Login?error=discord");
+
+    var me = await DiscordOAuth.ExchangeAsync(cfg, http, code);
+    if (me == null) return Results.Redirect("/Auth/Login?error=discord");
+
+    var ip = IpBanMiddleware.GetClientIp(ctx) ?? "unknown";
+    var ua = ctx.Request.Headers.UserAgent.ToString();
+    var deviceId = ctx.Items["DeviceId"] is Guid d ? d : (Guid?)null;
+    peeposredemption.Application.DTOs.Auth.LoginResultDto result;
+    try
+    {
+        result = await mediator.Send(new peeposredemption.Application.Features.Auth.Commands.DiscordLoginCommand(
+            me.Id, me.Username, me.GlobalName, me.Email, me.Verified == true, DiscordOAuth.AvatarUrl(me), ip, ua, deviceId));
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Results.Redirect("/Auth/Login?error=discord&reason=" + Uri.EscapeDataString(ex.Message));
+    }
+
+    if (result.RequiresMfa)
+    {
+        ctx.Response.Cookies.Append("mfa_pending", result.MfaPendingToken!, new CookieOptions
+        {
+            HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, MaxAge = TimeSpan.FromMinutes(5)
+        });
+        return Results.Redirect("/Auth/MfaVerify");
+    }
+
+    ctx.Response.Cookies.Append("jwt", result.Token!, new CookieOptions
+    {
+        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
+        Domain = ".torvex.app", MaxAge = TimeSpan.FromMinutes(15)
+    });
+    ctx.Response.Cookies.Append("refreshToken", result.RefreshToken!, new CookieOptions
+    {
+        HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict,
+        Domain = ".torvex.app", MaxAge = TimeSpan.FromDays(30)
+    });
+    await mediator.Send(new peeposredemption.Application.Features.Security.Commands.RecordUserLoginInfoCommand(
+        result.UserId, ip, deviceId ?? Guid.Empty));
+
+    return Results.Redirect(DiscordOAuth.SafeReturnUrl(returnUrl, PostLoginRedirect.Page(ctx.Request)));
+}).AllowAnonymous();
+
+// ── Bot fulfilment: paid AI credit packs the bot hasn't applied yet ──────
+// The bot polls this (it is already an X-Bot-Key client), writes the grant to
+// its own ledger, then acks — so credit lands with no .env edit or restart.
+app.MapGet("/api/bot/ai-credit/pending", async (HttpContext ctx, IConfiguration cfg, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var orders = await uow.PackageOrders.GetUnfulfilledAsync(ServiceCatalog.AiPackSlug);
+    return Results.Ok(orders
+        .Where(o => o.DiscordGuildId != null && o.CreditUsd.HasValue)
+        .Select(o => new
+        {
+            orderId = o.Id,
+            guildId = o.DiscordGuildId,
+            guildName = o.DiscordGuildName,
+            creditUsd = o.CreditUsd,
+            priceCents = o.PriceCents,
+            invoiceNumber = o.InvoiceNumber,
+            paidAt = o.PaidAt
+        }));
+});
+
+app.MapPost("/api/bot/ai-credit/{orderId:guid}/fulfilled", async (Guid orderId, HttpContext ctx, IConfiguration cfg, peeposredemption.Domain.Interfaces.IUnitOfWork uow) =>
+{
+    if (!BotAuth(ctx, cfg)) return Results.Unauthorized();
+    var order = await uow.PackageOrders.GetByIdAsync(orderId);
+    if (order == null) return Results.NotFound();
+    if (order.FulfilledAt == null)
+    {
+        order.FulfilledAt = DateTime.UtcNow;
+        await uow.SaveChangesAsync();
+    }
+    return Results.Ok(new { orderId, fulfilledAt = order.FulfilledAt });
+}).DisableAntiforgery();
+
 // Stripe webhook — must read raw body, no antiforgery
 app.MapPost("/webhooks/stripe", async (HttpRequest req, IMediator mediator) =>
 {
@@ -818,7 +935,13 @@ app.MapPost("/webhooks/stripe", async (HttpRequest req, IMediator mediator) =>
         return Results.Ok();
     }
     catch (UnauthorizedAccessException) { return Results.BadRequest(); }
-    catch { return Results.Ok(); } // Don't expose internal errors to Stripe
+    catch (Exception ex)
+    {
+        // A 500 makes Stripe retry the event (up to ~3 days) instead of dropping
+        // a paid order on the floor; the body stays generic.
+        app.Logger.LogError(ex, "Stripe webhook processing failed");
+        return Results.StatusCode(500);
+    }
 }).AllowAnonymous().DisableAntiforgery();
 
 // Notification endpoints

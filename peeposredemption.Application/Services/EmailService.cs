@@ -127,6 +127,53 @@ namespace peeposredemption.Application.Services
             await _resend.EmailSendAsync(message);
         }
 
+        public async Task SendOrderReceiptAsync(string toEmail, string customerName, string packageName, long amountCents,
+            string? invoiceNumber, string? invoiceUrl, string? invoicePdfUrl, string? discordServer, decimal? creditUsd)
+        {
+            var html = OrderReceiptHtml(customerName, packageName, amountCents, invoiceNumber, invoiceUrl, invoicePdfUrl, discordServer, creditUsd);
+            await _resend.EmailSendAsync(new EmailMessage
+            {
+                From = $"Torvex <{_fromAddress}>",
+                To = { toEmail },
+                Subject = $"Your Torvex order — {packageName}" + (invoiceNumber != null ? $" (invoice {invoiceNumber})" : ""),
+                HtmlBody = html
+            });
+            // Owner copy so every sale lands in the leads inbox too.
+            string E(string? v) => System.Net.WebUtility.HtmlEncode(v ?? "");
+            await _resend.EmailSendAsync(new EmailMessage
+            {
+                From = $"Torvex <{_fromAddress}>",
+                To = { _leadsEmail },
+                Subject = $"[Torvex] PAID: {packageName} — ${amountCents / 100m:F2} from {customerName}",
+                HtmlBody = $"<p>{E(customerName)} ({E(toEmail)}) paid for <strong>{E(packageName)}</strong>."
+                         + (discordServer != null ? $" Discord server: <strong>{E(discordServer)}</strong>, credit ${creditUsd:F2} — the bot applies it automatically." : "")
+                         + (invoiceUrl != null ? $" <a href=\"{invoiceUrl}\">Invoice</a>." : "") + "</p>"
+            });
+        }
+
+        public static string OrderReceiptHtml(string customerName, string packageName, long amountCents,
+            string? invoiceNumber, string? invoiceUrl, string? invoicePdfUrl, string? discordServer, decimal? creditUsd)
+        {
+            string E(string? v) => System.Net.WebUtility.HtmlEncode(v ?? "");
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"<p>Hi {E(customerName)},</p>");
+            sb.Append($"<p>Thanks — your payment of <strong>${amountCents / 100m:F2}</strong> for <strong>{E(packageName)}</strong> went through.</p>");
+            if (discordServer != null && creditUsd.HasValue)
+                sb.Append($"<p><strong>${creditUsd.Value:F2} of AI usage</strong> is being added to <strong>{E(discordServer)}</strong> — it lands within a minute, no restart needed. Run <code>/ai-status</code> in that server to see the balance.</p>");
+            if (invoiceUrl != null || invoicePdfUrl != null)
+            {
+                sb.Append("<p>Your invoice" + (invoiceNumber != null ? $" <strong>{E(invoiceNumber)}</strong>" : "") + ": ");
+                if (invoiceUrl != null) sb.Append($"<a href=\"{invoiceUrl}\">view online</a>");
+                if (invoiceUrl != null && invoicePdfUrl != null) sb.Append(" · ");
+                if (invoicePdfUrl != null) sb.Append($"<a href=\"{invoicePdfUrl}\">download PDF</a>");
+                sb.Append("</p>");
+            }
+            sb.Append("<p>Every invoice is also in your account: <a href=\"https://torvex.app/Dashboard?tab=billing\">torvex.app → Billing</a>.</p>");
+            sb.Append("<p>Unused AI credit can be refunded on request — reply to this email. Credit that has been used is non-refundable.</p>");
+            sb.Append("<p>— Torvex<br/><a href=\"https://torvex.app\">torvex.app</a></p>");
+            return sb.ToString();
+        }
+
         public async Task SendMaliciousLinkAlertAsync(string fromUsername, Guid channelId, string content)
         {
             var message = new EmailMessage

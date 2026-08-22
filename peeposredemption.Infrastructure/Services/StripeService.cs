@@ -131,6 +131,93 @@ namespace peeposredemption.Infrastructure.Services
             return new StripeCheckoutResult(session.Id, session.Url);
         }
 
+        public async Task<string> GetOrCreateCustomerAsync(User user, string? fullName, string? company)
+        {
+            var customers = new CustomerService();
+            if (!string.IsNullOrEmpty(user.StripeCustomerId))
+            {
+                try
+                {
+                    var existing = await customers.GetAsync(user.StripeCustomerId);
+                    if (existing != null && existing.Deleted != true) return existing.Id;
+                }
+                catch (StripeException) { /* stale id — fall through and recreate */ }
+            }
+
+            var created = await customers.CreateAsync(new CustomerCreateOptions
+            {
+                Email = user.Email,
+                Name = string.IsNullOrWhiteSpace(fullName) ? user.DisplayOrUsername : fullName,
+                Description = string.IsNullOrWhiteSpace(company) ? null : company,
+                Metadata = new Dictionary<string, string> { { "torvexUserId", user.Id.ToString() } }
+            });
+            user.StripeCustomerId = created.Id;   // caller saves
+            return created.Id;
+        }
+
+        public async Task<StripeCheckoutResult> CreatePackageOrderSessionAsync(
+            string customerId, Guid userId, Guid orderId, string packageName, string description,
+            long priceCents, IDictionary<string, string> metadata, string successUrl, string cancelUrl)
+        {
+            var meta = new Dictionary<string, string>(metadata)
+            {
+                ["type"] = "package_order",
+                ["userId"] = userId.ToString(),
+                ["orderId"] = orderId.ToString()
+            };
+            var options = new SessionCreateOptions
+            {
+                Customer = customerId,
+                CustomerUpdate = new SessionCustomerUpdateOptions { Address = "auto", Name = "auto" },
+                BillingAddressCollection = "required",
+                PaymentMethodTypes = new List<string> { "card" },
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = "usd",
+                            UnitAmount = priceCents,
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = packageName,
+                                Description = description
+                            }
+                        },
+                        Quantity = 1
+                    }
+                },
+                Mode = "payment",
+                // A real invoice for every order — numbered, hosted + PDF, emailed by
+                // Stripe (dashboard "successful payments" email) and mirrored on /Dashboard.
+                InvoiceCreation = new SessionInvoiceCreationOptions
+                {
+                    Enabled = true,
+                    InvoiceData = new SessionInvoiceCreationInvoiceDataOptions
+                    {
+                        Description = description,
+                        Metadata = meta,
+                        Footer = "Torvex · torvex.app · Questions? admin@torvex.app"
+                    }
+                },
+                SuccessUrl = successUrl,
+                CancelUrl = cancelUrl,
+                Metadata = meta,
+                AutomaticTax = new SessionAutomaticTaxOptions { Enabled = true }
+            };
+
+            var session = await new SessionService().CreateAsync(options);
+            return new StripeCheckoutResult(session.Id, session.Url);
+        }
+
+        public async Task<StripeInvoiceLinks?> GetInvoiceLinksAsync(string invoiceId)
+        {
+            if (string.IsNullOrEmpty(invoiceId)) return null;
+            var inv = await new InvoiceService().GetAsync(invoiceId);
+            return inv == null ? null : new StripeInvoiceLinks(inv.Id, inv.Number, inv.HostedInvoiceUrl, inv.InvoicePdf);
+        }
+
         public async Task CancelSubscriptionAsync(string stripeSubscriptionId)
         {
             var service = new SubscriptionService();
