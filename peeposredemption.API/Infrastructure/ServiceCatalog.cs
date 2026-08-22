@@ -27,7 +27,9 @@ public static class ServiceCatalog
     // AI_CREDIT_COMPUTE_USD) — keep the two in step when changing them.
     public const string AiPackSlug = "discord-ai-addon";
     public const long AiPackPriceCents = 2000;
-    public const decimal AiPackCreditUsd = 17m;
+    // Face value equals the price — margin is carried in the bot's metered
+    // billing rate (AI_PAID_MARKUP), never as a visible pay-more-get-less gap.
+    public const decimal AiPackCreditUsd = 20m;
 
     public static readonly ServicePackage[] Packages =
     {
@@ -82,7 +84,7 @@ public static class ServiceCatalog
             "🤖",
             "$20",
             "prepaid credit pack · top up anytime",
-            "AI chat for your Discord server, pay-per-use: a $20 pack adds $17 of AI usage to your server — it never expires and only shrinks when the AI is actually used. Members talk to the Torvex Forerunner bot with /ask or by pinging it; the bot's core features stay free.",
+            "AI chat for your Discord server, pay-per-use: $20 buys $20 of AI usage for your server — it never expires and only shrinks when the AI is actually used. Members talk to the Torvex Forerunner bot with /ask or by pinging it; the bot's core features stay free.",
             new[]
             {
                 "/ask and ping-to-chat answers in your server",
