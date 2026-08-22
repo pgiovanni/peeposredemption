@@ -75,6 +75,10 @@
                             <li><strong>Invoice:</strong> emailed to @Model.Email and saved under <a href="/Dashboard?tab=billing">Billing</a></li>
                         </ul>
                         <button type="submit" class="btn-large btn-signup pkg-order" style="width:100%">Pay @pkg.Price for @(Model.GuildName ?? "this server")</button>
+                        <p class="pkg-price-note" style="margin-top:8px;text-align:center">
+                            🔒 You'll be redirected to <strong>Stripe</strong>, our payment processor, to pay
+                            securely — your card details never touch our servers.
+                        </p>
                         <p class="pkg-price-note" style="margin-top:10px">
                             Wrong server? <a href="@Model.PickServerUrl">pick a different one</a>.
                             Unused credit can be refunded on request — <a href="/Contact">contact us</a>; credit that has been used is non-refundable.
